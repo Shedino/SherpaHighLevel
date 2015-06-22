@@ -1,8 +1,0 @@
-prefix=/home/odroid/catkin_ws/install
-
-Name: casy_rover
-Description: Description of casy_rover
-Version: 0.0.0
-Cflags: -I/home/odroid/catkin_ws/install/include
-Libs: -L/home/odroid/catkin_ws/install/lib 
-Requires: 

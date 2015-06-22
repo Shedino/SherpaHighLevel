@@ -1,7 +1,0 @@
-set(_CATKIN_CURRENT_PACKAGE "udp_com")
-set(udp_com_MAINTAINER "pc-casy <pc-casy@todo.todo>")
-set(udp_com_DEPRECATED "")
-set(udp_com_VERSION "0.0.0")
-set(udp_com_BUILD_DEPENDS "roscpp" "rospy" "std_msgs" "tf" "geometry_msgs")
-set(udp_com_RUN_DEPENDS "roscpp" "rospy" "std_msgs" "geometry_msgs" "tf")
-set(udp_com_BUILDTOOL_DEPENDS "catkin")

@@ -1,8 +1,0 @@
-prefix=/home/odroid/catkin_ws/install
-
-Name: udp_com
-Description: Description of udp_com
-Version: 0.0.0
-Cflags: -I/home/odroid/catkin_ws/install/include
-Libs: -L/home/odroid/catkin_ws/install/lib -ludp_com
-Requires: roscpp rospy std_msgs geometry_msgs

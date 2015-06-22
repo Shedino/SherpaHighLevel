@@ -1,7 +1,0 @@
-set(_CATKIN_CURRENT_PACKAGE "mms")
-set(mms_MAINTAINER "odroid <odroid@todo.todo>")
-set(mms_DEPRECATED "")
-set(mms_VERSION "0.0.0")
-set(mms_BUILD_DEPENDS "roscpp" "std_msgs" "message_generation")
-set(mms_RUN_DEPENDS "roscpp" "std_msgs" "message_runtime")
-set(mms_BUILDTOOL_DEPENDS "catkin")

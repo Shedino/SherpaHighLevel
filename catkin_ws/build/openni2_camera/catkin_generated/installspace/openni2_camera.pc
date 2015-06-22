@@ -1,8 +1,0 @@
-prefix=/home/odroid/catkin_ws/install
-
-Name: openni2_camera
-Description: Description of openni2_camera
-Version: 0.2.3
-Cflags: -I/home/odroid/catkin_ws/install/include
-Libs: -L/home/odroid/catkin_ws/install/lib -lopenni2_wrapper
-Requires: camera_info_manager dynamic_reconfigure image_transport nodelet sensor_msgs roscpp

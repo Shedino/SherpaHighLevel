@@ -1,7 +1,0 @@
-set(_CATKIN_CURRENT_PACKAGE "px4flow")
-set(px4flow_MAINTAINER "Lionel Heng <hengli@inf.ethz.ch>")
-set(px4flow_DEPRECATED "")
-set(px4flow_VERSION "0.1.0")
-set(px4flow_BUILD_DEPENDS "roscpp" "std_msgs" "sensor_msgs" "image_transport" "px_comm")
-set(px4flow_RUN_DEPENDS "roscpp" "std_msgs" "sensor_msgs" "image_transport" "px_comm")
-set(px4flow_BUILDTOOL_DEPENDS "catkin")

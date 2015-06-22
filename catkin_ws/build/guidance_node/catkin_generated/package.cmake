@@ -1,7 +1,0 @@
-set(_CATKIN_CURRENT_PACKAGE "guidance_node")
-set(guidance_node_MAINTAINER "Andrea Zanotti <andreazanottifo@gmail.com>")
-set(guidance_node_DEPRECATED "")
-set(guidance_node_VERSION "0.0.0")
-set(guidance_node_BUILD_DEPENDS "roscpp" "std_msgs" "message_generation")
-set(guidance_node_RUN_DEPENDS "roscpp" "std_msgs" "message_runtime")
-set(guidance_node_BUILDTOOL_DEPENDS "catkin")

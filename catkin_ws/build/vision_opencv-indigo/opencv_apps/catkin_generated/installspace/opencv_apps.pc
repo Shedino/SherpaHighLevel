@@ -1,8 +1,0 @@
-prefix=/home/odroid/catkin_ws/install
-
-Name: opencv_apps
-Description: Description of opencv_apps
-Version: 1.11.7
-Cflags: -I/home/odroid/catkin_ws/install/include
-Libs: -L/home/odroid/catkin_ws/install/lib 
-Requires: 

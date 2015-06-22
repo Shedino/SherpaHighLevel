@@ -1,6 +1,0 @@
-set(casy_rover_SETUP_PY_VERSION "0.0.0")
-set(casy_rover_SETUP_PY_SCRIPTS "")
-set(casy_rover_SETUP_PY_PACKAGES "roscopter")
-set(casy_rover_SETUP_PY_PACKAGE_DIRS "src/roscopter")
-set(casy_rover_SETUP_PY_MODULES "")
-set(casy_rover_SETUP_PY_MODULE_DIRS "")

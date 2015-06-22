@@ -1,8 +1,0 @@
-prefix=/home/odroid/catkin_ws/install
-
-Name: mavros
-Description: Description of mavros
-Version: 0.11.2
-Cflags: -I/home/odroid/catkin_ws/install/include -I/usr/include -I/opt/ros/indigo/include
-Libs: -L/home/odroid/catkin_ws/install/lib -lmavros -l:/usr/lib/arm-linux-gnueabihf/libboost_system.so
-Requires: diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf geometry_msgs libmavconn

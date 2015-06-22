@@ -1,8 +1,0 @@
-prefix=/home/odroid/catkin_ws/devel
-
-Name: urg_node
-Description: Description of urg_node
-Version: 0.1.9
-Cflags: -I/home/odroid/catkin_ws/devel/include -I/home/odroid/catkin_ws/src/urg_node/include
-Libs: -L/home/odroid/catkin_ws/devel/lib -lurg_c_wrapper
-Requires: roscpp sensor_msgs urg_c rosconsole nodelet dynamic_reconfigure laser_proc

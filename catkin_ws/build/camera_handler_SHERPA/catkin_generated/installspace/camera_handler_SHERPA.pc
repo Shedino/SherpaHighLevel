@@ -1,8 +1,0 @@
-prefix=/home/odroid/catkin_ws/install
-
-Name: camera_handler_SHERPA
-Description: Description of camera_handler_SHERPA
-Version: 0.0.0
-Cflags: -I/home/odroid/catkin_ws/install/include
-Libs: -L/home/odroid/catkin_ws/install/lib 
-Requires: cv_bridge image_transport roscpp sensor_msgs std_msgs message_runtime

@@ -1,7 +1,0 @@
-set(_CATKIN_CURRENT_PACKAGE "guidance_node_amsl")
-set(guidance_node_amsl_MAINTAINER "Andrea Zanotti <andreazanottifo@gmail.com>")
-set(guidance_node_amsl_DEPRECATED "")
-set(guidance_node_amsl_VERSION "0.0.0")
-set(guidance_node_amsl_BUILD_DEPENDS "roscpp" "std_msgs" "message_generation")
-set(guidance_node_amsl_RUN_DEPENDS "roscpp" "std_msgs" "message_runtime")
-set(guidance_node_amsl_BUILDTOOL_DEPENDS "catkin")
