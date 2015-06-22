@@ -1,0 +1,32 @@
+Si lavora dentro catkin_ws, da prendere nel repository e fare link simbolico da home utente verso SherpaHighLevel/catkin_ws
+catkin_make -> builda tutto
+catkin_make <nome_modulo> -> builda il singolo modulo.
+rosrun <pacchetto> <nodo> es. rosrun mms mms -> nome del nodo è il nome del file .c dentro i sorgenti
+
+Far partire master -> roscore da un terminale qualsiasi
+Nodi attivi al momento -> rosnode list (ping, info, etc...)
+Informazioni sui topic -> rostopic (comandi vari) es. rostopic echo /arm -> debug x i topic
+rostopic info /arm --> informazioni, tipo, chi è sottoscrtitto etc.
+rostopic pub <nometopic> <tipo> <parametri (dalla struttura)> --> es. rostopic pub /arm mms/Arm true false
+
+launchfile:
+roslaunch <nome_pacchetto> <nome_launch_file> -> gestisce lo start-up di più nodi/messaggi
+
+i launch file stanno nelle cartelle launch dei nodi (se ce l'hanno)
+
+Utilizzo HL:
+1. roslaunch mavros uniboAMSLUSB.launch
+2. roslaunch mavros unibo_GCS.launch
+3. rosrun mms mms
+4. sh eurathlon_script_RC_stream_bridge.sh
+-- --
+5. rosrun usb_cam usb_cam_node (webcam)
+6. rosrun camera_handler_SHERPA camera_handler_SHERPA (image conversion e salva jpeg e video in [HOME]/PhotoMission e [HOME]/VideoMission)
+
+
+
+
+
+
+
+
