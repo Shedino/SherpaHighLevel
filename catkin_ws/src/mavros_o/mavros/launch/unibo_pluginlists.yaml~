@@ -1,0 +1,18 @@
+﻿plugin_blacklist:
+# common
+- actuator_control
+- ftp
+- local_position
+- safety_area
+- setpoint_attitude
+- unibo_controller
+#- unibo_controller_amsl
+# extras
+- image_pub
+- 'mocap_*'
+- px4flow
+- 'vision_*'
+- visualization
+
+plugin_whitelist: []
+#- 'sys_*'

@@ -1,0 +1,31 @@
+﻿plugin_blacklist:
+# common
+- 3dr_radio
+- command
+- global_position
+- gps
+- imu_pub
+- param
+- rc_io
+- setpoint_accel
+- actuator_control
+- ftp
+- local_position
+- safety_area
+- setpoint_attitude
+- setpoint_position
+- setpoint_velocity
+- sys_status
+- sys_time
+- vfr_hud
+- unibo_controller
+- unibo_controller_amsl
+# extras
+- image_pub
+- 'mocap_*'
+- px4flow
+- 'vision_*'
+- visualization
+
+plugin_whitelist: []
+#- 'sys_*'

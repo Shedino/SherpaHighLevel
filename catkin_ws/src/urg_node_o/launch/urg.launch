@@ -1,0 +1,9 @@
+<launch>
+<node pkg="urg_node" type="urg_node" name="urg_node" output="screen">
+<rosparam>
+serial_port:  /dev/ttyACM99
+ip_adress: 192.168.0.10
+ip_port: 10940
+</rosparam>
+</node>
+</launch>
