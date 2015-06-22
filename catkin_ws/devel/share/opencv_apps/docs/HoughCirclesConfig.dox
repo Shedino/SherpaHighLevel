@@ -1,0 +1,8 @@
+\subsubsection parameters ROS parameters
+
+Reads and maintains the following parameters on the ROS server
+
+- \b "~use_camera_info" : \b [bool] Indicates that the camera_info topic should be subscribed to to get the default input_frame_id. Otherwise the frame from the image message will be used. min: False, default: True, max: True
+- \b "~canny_threshold" : \b [int] Canny threshold min: 1, default: 200, max: 255
+- \b "~accumulator_threshold" : \b [int] Accumulator threshold min: 1, default: 50, max: 200
+

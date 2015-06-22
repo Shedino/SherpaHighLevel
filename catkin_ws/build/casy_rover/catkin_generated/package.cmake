@@ -1,0 +1,7 @@
+set(_CATKIN_CURRENT_PACKAGE "casy_rover")
+set(casy_rover_MAINTAINER "casy <casy@todo.todo>")
+set(casy_rover_DEPRECATED "")
+set(casy_rover_VERSION "0.0.0")
+set(casy_rover_BUILD_DEPENDS "geometry_msgs" "message_generation" "rospy" "sensor_msgs" "std_msgs")
+set(casy_rover_RUN_DEPENDS "geometry_msgs" "rospy" "sensor_msgs" "std_msgs")
+set(casy_rover_BUILDTOOL_DEPENDS "catkin")

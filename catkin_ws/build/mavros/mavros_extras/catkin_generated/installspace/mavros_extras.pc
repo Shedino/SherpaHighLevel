@@ -1,0 +1,8 @@
+prefix=/home/odroid/catkin_ws/install
+
+Name: mavros_extras
+Description: Description of mavros_extras
+Version: 0.11.2
+Cflags: -I/home/odroid/catkin_ws/install/include -I/opt/ros/indigo/include
+Libs: -L/home/odroid/catkin_ws/install/lib -lmavros_extras
+Requires: image_transport mavros roscpp sensor_msgs

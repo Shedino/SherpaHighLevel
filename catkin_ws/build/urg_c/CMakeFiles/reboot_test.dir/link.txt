@@ -1,0 +1,1 @@
+/usr/bin/cc      CMakeFiles/reboot_test.dir/current/samples/reboot_test.c.o  -o /home/odroid/catkin_ws/devel/lib/urg_c/reboot_test -rdynamic /home/odroid/catkin_ws/devel/lib/libliburg_c.so /home/odroid/catkin_ws/devel/lib/libopen_urg_sensor.so /home/odroid/catkin_ws/devel/lib/libliburg_c.so -lrt -lm -Wl,-rpath,/home/odroid/catkin_ws/devel/lib: 

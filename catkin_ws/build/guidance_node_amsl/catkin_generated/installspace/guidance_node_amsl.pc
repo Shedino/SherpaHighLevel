@@ -1,0 +1,8 @@
+prefix=/home/odroid/catkin_ws/install
+
+Name: guidance_node_amsl
+Description: Description of guidance_node_amsl
+Version: 0.0.0
+Cflags: -I/home/odroid/catkin_ws/install/include
+Libs: -L/home/odroid/catkin_ws/install/lib 
+Requires: roscpp std_msgs message_runtime

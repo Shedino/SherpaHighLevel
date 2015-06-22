@@ -1,0 +1,8 @@
+prefix=/home/odroid/catkin_ws/devel
+
+Name: libmavconn
+Description: Description of libmavconn
+Version: 0.11.2
+Cflags: -I/home/odroid/catkin_ws/src/mavros/libmavconn/include -I/usr/include -I/opt/ros/indigo/include
+Libs: -L/home/odroid/catkin_ws/devel/lib -lmavconn -l:/usr/lib/arm-linux-gnueabihf/libboost_system.so -l:/usr/lib/arm-linux-gnueabihf/libconsole_bridge.so
+Requires: 

@@ -1,0 +1,7 @@
+set(_CATKIN_CURRENT_PACKAGE "camera_handler_SHERPA")
+set(camera_handler_SHERPA_MAINTAINER "odroid <odroid@todo.todo>")
+set(camera_handler_SHERPA_DEPRECATED "")
+set(camera_handler_SHERPA_VERSION "0.0.0")
+set(camera_handler_SHERPA_BUILD_DEPENDS "cv_bridge" "image_transport" "roscpp" "sensor_msgs" "std_msgs" "message_generation")
+set(camera_handler_SHERPA_RUN_DEPENDS "cv_bridge" "image_transport" "roscpp" "sensor_msgs" "std_msgs" "message_runtime")
+set(camera_handler_SHERPA_BUILDTOOL_DEPENDS "catkin")

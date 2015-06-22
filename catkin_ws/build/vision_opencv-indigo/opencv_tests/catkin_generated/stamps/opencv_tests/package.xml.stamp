@@ -1,0 +1,15 @@
+<package>
+  <name>opencv_tests</name>
+  <version>1.11.7</version>
+  <description>
+     opencv_tests
+  </description>
+  <author>James Bowman</author>
+  <maintainer email="vincent.rabaud@gmail.com">Vincent Rabaud</maintainer>
+  <license>BSD</license>
+  <url>http://pr.willowgarage.com/wiki/opencv_tests</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>cv_bridge</run_depend>
+</package>

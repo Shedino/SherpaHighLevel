@@ -1,0 +1,7 @@
+set(_CATKIN_CURRENT_PACKAGE "mavlink_serial_client")
+set(mavlink_serial_client_MAINTAINER "Lionel Heng <hengli@inf.ethz.ch>")
+set(mavlink_serial_client_DEPRECATED "")
+set(mavlink_serial_client_VERSION "0.1.0")
+set(mavlink_serial_client_BUILD_DEPENDS "cmake_modules" "roscpp" "std_msgs" "sensor_msgs" "image_transport" "px_comm")
+set(mavlink_serial_client_RUN_DEPENDS "roscpp" "std_msgs" "sensor_msgs" "image_transport" "px_comm")
+set(mavlink_serial_client_BUILDTOOL_DEPENDS "catkin")

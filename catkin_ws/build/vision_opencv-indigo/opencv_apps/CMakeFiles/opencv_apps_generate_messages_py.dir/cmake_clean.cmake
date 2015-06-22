@@ -1,0 +1,40 @@
+FILE(REMOVE_RECURSE
+  "CMakeFiles/opencv_apps_generate_messages_py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_FlowStamped.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_CircleArray.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_FaceArray.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_RotatedRectStamped.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Circle.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_FlowArrayStamped.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_MomentArray.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_RotatedRectArray.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Face.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Moment.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_ContourArrayStamped.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_RectArray.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_MomentArrayStamped.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Point2DArrayStamped.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_RotatedRectArrayStamped.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_FaceArrayStamped.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_LineArrayStamped.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Rect.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Flow.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Contour.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_ContourArray.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_RectArrayStamped.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Line.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Point2DStamped.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Point2D.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Point2DArray.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_CircleArrayStamped.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_Size.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_LineArray.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_FlowArray.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/_RotatedRect.py"
+  "/home/odroid/catkin_ws/devel/lib/python2.7/dist-packages/opencv_apps/msg/__init__.py"
+)
+
+# Per-language clean rules from dependency scanning.
+FOREACH(lang)
+  INCLUDE(CMakeFiles/opencv_apps_generate_messages_py.dir/cmake_clean_${lang}.cmake OPTIONAL)
+ENDFOREACH(lang)

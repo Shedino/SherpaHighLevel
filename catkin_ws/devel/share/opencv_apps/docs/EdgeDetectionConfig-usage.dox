@@ -1,0 +1,9 @@
+\subsubsection usage Usage
+\verbatim
+<node name="edge_detection" pkg="edge_detection" type="edge_detection">
+  <param name="use_camera_info" type="bool" value="True" />
+  <param name="edge_type" type="int" value="0" />
+  <param name="canny_low_threshold" type="int" value="10" />
+</node>
+\endverbatim
+

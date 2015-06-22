@@ -1,0 +1,452 @@
+/*
+ * mocap_node.cpp
+ *
+ *  Created on: 02/02/2015
+ *      Author:
+ */
+
+#include "socket.h"
+#include <rosros.h>
+#include <geometry_msgs/Pose.h>
+#include <unistd.h>
+#include "std_msgs/String.h"
+#include <sstream>
+#include <dynamic_reconfigure/server.h>
+#include <tf/transform_datatypes.h>
+#include <stdio.h>      // standard input / output functions
+#include <stdlib.h>
+#include <string.h>     // string function definitions
+#include <unistd.h>     // UNIX standard function definitions
+#include <fcntl.h>      // File control definitions
+#include <errno.h>      // Error number definitions
+#include <termios.h>    // POSIX terminal control definitions
+#include <iostream>
+#include <stdint.h>
+#include <math.h>
+
+#define PI_G 3.14159265358979323846 
+
+const int LOCAL_PORT = 54321;
+
+int cycle;
+int i2cerrors;
+int errorcode;
+geometry_msgs::Pose optitrack_position;
+int flag2 = 0;
+bool packetread = false;
+int numBytes = 0;
+float sqrt_norm;
+int x,y,z,w;
+int pos,i;
+char ch_1[10], ch_2[10], ch_3[10], ch_4[10], ch_5[10], ch_6[10], ch_7[10], ch_8[10], ch_9[10], ch_10[10], ch_11[10], ch_12[10];
+int lun, t;   
+UdpSocket clientSocket(LOCAL_PORT);
+
+
+uint8_t setNav[] = {
+    0xB5, 0x62, 0x0D, 0x01, 0x10, 0x00, 0x10, 0x3F, 0x66, 0x18, 0x00, 0x00, 0x00, 0x00, 0x98, 0xE9, 0xFF, 0xFF,
+    0x2C, 0x07, 0x02, 0x00, 0x9F, 0x91,//TIME
+    0xB5, 0x62, 0x01, 0x06, 0x34, 0x00, 0x1C, 0x3D, 0x66, 0x18, 0xB6, 0x6D, 0xFC, 0xFF, 0x2C, 0x07, 0x03, 0xDD,
+    0x7B, 0x7A, 0xA2, 0x1A, 0x5E, 0x2F, 0x56, 0x05, 0xAE, 0x20, 0x82, 0x1A, 0x85, 0x07, 0x00, 0x00, 0xF6, 0xFF,
+    0xFF, 0xFF, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xD8, 0x00, 0x00, 0x00, 0xC1, 0x01, 0x02, 0x04,
+    0x24, 0x67, 0x01, 0x00, 0x05, 0x90,//NAVIGATION_SOLUTION_INFORMATION
+    
+    0xB5, 0x62, //HEADER
+    0x01, 0x03, //ID MESSAGE
+    0x10, 0x00, //MESSAGE LENGHT
+    0x1C, 0x3D, 0x66, 0x18, //GPS MILLISECONDS
+    0x03, //GPS-FIX STATUS
+    0x0F, //Navigation Status Flags i=95
+    0x00, //Fix Status Information
+    0x00, // flags2
+    0x6E, 0x57, 0x3E, 0x00, //Time to first fix
+    0x6F, 0xFD, 0x45, 0x00, //Milliseconds since Startup / Reset
+    0xB1, 0xD7,//NAVIGATION_STATUS i=106,107
+
+
+    0xB5, 0x62, //HEADER i=108.109
+    0x01, 0x02, //ID MESSAGE i=110,111
+    0x1C, 0x00, //MESSAGE LENGHT i=112,113
+    0x1C, 0x3D, 0x66, 0x18,//GPS MILLISECOND TIME i=114 --> i=117
+    0xCC, 0xD3, 0xB0, 0x06,//LONGITUDE DEGREE  possible i=118 --> i=121
+    0x26, 0x00, 0x85, 0x1A,//LATITUDE DEGREE i=122 --> i=125
+    0x5A, 0x8D, 0x01, 0x00,//HEIGHT ABOUT ELLIPSOIDE MM i=126 --> i=129
+    0x75, 0xDB, 0x00, 0x00,//HEIGHT ABOVE SEA LEVEL MM i=130 --> i=133
+    0xF2, 0x2C, 0x00, 0x00,//HORIZONTAL ACCURACY MM i=134 --> i=137
+    0x4B, 0x3C, 0x00, 0x00,//VERTICAL ACCURACY MM i=138 --> i= 141
+    0xED, 0x12,//CKSA, CKSB (POSITION_LLH END) i=142,143
+    0xB5, 0x62, 0x01, 0x12, 0x24, 0x00, 0x1C, 0x3D, 0x66, 0x18, 0x04, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00,
+    0x04, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00, 0xC6, 0xCD, 0x16, 0x01, 0xD8, 0x00,
+    0x00, 0x00, 0x91, 0x11, 0x46, 0x00, 0xC3, 0x5C, 0xB5, 0x62, 0x0D, 0x01, 0x10, 0x00, 0x10, 0x3F, 0x66, 0x18,
+    0x00, 0x00, 0x00, 0x00, 0xC6, 0xE9, 0xFF, 0xFF, 0x2C, 0x07}; //VELOCITY_NED
+
+uint8_t check[] = {0x01, 0x02, //ID MESSAGE i=110,111
+    0x1C, 0x00, //MESSAGE LENGHT i=112,113
+    0x1C, 0x3D, 0x66, 0x18,//GPS MILLISECOND TIME i=114 --> i=117
+    0xCC, 0xD3, 0xB0, 0x06,//LONGITUDE DEGREE  possible i=118 --> i=121
+    0x26, 0x00, 0x85, 0x1A,//LATITUDE DEGREE i=122 --> i=125 -->i=15
+    0x5A, 0x8D, 0x01, 0x00,//HEIGHT ABOUT ELLIPSOIDE MM i=126 --> i=129
+    0x75, 0xDB, 0x00, 0x00,//HEIGHT ABOVE SEA LEVEL MM i=130 --> i=133
+    0xF2, 0x2C, 0x00, 0x00,//HORIZONTAL ACCURACY MM i=134 --> i=137
+    0x4B, 0x3C, 0x00, 0x00};
+
+uint8_t check2[] = { 0x01, 0x03, //ID MESSAGE
+    0x10, 0x00, //MESSAGE LENGHT
+    0x1C, 0x3D, 0x66, 0x18, //GPS MILLISECONDS
+    0x03, //GPS-FIX STATUS
+    0x0F, //Navigation Status Flags
+    0x00, //Fix Status Information
+    0x00, // flags2
+    0x6E, 0x57, 0x3E, 0x00, //Time to first fix
+    0x6F, 0xFD, 0x45, 0x00};//Milliseconds since Startup / Reset
+
+//OPEN SERIAL PORT
+int open_port(char* port){
+	int fd; // File descriptor for the port
+	 // Open serial port
+	 // O_RDWR - Read and write
+	 // O_NOCTTY - Ignore special chars like CTRL-C
+	fd = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK );
+	if (fd < 0){
+		ROS_INFO("porta non aperta correttamente");
+		return(-1);
+	}
+	return (fd);
+	}
+
+//SETUP SERIAL PORT
+bool setup_port(int fd, int baud, int data_bits, int stop_bits, bool parity, bool hardware_control){
+	struct termios  config;
+	do {
+		 if(!isatty(fd)){
+			 fprintf(stderr, "\nERROR: file descriptor %d is NOT a serial port\n", fd);
+			 return false;
+		 }
+		if(tcgetattr(fd, &config) < 0){
+			fprintf(stderr, "\nERROR: could not read configuration of fd %d\n", fd);
+			break;
+		}
+		//
+		// Input flags - Turn off input processing
+		// convert break to null byte, no CR to NL translation,
+		// no NL to CR translation, don't mark parity errors or breaks
+		// no input parity check, don't strip high bit off,
+		// no XON/XOFF software flow control
+		//
+		config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON);
+		//
+		// Output flags - Turn off output processing
+		// no CR to NL translation, no NL to CR-NL translation,
+		// no NL to CR translation, no column 0 CR suppression,
+		// no Ctrl-D suppression, no fill characters, no case mapping,
+		// no local output processing
+		//
+		config.c_oflag &= ~(OCRNL | ONLCR | ONLRET | ONOCR | OFILL | OPOST);
+		#ifdef OLCUC
+			config.c_oflag &= ~OLCUC;
+		#endif
+
+		#ifdef ONOEOT
+			config.c_oflag &= ~ONOEOT;
+  		#endif
+		//
+		// No line processing:
+		// echo off, echo newline off, canonical mode off,
+		// extended input processing off, signal chars off
+		//
+		config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+		//
+		// Turn off character processing
+		// clear current char size mask, no parity checking,
+		// no output processing, force 8 bit input
+		//
+		config.c_cflag &= ~(CSIZE | PARENB);
+		config.c_cflag |= CS8;
+		//
+		// One input byte is enough to return from read()
+		// Inter-character timer off
+		//
+		config.c_cc[VMIN]  = 1;
+		config.c_cc[VTIME] = 10; // was 0
+
+		if (cfsetispeed(&config, baud) < 0 || cfsetospeed(&config, baud) < 0){
+			fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
+			break;
+		}
+
+		//
+		// Finally, apply the configuration
+		//
+		if(tcsetattr(fd, TCSANOW, &config) < 0){
+			fprintf(stderr, "\nERROR: could not set configuration of fd %d\n", fd);
+			break;
+		}
+		return true;
+	}while(0);
+	return false;
+}
+
+//CLOSE SERIAL PORT
+void close_port(int fd){
+	close(fd);
+}
+
+//READ AND WRITE
+bool ubx_write(int fd){
+    int controllo = write(fd,  setNav, sizeof(setNav));
+}
+
+int main( int argc, char* argv[] ){  
+	ros::init(argc, argv, "gps_optitrack_node");
+	ros::NodeHandle n;
+	ros::NodeHandle pnh("~");
+	ros::Publisher optitrack_publisher_;
+	ros::Rate r(50);
+	uint32_t CK_A = 0, CK_B = 0;
+ 	uint8_t sum1=0x00, sum2=0x00, flag_lat=0x00, flag_lon=0x00;;
+	double R; //According to WGS84
+	double f_test; //According to WGS84
+	double R_N, R_M, Lat0, Lat, Lon0, Lon, sqrt_test;
+	uint8_t bArray_Lat [ sizeof( double ) ] = { 0 };
+	uint8_t bArray_Lon [ sizeof( double ) ] = { 0 };
+	f_test=1/298.257223563;
+	R  = 6378137;
+	double sin_lat;
+
+	std::string serial_port;
+  	pnh.param<std::string>("serial_port", serial_port, "/dev/ttyUSB0");
+	int serial_baud;
+	pnh.param<int>("serial_baud", serial_baud, B38400);
+	
+	char *usb_port = new char[serial_port.length() + 1];
+	strcpy(usb_port, serial_port.c_str());
+	
+	int fd=open_port(usb_port);
+	if(fd<0){
+		ROS_INFO("Errore durante l'apertura della porta");
+		fflush(stdout);
+		exit(-1);
+	} else ROS_INFO("Porta aperta correttamente");
+	bool setup=setup_port(fd,serial_baud,8,1,false,false);
+	if(!setup){
+		ROS_INFO("Errore di setup della porta");
+		exit(-2);
+	}else ROS_INFO("Setup porta completato");
+	optitrack_publisher_ = n.advertise<geometry_msgs::Pose>("mavros/mocap/pose", 10);	
+	while (ros::ok()){
+		do{
+			numBytes = clientSocket.recv();
+			//Parse mocap dat
+			if( numBytes > 0 ){
+				const char* buffer = clientSocket.getBuffer();
+				unsigned short lenghtPack = *((unsigned short*)(&buffer[0]));
+				//printf("packet length:%d\n",lenghtPack);
+				// Look for the beginning of a NatNet package
+				// printf("%c\n",buffer[0]);
+				pos=0;
+				if (buffer[0]=='S'){
+					//elaborazione pacchetto udp
+					pos=2;
+					//lettura lenght
+					i=0;
+					while(buffer[pos]!=' '){
+						ch_1[i]=buffer[pos];
+						i++;
+						pos++;
+					}
+					ch_1[i]='\0';
+					//optitrack_positionpose.position.x=flag2*atoi(ch_1);
+					//salto lo spazio
+					pos++;
+					//lettura type
+					i=0;
+					while(buffer[pos]!=' '){
+						ch_2[i]=buffer[pos];
+						i++;
+						pos++;
+					}
+					ch_2[i]='\0';
+					//velocity_.channels[1]=flag2*atoi(ch_2);
+					//salto lo spazio
+					pos++;
+					//lettura x
+					i=0;
+					while(buffer[pos]!=' '){
+						ch_3[i]=buffer[pos];
+						i++;
+						pos++;
+					}
+					ch_3[i]='\0';
+					optitrack_position.position.x=atoi(ch_3);
+					//salto lo spazio
+					pos++;
+					//lettura y
+					i=0;
+					while(buffer[pos]!=' '){
+						ch_4[i]=buffer[pos];
+						i++;
+						pos++;
+					}
+					ch_4[i]='\0';
+					optitrack_position.position.y=atoi(ch_4);
+					//salto lo spazio
+					pos++;
+					//lettura z
+					i=0;
+					while(buffer[pos]!=' '){
+						ch_5[i]=buffer[pos];
+						i++;
+						pos++;
+					}
+					ch_5[i]='\0';
+					optitrack_position.position.z=atoi(ch_5);
+					//salto lo spazio
+					pos++;
+					//lettura q1
+					i=0;
+					while(buffer[pos]!=' '){
+						ch_6[i]=buffer[pos];
+						i++;
+						pos++;
+					}
+					ch_6[i]='\0';
+					//optitrack_position.orientation.w=atoi(ch_6)/10000;// w/10000
+					w=atoi(ch_6)/10000;
+					//salto lo spazio
+					pos++;
+					//lettura q2
+					i=0;
+					while(buffer[pos]!=' '){	
+						ch_7[i]=buffer[pos];
+						i++;
+						pos++;
+					}
+					ch_7[i]='\0';
+					//optitrack_position.orientation.x=atoi(ch_7);
+					x=atoi(ch_7);
+					//salto lo spazio
+					pos++;
+					//lettura q3
+					i=0;
+					while(buffer[pos]!=' '){
+						ch_8[i]=buffer[pos];
+						i++;
+						pos++;
+					}
+					ch_8[i]='\0';
+					//optitrack_position.orientation.y=atoi(ch_8);
+					y=atoi(ch_8);
+					//salto lo spazio
+					pos++;
+					i=0;
+					while(buffer[pos]!=' '){
+						ch_8[i]=buffer[pos];
+						i++;
+						pos++;
+					}
+					ch_9[i]='\0';
+					//optitrack_position.orientation.z=atoi(ch_8);
+					z=atoi(ch_8);
+					sqrt_norm=sqrt(w*w+x*x+y*y+z*z);
+					optitrack_position.orientation.w=w/sqrt_norm;
+					optitrack_position.orientation.x=x/sqrt_norm;
+					optitrack_position.orientation.y=y/sqrt_norm;					
+					optitrack_position.orientation.z=z/sqrt_norm;
+					
+					//NED2LLA Estimate geodetic latitude, longitude, and altitude from flat Earth position
+					//function [Lat,Lon] = NED2LLA( optitrack_position.position.x , optitrack_position.position.y, N0, E0, Lat0, Lon0)
+
+						
+					
+					//convert Lat0 and Lon0 to radians
+					Lat0 = 44.492395 * (PI_G / 180.0);
+					Lon0 = 11.330142 * (PI_G / 180.0);
+					ROS_INFO("Latitude0 %f   Longitude0 %f RADIAN",Lat0, Lon0);
+					
+					/*Lat0 = Lat0 * (180.0 / PI_G);
+					Lon0 = Lon0 * (180.0 / PI_G);
+					ROS_INFO("Latitude0 %f   Longitude0 %f DEGREE",Lat0, Lon0);
+					ROS_INFO("f_test %f ",f_test);*/
+
+					// To convert the North and East coordinates to geodetic latitude and longitude, 
+					// the radius of curvature in the prime vertical (R_N) and the radius of curvature 
+					// in the meridian (R_M) are used. (R_N) and (R_M) are defined by the following relationships:
+					
+					R_N = R / sqrt( 1 -  (( (2*f_test) - (f_test*f_test) )  *   (sin(Lat0) * sin(Lat0) ) )   ) ;
+					
+					ROS_INFO("R %f ",R);
+					ROS_INFO("R_N %f ",R_N);
+					/*R_N = R/sqrt( 1 - ( ((2*0.003352811)-(0.003352811*0.003352811)) * (sin(Lat0)*sin(Lat0)) ) );
+					sin_lat=sin(Lat0);
+					ROS_INFO("sin_Lat %f ",sin_lat);
+					ROS_INFO("f_test %f ",f_test);
+					sqrt_test=sqrt( 1- ( ((2*0.003352811)-(0.003352811*0.003352811)) * (sin(Lat0)*sin(Lat0)) ) );
+					ROS_INFO("SQRT %d ",sqrt_test);
+					ROS_INFO("R_N %d ",R_N);*/
+					R_M = R_N * (        (      (1 - ((2*f_test)-(f_test*f_test)))    /    (1-( (2*f_test)-(f_test*f_test) ) * (sin(Lat0) * sin(Lat0)))     )   );
+					ROS_INFO("R_M %f ",R_M);	
+					//R_M = R_N * (  (1-(2*0.003352811-pow(0.003352811,2))) /(1-(2*0.003352811-pow(0.003352811,2))*(pow(sin(Lat0),2))));
+
+					//where (R) is the equatorial radius of the planet and(f) is the flattening of the planet.
+					//According to WGS84: R = 6378137 m and f= 1/298.257223563;
+
+					Lat = Lat0 + (atan( 1/R_M ) * (optitrack_position.position.x/1000));
+					Lon = Lon0 + (atan( 1 / (R_N*cos(Lat)) ) * (optitrack_position.position.y/1000));
+					ROS_INFO("Latitude %f   Longitude %f RADIAN",Lat, Lon);					
+					
+					Lat = (Lat * (180.0 / PI_G)) * 10000000;
+					Lon = (Lon * (180.0 / PI_G)) * 10000000;
+					ROS_INFO("Latitude %f   Longitude %f DEGREE",Lat, Lon);
+					
+					///memcpy( bArray_Lat , &Lat , sizeof( double ) );
+					bArray_Lat[3] = (int) Lat >> 24;
+					bArray_Lat[2] = (int) Lat >> 16;
+					bArray_Lat[1] = (int) Lat >> 8;
+					bArray_Lat[0] = (int) Lat;
+					//memcpy( bArray_Lon , &Lon , sizeof( double ) );
+					bArray_Lon[3] = (int) Lon >> 24;
+					bArray_Lon[2] = (int) Lon >> 16;
+					bArray_Lon[1] = (int) Lon >> 8;
+					bArray_Lon[0] = (int) Lon;
+					setNav[125]=bArray_Lat[3] &0xff;
+					setNav[124]=bArray_Lat[2] &0xff;
+					setNav[123]=bArray_Lat[1] &0xff;
+					setNav[122]=bArray_Lat[0] &0xff;
+					ROS_INFO("setNav[125] %d   setNav[124] %d  setNav[123] %d  setNav[122] %d",setNav[125], setNav[124], setNav[123], setNav[122]);
+					setNav[121]=bArray_Lon[3] &0xff;
+					setNav[120]=bArray_Lon[2] &0xff;
+					setNav[119]=bArray_Lon[1] &0xff;
+					setNav[118]=bArray_Lon[0] &0xff;
+					check[15]=bArray_Lat[3] &0xff;
+					check[14]=bArray_Lat[2] &0xff;
+					check[13]=bArray_Lat[1] &0xff;
+					check[12]=bArray_Lat[0] &0xff;
+					check[11]=bArray_Lon[3] &0xff;
+					check[10]=bArray_Lon[2] &0xff;
+					check[9]=bArray_Lon[1] &0xff;
+					check[8]=bArray_Lon[0] &0xff;
+					for(int i=0; i<32; i++){
+					    CK_A = CK_A + check[i];
+					    CK_B = CK_B + CK_A;
+					  }
+			  		sum1 = CK_A &0xff;
+			  		sum2 = CK_B &0xff;
+					setNav[142]=sum1;
+					setNav[143]=sum2;
+					ubx_write(fd);
+					CK_A = 0;
+					CK_B = 0;
+					/*ROS_INFO("ARRAY %d",bArray[0]);
+					ROS_INFO("ARRAY %d",bArray[1]);
+					ROS_INFO("ARRAY %d",bArray[2]);
+					ROS_INFO("ARRAY %d",bArray[3]);*/
+				}
+			}
+		}while( numBytes > 0 );
+		optitrack_publisher_.publish(optitrack_position);
+		r.sleep();
+		ros::spinOnce();
+	}//while ros::ok
+	// Process mocap data until SIGINT
+	return 0;
+}//main

@@ -1,0 +1,9 @@
+\subsubsection usage Usage
+\verbatim
+<node name="hough_circles" pkg="hough_circles" type="hough_circles">
+  <param name="use_camera_info" type="bool" value="True" />
+  <param name="canny_threshold" type="int" value="200" />
+  <param name="accumulator_threshold" type="int" value="50" />
+</node>
+\endverbatim
+

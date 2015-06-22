@@ -1,0 +1,7 @@
+set(_CATKIN_CURRENT_PACKAGE "mavros")
+set(mavros_MAINTAINER "Vladimir Ermakov <vooon341@gmail.com>")
+set(mavros_DEPRECATED "")
+set(mavros_VERSION "0.11.2")
+set(mavros_BUILD_DEPENDS "boost" "diagnostic_msgs" "diagnostic_updater" "message_generation" "pluginlib" "roscpp" "rospy" "geometry_msgs" "sensor_msgs" "std_msgs" "std_srvs" "tf" "mavlink" "angles" "libmavconn" "rosconsole_bridge")
+set(mavros_RUN_DEPENDS "python-argparse" "boost" "diagnostic_msgs" "diagnostic_updater" "message_generation" "pluginlib" "roscpp" "rospy" "geometry_msgs" "sensor_msgs" "std_msgs" "std_srvs" "tf" "mavlink" "angles" "libmavconn" "rosconsole_bridge")
+set(mavros_BUILDTOOL_DEPENDS "catkin")

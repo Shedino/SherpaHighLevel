@@ -1,0 +1,39 @@
+FILE(REMOVE_RECURSE
+  "CMakeFiles/opencv_apps_generate_messages_cpp"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/FlowStamped.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/CircleArray.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/FaceArray.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/RotatedRectStamped.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/Circle.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/FlowArrayStamped.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/MomentArray.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/RotatedRectArray.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/Face.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/Moment.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/ContourArrayStamped.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/RectArray.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/MomentArrayStamped.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/Point2DArrayStamped.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/RotatedRectArrayStamped.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/FaceArrayStamped.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/LineArrayStamped.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/Rect.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/Flow.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/Contour.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/ContourArray.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/RectArrayStamped.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/Line.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/Point2DStamped.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/Point2D.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/Point2DArray.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/CircleArrayStamped.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/Size.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/LineArray.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/FlowArray.h"
+  "/home/odroid/catkin_ws/devel/include/opencv_apps/RotatedRect.h"
+)
+
+# Per-language clean rules from dependency scanning.
+FOREACH(lang)
+  INCLUDE(CMakeFiles/opencv_apps_generate_messages_cpp.dir/cmake_clean_${lang}.cmake OPTIONAL)
+ENDFOREACH(lang)

@@ -1,0 +1,8 @@
+prefix=/home/odroid/catkin_ws/devel
+
+Name: usb_cam
+Description: Description of usb_cam
+Version: 0.3.3
+Cflags: -I/home/odroid/catkin_ws/src/usb_cam_node/include
+Libs: -L/home/odroid/catkin_ws/devel/lib -lusb_cam
+Requires: 
