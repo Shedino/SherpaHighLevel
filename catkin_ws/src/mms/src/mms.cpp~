@@ -25,12 +25,12 @@
 #define READY_TO_LAND 110
 #define PERFORMING_LANDING 120
 
-float PI = 3.1416; // pi
-float eps_LAND = 100; // distance to the target LAND position in millimeter
-float eps_WP = 100; // distance to the target WAYPOINT position in millimeters
-float eps_TO = 100; // distance to the target TAKEOFF position in millimeters
-float eps_YAW = 1; // distance to the target YAW position in deg
-float Dh_TO = 500; // takeoff height above the groung in millimeters
+double PI = 3.1416; // pi
+double eps_LAND = 15000.0; // distance to the target LAND position in millimeter
+double eps_WP = 100.0; // distance to the target WAYPOINT position in millimeters
+double eps_TO = 100.0; // distance to the target TAKEOFF position in millimeters
+double eps_YAW = 10.0; // distance to the target YAW position in deg
+double Dh_TO = 500.0; // takeoff height above the groung in millimeters
 
 class MmsNodeClass {
 public:
@@ -219,49 +219,52 @@ public:
 
 	class e_to_tartget{
 	public:
-		float error_pos = 0; // linear error
-		float error_ang = 0; // angular error
+		double error_pos = 0.0f; // linear error
+		double error_ang = 0.0f; // angular error
 	};
 	e_to_tartget error_to_t;
 
 	class ECEF{
 	public:
-		float Ne;
-		float X;
-		float Y;
-		float Z;
+		double Ne;
+		double X;
+		double Y;
+		double Z;
 	};
 	ECEF End_Point;
 	ECEF Starting_Point;
 
-	void distance( guidance_node_amsl::Reference Target_Position, guidance_node_amsl::Position Current_Position) // e_to_tartget &error_to_t,
+	void distance() // e_to_tartget &error_to_t, // guidance_node_amsl::Reference Target_Position, guidance_node_amsl::Position Current_Position
 	{
-		float error_x;
-		float error_y;
-		float error_z;
-		float error_yaw;
-		float alt;
+		static double error_x;
+		static double error_y;
+		static double error_z;
+		static double error_yaw;
+		static double alt;
 
-		alt = Target_Position.AltitudeRelative*1e-3;// + Home.AltitudeAMSL*1e-3;
-		End_Point.Ne=6378137/sqrt(1-0.08181919*0.08181919*sin(Target_Position.Latitude*1e-7*PI/180.0f)*sin(Target_Position.Latitude*1e-7*PI/180.0f));
-		End_Point.X=(End_Point.Ne+alt)*cos(Target_Position.Latitude*1e-7*PI/180)*cos(Target_Position.Longitude*1e-7*PI/180);
-		End_Point.Y=(End_Point.Ne+alt)*cos(Target_Position.Latitude*1e-7*PI/180)*sin(Target_Position.Longitude*1e-7*PI/180);
-		End_Point.Z=(End_Point.Ne*(1-0.08181919*0.08181919)+alt)*sin(Target_Position.Latitude*1e-7*PI/180);
+		alt = outputRef_.AltitudeRelative/1000.0f;// + Home.AltitudeAMSL*1e-3;
+		End_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(outputRef_.Latitude/10000000.0f*PI/180.0f)*sin(outputRef_.Latitude/10000000.0f*PI/180.0f));
+		End_Point.X=(End_Point.Ne+alt)*cos(outputRef_.Latitude/10000000.0f*PI/180.0f)*cos(outputRef_.Longitude/10000000.0f*PI/180.0f);
+		End_Point.Y=(End_Point.Ne+alt)*cos(outputRef_.Latitude/10000000.0f*PI/180.0f)*sin(outputRef_.Longitude/10000000.0f*PI/180.0f);
+		End_Point.Z=(End_Point.Ne*(1.0f-0.08181919*0.08181919)+alt)*sin(outputRef_.Latitude*1e-7f*PI/180.0f);
+                ROS_INFO("ne, %f, endp_x, %f, endp_y, %f ,endp_z, %f", End_Point.Ne,End_Point.X, End_Point.Y,End_Point.Z);
+		
+                alt = ((double)inputPos_.AltitudeRelative)/1000.0f;//AltitudeAMSL*1e-3;// AltitudeRelative + Home.AltitudeAMSL;
+		Starting_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f));
+		Starting_Point.X=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*cos(inputPos_.Longitude/10000000.0f*PI/180);
+		Starting_Point.Y=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Longitude/10000000.0f*PI/180);
+		Starting_Point.Z=(Starting_Point.Ne*(1.0f-0.08181919f*0.08181919f)+alt)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f);
+		ROS_INFO("ne, %f, sp_x, %f, sp_y, %f ,sp_z, %f, alt %d", Starting_Point.Ne,Starting_Point.X, Starting_Point.Y,Starting_Point.Z,inputPos_.AltitudeRelative);
 
-		alt = Current_Position.AltitudeRelative*1e-3;//AltitudeAMSL*1e-3;// AltitudeRelative + Home.AltitudeAMSL;
-		Starting_Point.Ne=6378137/sqrt(1-0.08181919*0.08181919*sin(Current_Position.Latitude*1e-7*PI/180)*sin(Current_Position.Latitude*1e-7*PI/180));
-		Starting_Point.X=(Starting_Point.Ne+alt)*cos(Current_Position.Latitude*1e-7*PI/180)*cos(Current_Position.Longitude*1e-7*PI/180);
-		Starting_Point.Y=(Starting_Point.Ne+alt)*cos(Current_Position.Latitude*1e-7*PI/180)*sin(Current_Position.Longitude*1e-7*PI/180);
-		Starting_Point.Z=(Starting_Point.Ne*(1-0.08181919*0.08181919)+alt)*sin(Current_Position.Latitude*1e-7*PI/180);
-
-		error_x = End_Point.X - Starting_Point.X; //Target_Position.Latitude - Current_Position.Latitude;
-		error_y = End_Point.Y - Starting_Point.Y; //Target_Position.Longitude - Current_Position.Longitude;
-		error_z = End_Point.Z - Starting_Point.Z; //Target_Position.AltitudeRelative - (Current_Position.AltitudeAMSL-Home.AltitudeAMSL);
-		error_yaw = Target_Position.Yawangle - Current_Position.Yawangle;
-		error_to_t.error_pos = 1000*sqrt(error_x*error_x + error_y*error_y + error_z*error_z);
-		error_to_t.error_ang = 180/PI*sqrt(error_yaw*error_yaw);
+		error_x = End_Point.X - Starting_Point.X; //outputRef_.Latitude - inputPos_.Latitude;
+		error_y = End_Point.Y - Starting_Point.Y; //outputRef_.Longitude - inputPos_.Longitude;
+		error_z = End_Point.Z - Starting_Point.Z; //outputRef_.AltitudeRelative - (inputPos_.AltitudeAMSL-Home.AltitudeAMSL);
+		ROS_INFO("error_x, %f, error_y, %f ,error_z, %f", error_x,error_y, error_z);
+		error_yaw = outputRef_.Yawangle - inputPos_.Yawangle;
+		error_to_t.error_pos = 1000.0f*sqrt(error_x*error_x + error_y*error_y + error_z*error_z);
+		error_to_t.error_ang = 180.0f/PI*sqrt(error_yaw*error_yaw);
                 
-                ROS_INFO("lin dist [mm], %f, ang dist [deg], %f", error_to_t.error_pos, error_to_t.error_ang)
+                ROS_INFO("lin dist [mm], %f, ang dist [deg], %f", error_to_t.error_pos, error_to_t.error_ang);
 	}
 
 	void set_events_false()
@@ -539,7 +542,7 @@ case ON_GROUND_READY_TO_TAKEOFF:
 
 case PERFORMING_TAKEOFF:
 	//ROS_INFO("MMS_CURRENT_STATE:PERFORMING_TAKEOFF");
-	distance( outputRef_, inputPos_); // error_to_t,
+	distance(); // error_to_t,
 	if (LAND)
 	{
 		set_events_false();
@@ -687,7 +690,7 @@ case READY_TO_GO:
 
 case PERFORMING_GO_TO:
 	// ROS_INFO("MMS_CURRENT_STATE:PERFOMING_GO_TO");
-	distance( outputRef_, inputPos_); // error_to_t,
+	distance(); // error_to_t,
 	if (LAND)
 	{
 		set_events_false();
@@ -758,13 +761,13 @@ case READY_TO_LAND:
 		set_events_false();
 		LAND = true;
 
-		outputRef_.Latitude = 0;
-		outputRef_.Longitude = 0;
-		outputRef_.AltitudeRelative = -50; // 5 cm @ frequencey
-		outputRef_.Yawangle = 0;
-		outputRef_.Mode = 100;
-		pubToReference_.publish(outputRef_);
-		ROS_INFO("MMS->NAV: REFERENCE = VERT. LAND SPEED");
+		outputRef_.Latitude = inputPos_.Latitude;
+		outputRef_.Longitude = inputPos_.Longitude;
+		outputRef_.AltitudeRelative = inputPos_.AltitudeRelative; // 5 cm @ frequencey
+		outputRef_.Yawangle = inputPos_.Yawangle;
+		outputRef_.Mode = 0;
+		//pubToReference_.publish(outputRef_);
+		//ROS_INFO("MMS->NAV: REFERENCE = VERT. LAND SPEED");
 
 		currentState = PERFORMING_LANDING;
 		ROS_INFO("MMS_CURRENT_STATE: PERFORMING_LANDING");
@@ -774,7 +777,15 @@ case READY_TO_LAND:
 case PERFORMING_LANDING:
 	// ROS_INFO("MMS_CURRENT_STATE:PERFORMING_LANDING");
 
-	if (inputPos_.AltitudeRelative - outputRef_.AltitudeRelative > 3000)
+		//outputRef_.Latitude = inputPos_.Latitude;
+		//outputRef_.Longitude = inputPos_.Longitude;
+		outputRef_.AltitudeRelative -= 50; // 5 cm @ frequencey
+		//outputRef_.Yawangle = 0;
+		//outputRef_.Mode = 0;
+		pubToReference_.publish(outputRef_);
+		ROS_INFO("MMS->NAV: REFERENCE = VERT. LAND SPEED");
+
+	if (inputPos_.AltitudeRelative - outputRef_.AltitudeRelative > e_LAND)
 	{
 		set_events_false();
 		LAND = true;
