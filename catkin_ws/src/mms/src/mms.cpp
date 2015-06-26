@@ -77,6 +77,7 @@ public:
 		//Initializing outputAckCmd_
 		outputAckCmd_.mission_item_reached = false;
 		outputAckCmd_.mav_mission_accepted = false;
+		outputAckCmd_.mav_cmd_id = 0;
 
 		//Initializing outputArm_
 		outputArm_.arm_disarm = false;
@@ -90,8 +91,9 @@ public:
 		outputRef_.AltitudeRelative = inputPos_.AltitudeRelative;//inputPos_.AltitudeAMSL - Home.AltitudeAMSL;
 		outputRef_.Yawangle = inputPos_.Yawangle;
 		outputRef_.Mode = 0;
-		ROS_INFO("pos lat, %d, lon, %d", inputPos_.Latitude, inputPos_.Longitude);
-                ROS_INFO("pos AMSL, %d, Home AMSL, %d, rel, %d", inputPos_.AltitudeAMSL, Home.AltitudeAMSL, outputRef_.AltitudeRelative);
+		//ROS_INFO("CURRENT POSITION")
+		ROS_INFO("CURRENT POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f", inputPos_.Latitude, inputPos_.Longitude, inputPos_.AltitudeRelative, inputPos_.Yawangle);
+        // ROS_INFO("pos AMSL, %d, Home AMSL, %d, rel, %d", inputPos_.AltitudeAMSL, Home.AltitudeAMSL, outputRef_.AltitudeRelative);
 	}
 
 	void get_target_position()
@@ -101,6 +103,8 @@ public:
 		outputRef_.AltitudeRelative = inputCmd_.param7;// - Home.AltitudeAMSL;
 		outputRef_.Yawangle = inputCmd_.param4;
 		outputRef_.Mode =0;
+		//ROS_INFO("TARGET POSITION")
+		ROS_INFO("TARGET POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f", outputRef_.Latitude, outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle);
 	}
 
 	void readSysStatusMessage(const mms::Sys_status::ConstPtr& msg)
@@ -111,12 +115,12 @@ public:
 		if (inputSysStatus_.armed)
 		{
 			ARMED = true;
-                        //ROS_INFO("ARMED");
+            //ROS_INFO("ARMED");
 		}
 		else
 		{
 			ARMED = false;
-                        //ROS_INFO("DISARMED");
+            //ROS_INFO("DISARMED");
 		}
 		//MMS_Handle();
 	}
@@ -247,24 +251,25 @@ public:
 		End_Point.X=(End_Point.Ne+alt)*cos(outputRef_.Latitude/10000000.0f*PI/180.0f)*cos(outputRef_.Longitude/10000000.0f*PI/180.0f);
 		End_Point.Y=(End_Point.Ne+alt)*cos(outputRef_.Latitude/10000000.0f*PI/180.0f)*sin(outputRef_.Longitude/10000000.0f*PI/180.0f);
 		End_Point.Z=(End_Point.Ne*(1.0f-0.08181919*0.08181919)+alt)*sin(outputRef_.Latitude*1e-7f*PI/180.0f);
-                ROS_INFO("ne, %f, endp_x, %f, endp_y, %f ,endp_z, %f", End_Point.Ne,End_Point.X, End_Point.Y,End_Point.Z);
+        //ROS_INFO("ne, %f, endp_x, %f, endp_y, %f ,endp_z, %f", End_Point.Ne,End_Point.X, End_Point.Y,End_Point.Z);
 		
-                alt = ((double)inputPos_.AltitudeRelative)/1000.0f;//AltitudeAMSL*1e-3;// AltitudeRelative + Home.AltitudeAMSL;
+        alt = ((double)inputPos_.AltitudeRelative)/1000.0f;//AltitudeAMSL*1e-3;// AltitudeRelative + Home.AltitudeAMSL;
 		Starting_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f));
 		Starting_Point.X=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*cos(inputPos_.Longitude/10000000.0f*PI/180);
 		Starting_Point.Y=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Longitude/10000000.0f*PI/180);
 		Starting_Point.Z=(Starting_Point.Ne*(1.0f-0.08181919f*0.08181919f)+alt)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f);
-		ROS_INFO("ne, %f, sp_x, %f, sp_y, %f ,sp_z, %f, alt %d", Starting_Point.Ne,Starting_Point.X, Starting_Point.Y,Starting_Point.Z,inputPos_.AltitudeRelative);
+		//ROS_INFO("ne, %f, sp_x, %f, sp_y, %f ,sp_z, %f, alt %d", Starting_Point.Ne,Starting_Point.X, Starting_Point.Y,Starting_Point.Z,inputPos_.AltitudeRelative);
 
 		error_x = End_Point.X - Starting_Point.X; //outputRef_.Latitude - inputPos_.Latitude;
 		error_y = End_Point.Y - Starting_Point.Y; //outputRef_.Longitude - inputPos_.Longitude;
 		error_z = End_Point.Z - Starting_Point.Z; //outputRef_.AltitudeRelative - (inputPos_.AltitudeAMSL-Home.AltitudeAMSL);
-		ROS_INFO("error_x, %f, error_y, %f ,error_z, %f", error_x,error_y, error_z);
+		//ROS_INFO("error_x, %f, error_y, %f ,error_z, %f", error_x,error_y, error_z);
+		
 		error_yaw = outputRef_.Yawangle - inputPos_.Yawangle;
 		error_to_t.error_pos = 1000.0f*sqrt(error_x*error_x + error_y*error_y + error_z*error_z);
 		error_to_t.error_ang = 180.0f/PI*sqrt(error_yaw*error_yaw);
-                
-                ROS_INFO("lin dist [mm], %f, ang dist [deg], %f", error_to_t.error_pos, error_to_t.error_ang);
+        //ROS_INFO("DISTANCE TO TARGET")        
+        ROS_INFO("DISTANCE TO TARGET: Linear [mm], %f, Angular [deg], %f", error_to_t.error_pos, error_to_t.error_ang);
 	}
 
 	void set_events_false()
@@ -344,7 +349,8 @@ public:
 			Home.AltitudeAMSL = inputPos_.AltitudeAMSL;
 			Home.AltitudeRelative = inputPos_.AltitudeRelative;
 			Home.Yawangle = inputPos_.Yawangle;
-			ROS_INFO("Home AMSL, %d, rel, %d", Home.AltitudeAMSL, Home.AltitudeRelative);
+			ROS_INFO("HOME POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f",Home.Latitude, Home.Longitude, Home.AltitudeRelative, Home.Yawangle)
+			//ROS_INFO("Home AMSL, %d, rel, %d", Home.AltitudeAMSL, Home.AltitudeRelative);
 			currentState = ON_GROUND_DISARMED;
 			ROS_INFO("MMS_CURRENT_STATE: ON_GROUND_DISARMED");
 			break;
@@ -393,6 +399,7 @@ public:
 
 				outputAckCmd_.mission_item_reached = true;
 				outputAckCmd_.mav_mission_accepted = false;
+				outputAckCmd_.mav_cmd_id = 300;
 				pubToAckCmd_.publish(outputAckCmd_);
 				ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
@@ -484,6 +491,7 @@ case ON_GROUND_ARMED:
 
 		outputAckCmd_.mission_item_reached = false;
 		outputAckCmd_.mav_mission_accepted = true;
+		outputAckCmd_.mav_cmd_id = 22;
 		pubToAckCmd_.publish(outputAckCmd_);
 		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
@@ -508,6 +516,7 @@ case ON_GROUND_READY_TO_TAKEOFF:
 
 		outputAckCmd_.mission_item_reached = false;
 		outputAckCmd_.mav_mission_accepted = true;
+		outputAckCmd_.mav_cmd_id = 21;
 		pubToAckCmd_.publish(outputAckCmd_);
 		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
@@ -550,6 +559,7 @@ case PERFORMING_TAKEOFF:
 
 		outputAckCmd_.mission_item_reached = false;
 		outputAckCmd_.mav_mission_accepted = true;
+		outputAckCmd_.mav_cmd_id = 21;
 		pubToAckCmd_.publish(outputAckCmd_);
 		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
@@ -574,6 +584,7 @@ case PERFORMING_TAKEOFF:
 
 		outputAckCmd_.mission_item_reached = true;
 		outputAckCmd_.mav_mission_accepted = false;
+		outputAckCmd_.mav_cmd_id = 22;
 		pubToAckCmd_.publish(outputAckCmd_);
 		ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
 
@@ -592,6 +603,7 @@ case IN_FLIGHT:
 
 		outputAckCmd_.mission_item_reached = false;
 		outputAckCmd_.mav_mission_accepted = true;
+		outputAckCmd_.mav_cmd_id = 21;
 		pubToAckCmd_.publish(outputAckCmd_);
 		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
@@ -615,6 +627,7 @@ case IN_FLIGHT:
 
 		outputAckCmd_.mission_item_reached = false;
 		outputAckCmd_.mav_mission_accepted = true;
+		outputAckCmd_.mav_cmd_id = 16;
 		pubToAckCmd_.publish(outputAckCmd_);
 		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
@@ -633,6 +646,7 @@ case READY_TO_GO:
 
 		outputAckCmd_.mission_item_reached = false;
 		outputAckCmd_.mav_mission_accepted = true;
+		outputAckCmd_.mav_cmd_id = 21;
 		pubToAckCmd_.publish(outputAckCmd_);
 		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
@@ -656,6 +670,7 @@ case READY_TO_GO:
 
 		outputAckCmd_.mission_item_reached = false;
 		outputAckCmd_.mav_mission_accepted = true;
+		outputAckCmd_.mav_cmd_id = 16;
 		pubToAckCmd_.publish(outputAckCmd_);
 		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
@@ -698,6 +713,7 @@ case PERFORMING_GO_TO:
 
 		outputAckCmd_.mission_item_reached = false;
 		outputAckCmd_.mav_mission_accepted = true;
+		outputAckCmd_.mav_cmd_id = 21;
 		pubToAckCmd_.publish(outputAckCmd_);
 		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
@@ -721,6 +737,7 @@ case PERFORMING_GO_TO:
 
 		outputAckCmd_.mission_item_reached = false;
 		outputAckCmd_.mav_mission_accepted = true;
+		outputAckCmd_.mav_cmd_id = 16;
 		pubToAckCmd_.publish(outputAckCmd_);
 		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
@@ -744,6 +761,7 @@ case PERFORMING_GO_TO:
 
 		outputAckCmd_.mission_item_reached = true;
 		outputAckCmd_.mav_mission_accepted = false;
+		outputAckCmd_.mav_cmd_id = 16;
 		pubToAckCmd_.publish(outputAckCmd_);
 		ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
 
@@ -771,6 +789,31 @@ case READY_TO_LAND:
 
 		currentState = PERFORMING_LANDING;
 		ROS_INFO("MMS_CURRENT_STATE: PERFORMING_LANDING");
+		break;
+	}
+	if (WAYPOINT)
+	{
+		set_events_false();
+
+		outputAckCmd_.mission_item_reached = false;
+		outputAckCmd_.mav_mission_accepted = true;
+		outputAckCmd_.mav_cmd_id = 16;
+		pubToAckCmd_.publish(outputAckCmd_);
+		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+		/*outputRef_.Latitude = 0;
+				outputRef_.Longitude = 0;
+				outputRef_.AltitudeRelative = 0;
+	            outputRef_.Yawangle = 0;
+	            outputRef_.Mode = 100;*/
+		get_current_position();
+		pubToReference_.publish(outputRef_);
+		ROS_INFO("MMS->NAV: REFERENCE = CURRENT POSITION");
+
+		currentState = READY_TO_GO;
+		ROS_INFO("MMS_CURRENT_STATE: READY_TO_GO");
+
+		break;
 	}
 	break;
 
@@ -792,6 +835,7 @@ case PERFORMING_LANDING:
 
 		outputAckCmd_.mission_item_reached = true;
 		outputAckCmd_.mav_mission_accepted = false;
+		outputAckCmd_.mav_cmd_id = 21;
 		pubToAckCmd_.publish(outputAckCmd_);
 		ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
 
