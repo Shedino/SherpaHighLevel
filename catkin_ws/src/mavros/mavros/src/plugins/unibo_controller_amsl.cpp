@@ -232,18 +232,18 @@ private:
 			/*
 			 * If safety is off, I translate velocity in RC values
 			 */
-			uint16_t vx_RC= (uint16_t)400.0f*(-msg->vxBody)/v_xy_max + 1520;
-			uint16_t vy_RC=(uint16_t)400.0f*(msg->vyBody)/v_xy_max + 1520;
+			uint16_t vx_RC= (uint16_t)400.0f*(-msg->vxBody)/v_xy_max + 1520;         //New: 400 + 1520; Old:  500 + 1500
+			uint16_t vy_RC=(uint16_t)400.0f*(msg->vyBody)/v_xy_max + 1520;		//New: 400 + 1520; Old:  500 + 1500
 			/*
 			 * it seems it loiters with 1420 instead of 1500...
 			 */
 			uint16_t vz_RC= 1420;
 			if (msg->vzBody > 0){ //going down, mapped only in 420us
-				vz_RC = vz_RC + (uint16_t)320.0f*(-msg->vzBody)/v_z_max;        //was 420
+				vz_RC = vz_RC + (uint16_t)320.0f*(-msg->vzBody)/v_z_max;        //New: 320; Old:  420
 			} else {        //going up, mapped in 580us
-				vz_RC = vz_RC + (uint16_t)480.0f*(-msg->vzBody)/v_z_max;     // was 580
+				vz_RC = vz_RC + (uint16_t)480.0f*(-msg->vzBody)/v_z_max;     //New: 480 Old: 580
 			}
-			uint16_t v_psi_RC = (uint16_t)400.0f*(msg->yawRate)/v_psi_max + 1520;
+			uint16_t v_psi_RC = (uint16_t)400.0f*(msg->yawRate)/v_psi_max + 1520;		//New: 400 + 1520; Old:  500 + 1500
 
 			velocity_.channels[0]=vy_RC;
 			velocity_.channels[1]=vx_RC;

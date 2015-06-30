@@ -172,9 +172,9 @@ private:
 				guidanceClass.Model_GS_U.Actual_Pos[0], guidanceClass.Model_GS_U.Actual_Pos[1],
 				guidanceClass.Model_GS_U.Actual_Pos[2], guidanceClass.Model_GS_U.Actual_Yaw,
 				!guidanceClass.Model_GS_U.Trigger ? "true" : "false", inputPos.Timestamp);
-		/*ROS_INFO("Loaded Matlab Ref: [Lat:%i, Long:%i, Alt:%i, Yaw:%f]",
+		ROS_INFO("Loaded Matlab Ref: [Lat:%i, Long:%i, Alt:%i, Yaw:%f]",
 				guidanceClass.Model_GS_U.Reference_Pos[0], guidanceClass.Model_GS_U.Reference_Pos[1],
-				guidanceClass.Model_GS_U.Reference_Pos[2], guidanceClass.Model_GS_U.Reference_Yaw);*/
+				guidanceClass.Model_GS_U.Reference_Pos[2], guidanceClass.Model_GS_U.Reference_Yaw);
 	}
 
 	void getOutput(const Model_GSModelClass &guidanceClass, guidance_node_amsl::Directive *output) {
@@ -184,9 +184,9 @@ private:
 		output->vzBody=guidanceClass.Model_GS_Y.FakeDirective[2];
 		output->yawRate=guidanceClass.Model_GS_Y.FakeDirective[3];
 
-		//ROS_INFO("Calc Matlab Direc: [vx:%f, vy:%f, vz:%f, yawRate:%f]",			//TODO uncomment
-		//				guidanceClass.Model_GS_Y.FakeDirective[0],guidanceClass.Model_GS_Y.FakeDirective[1],
-		//				guidanceClass.Model_GS_Y.FakeDirective[2],guidanceClass.Model_GS_Y.FakeDirective[3]);
+		ROS_INFO("Calc Matlab Direc: [vx:%f, vy:%f, vz:%f, yawRate:%f]",			//TODO uncomment
+						guidanceClass.Model_GS_Y.FakeDirective[0],guidanceClass.Model_GS_Y.FakeDirective[1],
+						guidanceClass.Model_GS_Y.FakeDirective[2],guidanceClass.Model_GS_Y.FakeDirective[3]);
 	}
 };
 
