@@ -1,10 +1,6 @@
-# expressed as * 1E7
-int32 Latitude
-# expressed as * 1E7
-int32 Longitude
-# expressed as * 1000 (millimeters)
-int32 AltitudeRelative
-# (-pi...pi)
-float32 Yawangle
-#reference abs or rel
-int8 Mode
+# false = mission item not reached, true = mission item reached
+bool mission_item_reached
+# MISSION_ITEM ID, see MavLink MAV_CMD ID table
+int mav_cmd_id
+# false = mission item not accepted, true = mission item accepted
+bool mav_mission_accepted

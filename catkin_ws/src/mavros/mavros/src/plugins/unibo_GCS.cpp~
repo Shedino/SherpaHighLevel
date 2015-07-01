@@ -6,6 +6,7 @@
 #include <mms/Ack_cmd.h>
 #include <mms/Sys_status.h>
 #include <guidance_node_amsl/Position.h>
+#include <camera_handler_SHERPA/Camera.h>
 
 
 namespace mavplugin {
@@ -26,6 +27,7 @@ public:
 		
 		ack_sub = nodeHandle.subscribe("/ack_cmd", 10, &UniboGCSPlugin::ack_callback, this);
 		command_pub = nodeHandle.advertise<mms::Cmd>("/command", 10);
+		camera_pub = nodeHandle.advertise<camera_handler_SHERPA::Camera>("/camera_trigger", 10);
 		position_sub= nodeHandle.subscribe("/position", 10, &UniboGCSPlugin::position_callback, this);
 		status_sub = nodeHandle.subscribe("/system_status", 10, &UniboGCSPlugin::status_callback, this);
 
@@ -48,6 +50,7 @@ private:
 
 	ros::Subscriber ack_sub;
 	ros::Publisher command_pub;
+	ros::Publisher	camera_pub;
 	ros::Subscriber	position_sub;
 	ros::Subscriber	status_sub;
 
@@ -55,35 +58,34 @@ private:
 		ROS_INFO("Inside Mission Item");
 		mavlink_mission_item_t mission_item;
 		mavlink_msg_mission_item_decode(msg, &mission_item);
-		auto mission_item_msg = boost::make_shared<mms::Cmd>(); 
-		/*switch (mission_item-->command){
-			case MAV_CMD_NAV_LAND:
-			break;
+		auto mission_item_msg = boost::make_shared<mms::Cmd>();
+		auto camera_msg = boost::make_shared<camera_handler_SHERPA::Camera>();
 
-			case MAV_CMD_NAV_TAKEOFF:
-			break;
-
-			case MAV_CMD_CONDITION_YAW:
-			break;
-
-			case MAV_CMD_DO_SET_HOME:
-			break;
-
-			case MAV_CMD_MISSION_START:
-			break;
-
-			case MAV_CMD_IMAGE_START_CAPTURE:
+		switch (mission_item.command){
+			case MAV_CMD_IMAGE_START_CAPTURE:   //MAV_CMD_IMAGE_START_CAPTURE:
+			camera_msg->take_pic = true;
+			camera_msg->take_vid = false;
+			camera_pub.publish(camera_msg);
 			break;
 
 			//case MAV_CMD_IMAGE_STOP_CAPTURE:           NOT SURE TO USE THIS
 			//break;
 
-			case MAV_CMD_VIDEO_START_CAPTURE:
+			case MAV_CMD_VIDEO_START_CAPTURE:                  //MAV_CMD_VIDEO_START_CAPTURE:
+			camera_msg->take_pic = false;
+			camera_msg->take_vid = true;
+			camera_pub.publish(camera_msg);
 			break;
 
-			case MAV_CMD_VIDEO_STOP_CAPTURE:
+			case MAV_CMD_VIDEO_STOP_CAPTURE:                 //MAV_CMD_VIDEO_STOP_CAPTURE:
+			camera_msg->take_pic = false;
+			camera_msg->take_vid = false;
+			camera_pub.publish(camera_msg);
 			break;
-		}*/
+
+			default:
+			break
+		}
 		mission_item_msg->command = mission_item.command;
 		mission_item_msg->param1 = mission_item.param1;
 		mission_item_msg->param2 = mission_item.param2;
@@ -111,7 +113,7 @@ private:
 	void ack_callback(const mms::Ack_cmd::ConstPtr msg_ack){
 		mavlink_message_t msg;		
 		if (msg_ack->mission_item_reached){           //TODO maybe separate topics....bad implementation
-			mavlink_msg_mission_item_reached_pack_chan(UAS_PACK_CHAN(uas),&msg,1);      //1 is the sequence that we are not considering right now
+			mavlink_msg_mission_item_reached_pack_chan(UAS_PACK_CHAN(uas),&msg,msg_ack->mav_cmd_id);      //1 is the sequence that we are not considering right now
 			UAS_FCU(uas)->send_message(&msg);
 			ROS_INFO("Sent message ITEM_REACHED");
 		} else {
@@ -136,7 +138,7 @@ private:
 		if (yaw_int<0){
 			yaw_int += 36000;    //if negative adding 360 degree because heading is uint16_t from 0 o 359.99
 		}
-		ROS_INFO("Yaw: %d",yaw_int);
+		//ROS_INFO("Yaw: %d",yaw_int);
 		mavlink_msg_global_position_int_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,msg->Timestamp,msg->Latitude,msg->Longitude,msg->AltitudeAMSL,msg->AltitudeRelative, 0, 0, 0, yaw_int);
 		UAS_FCU(uas)->send_message(&msg_mav);	
 	}

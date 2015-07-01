@@ -349,7 +349,7 @@ public:
 			Home.AltitudeAMSL = inputPos_.AltitudeAMSL;
 			Home.AltitudeRelative = inputPos_.AltitudeRelative;
 			Home.Yawangle = inputPos_.Yawangle;
-			ROS_INFO("HOME POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f",Home.Latitude, Home.Longitude, Home.AltitudeRelative, Home.Yawangle)
+			ROS_INFO("HOME POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f",Home.Latitude, Home.Longitude, Home.AltitudeRelative, Home.Yawangle);
 			//ROS_INFO("Home AMSL, %d, rel, %d", Home.AltitudeAMSL, Home.AltitudeRelative);
 			currentState = ON_GROUND_DISARMED;
 			ROS_INFO("MMS_CURRENT_STATE: ON_GROUND_DISARMED");
@@ -828,7 +828,7 @@ case PERFORMING_LANDING:
 		pubToReference_.publish(outputRef_);
 		ROS_INFO("MMS->NAV: REFERENCE = VERT. LAND SPEED");
 
-	if (inputPos_.AltitudeRelative - outputRef_.AltitudeRelative > e_LAND)
+	if (inputPos_.AltitudeRelative - outputRef_.AltitudeRelative > eps_LAND)
 	{
 		set_events_false();
 		LAND = true;

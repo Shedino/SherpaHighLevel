@@ -50,7 +50,7 @@ add_message_files(
   Ack_cmd.msg
   Arm.msg
   Ack_arm.msg
-  SYS_status.msg
+  Sys_status.msg
 )
 
 ## Generate services in the 'srv' folder

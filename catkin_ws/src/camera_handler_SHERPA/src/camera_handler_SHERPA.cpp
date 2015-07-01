@@ -6,6 +6,7 @@
 #include <opencv2/highgui/highgui.hpp>
 
 #include "camera_handler_SHERPA/Camera.h"
+#include <mms/Ack_cmd.h>
 
 #include <exiv2/exiv2.hpp>
 
@@ -15,8 +16,10 @@ static char dest_video[50];
 static int video_count = 0; 
 cv::VideoWriter video;
 ros::Publisher camera_pub;
+ros::Publisher ack_pub;
 ros::Subscriber camera_sub;
 camera_handler_SHERPA::Camera camera_topic;
+mms::Ack_cmd outputAckCmd_;
 //Exiv2::ExifData exifData;	//Metadata
 
 class CameraHandler
@@ -33,10 +36,11 @@ class CameraHandler
     // Subscribe to input video feed and publish output video feed
     image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, 
       &CameraHandler::imageCb, this);
-		camera_sub = nh_.subscribe("/camera_trigger", 10, &CameraHandler::trigger_image_video, this);
+	camera_sub = nh_.subscribe("/camera_trigger", 10, &CameraHandler::trigger_image_video, this);
 
     image_pub_ = it_.advertise("/camera_handler/output_video", 1);
-		camera_pub = nh_.advertise<camera_handler_SHERPA::Camera>("/camera_trigger", 20);
+	camera_pub = nh_.advertise<camera_handler_SHERPA::Camera>("/camera_trigger", 20);
+	ack_pub = nh_.advertise<mms::Ack_cmd>("/ack_cmd", 10);
 
     //cv::namedWindow(OPENCV_WINDOW);
   }
@@ -53,11 +57,21 @@ class CameraHandler
 		sprintf(dest_video,"/home/odroid/Video_Mission/video_%d.avi",video_count);
 		video.open(dest_video, CV_FOURCC('M','J','P','G'), 15, cv::Size(640,480), true);             //TODO take size and fps dynamicly
 		take_video = true;
+
+		outputAckCmd_.mission_item_reached = true;
+		outputAckCmd_.mav_mission_accepted = false;
+		outputAckCmd_.mav_cmd_id = 2500;         //MAV_CMD_VIDEO_START_CAPTURE
+		ack_pub.publish(outputAckCmd_);
 	}
 	void stopVideo()
 	{
 		video_count++;
 		take_video = false;
+
+		outputAckCmd_.mission_item_reached = true;
+		outputAckCmd_.mav_mission_accepted = false;
+		outputAckCmd_.mav_cmd_id = 2501;         //MAV_CMD_VIDEO_STOP_CAPTURE
+		ack_pub.publish(outputAckCmd_);
 	}
 
   ~CameraHandler()
@@ -93,6 +107,10 @@ class CameraHandler
 			image_count++;
 			camera_topic.take_pic = false;
 			camera_pub.publish(camera_topic);
+			outputAckCmd_.mission_item_reached = true;
+			outputAckCmd_.mav_mission_accepted = false;
+			outputAckCmd_.mav_cmd_id = 2000;         //MAV_CMD_IMAGE_START_CAPTURE
+			ack_pub.publish(outputAckCmd_);
 
 			//Metadata
 			//exifData["Exif.DarioScemo"] = "True";                     // Ascii

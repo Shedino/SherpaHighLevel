@@ -114,8 +114,8 @@ target_link_libraries(mocap_node_optitrack ${catkin_LIBRARIES})
 add_executable(mocap_node_gps src/mocap_node_gps.cpp src/socket.cpp)
 target_link_libraries(mocap_node_gps ${catkin_LIBRARIES})
 
-add_executable(mocap_node_gps_all src/mocap_node_gps_all.cpp src/socket.cpp)
-target_link_libraries(mocap_node_gps_all ${catkin_LIBRARIES})
+#add_executable(mocap_node_gps_all src/mocap_node_gps_all.cpp src/socket.cpp)
+#target_link_libraries(mocap_node_gps_all ${catkin_LIBRARIES})
 
 add_executable(mocap_node_opti_gps src/mocap_node_opti_gps.cpp src/socket.cpp)
 target_link_libraries(mocap_node_opti_gps ${catkin_LIBRARIES})
