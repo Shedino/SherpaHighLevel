@@ -1,0 +1,7 @@
+#!/bin/bash
+source /opt/ros/indigo/setup.bash
+source /home/odroid/catkin_ws/devel/setup.bash
+export ROS_WORKSPACE=/home/odroid/catkin_ws
+export DISPLAY=:0
+sleep 5
+roslaunch mavros unibo_GCS.launch
