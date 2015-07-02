@@ -662,7 +662,7 @@ case READY_TO_GO:
 				outputRef_.AltitudeRelative = 0;
 	            outputRef_.Yawangle = 0;
 	            outputRef_.Mode = 100;*/
-		get_target_position();
+		get_current_position();
 		pubToReference_.publish(outputRef_);
 		ROS_INFO("MMS->NAV: REFERENCE = CURRENT POSITION");
 
