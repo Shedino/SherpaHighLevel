@@ -8,7 +8,7 @@
 #include "camera_handler_SHERPA/Camera.h"
 #include <mms/Ack_cmd.h>
 
-#include <exiv2/exiv2.hpp>
+//#include <exiv2/exiv2.hpp>
 
 static const std::string OPENCV_WINDOW = "Image window";
 static bool take_video = false;

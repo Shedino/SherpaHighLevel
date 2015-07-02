@@ -26,10 +26,10 @@
 #define PERFORMING_LANDING 120
 
 double PI = 3.1416; // pi
-double eps_LAND = 15000.0; // distance to the target LAND position in millimeter
-double eps_WP = 100.0; // distance to the target WAYPOINT position in millimeters
-double eps_TO = 100.0; // distance to the target TAKEOFF position in millimeters
-double eps_YAW = 10.0; // distance to the target YAW position in deg
+double eps_LAND = 10000.0; // distance to the target LAND position in millimeter
+double eps_WP = 1500.0; // distance to the target WAYPOINT position in millimeters
+double eps_TO = 1500.0; // distance to the target TAKEOFF position in millimeters
+double eps_YAW = 7.0; // distance to the target YAW position in deg
 double Dh_TO = 500.0; // takeoff height above the groung in millimeters
 
 class MmsNodeClass {
@@ -98,9 +98,9 @@ public:
 
 	void get_target_position()
 	{
-		outputRef_.Latitude = inputCmd_.param5;
-		outputRef_.Longitude = inputCmd_.param6;
-		outputRef_.AltitudeRelative = inputCmd_.param7;// - Home.AltitudeAMSL;
+		outputRef_.Latitude = (int)inputCmd_.param5*10000000.0f;
+		outputRef_.Longitude = (int)inputCmd_.param6*10000000.0f;
+		outputRef_.AltitudeRelative = (int)inputCmd_.param7*1000.0f;// - Home.AltitudeAMSL;
 		outputRef_.Yawangle = inputCmd_.param4;
 		outputRef_.Mode =0;
 		//ROS_INFO("TARGET POSITION")
@@ -159,7 +159,12 @@ public:
 		{
 		case 16:  // MAV_CMD_NAV_WAYPOINT
 		{
-			ROS_INFO("MAV_CMD_DO_NAV_WAYPOINT");
+			ROS_INFO("MAV_CMD_DO_NAV_WAYPOINT. Params: %f - %f - %f - %f",inputCmd_.param5,inputCmd_.param6,inputCmd_.param7,inputCmd_.param4);
+			target_.Latitude = (int)(inputCmd_.param5*10000000.0f);
+			target_.Longitude = (int)(inputCmd_.param6*10000000.0f);
+			target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
+			target_.Yawangle = inputCmd_.param4;
+			target_.Mode = 0;
 			WAYPOINT = true;
 			//MMS_Handle();
 		} break;
@@ -235,8 +240,10 @@ public:
 		double Y;
 		double Z;
 	};
+
 	ECEF End_Point;
 	ECEF Starting_Point;
+	guidance_node_amsl::Reference target_;
 
 	void distance() // e_to_tartget &error_to_t, // guidance_node_amsl::Reference Target_Position, guidance_node_amsl::Position Current_Position
 	{
@@ -679,7 +686,7 @@ case READY_TO_GO:
 				outputRef_.AltitudeRelative = 0;
 	            outputRef_.Yawangle = 0;
 	            outputRef_.Mode = 100;*/
-		get_current_position();
+		get_current_position();  //TODO check not used
 		pubToReference_.publish(outputRef_);
 		ROS_INFO("MMS->NAV: REFERENCE = CURRENT POSITION");
 
@@ -693,7 +700,8 @@ case READY_TO_GO:
 		set_events_false();
 
 		get_target_position();
-		pubToReference_.publish(outputRef_);
+		pubToReference_.publish(target_);
+		outputRef_ = target_;
 		ROS_INFO("MMS->NAV: REFERENCE = TARGET WAYPOINT");
 
 		currentState = PERFORMING_GO_TO;
@@ -746,7 +754,7 @@ case PERFORMING_GO_TO:
 				outputRef_.AltitudeRelative = 0;
 	            outputRef_.Yawangle = 0;
 	            outputRef_.Mode = 100;*/
-		get_current_position();
+		get_current_position();   //TODO check not used
 		pubToReference_.publish(outputRef_);
 		ROS_INFO("MMS->NAV: REFERENCE = CURRENT POSITION");
 
@@ -806,7 +814,7 @@ case READY_TO_LAND:
 				outputRef_.AltitudeRelative = 0;
 	            outputRef_.Yawangle = 0;
 	            outputRef_.Mode = 100;*/
-		get_current_position();
+		get_current_position();  //TODO check not used
 		pubToReference_.publish(outputRef_);
 		ROS_INFO("MMS->NAV: REFERENCE = CURRENT POSITION");
 
@@ -883,7 +891,6 @@ guidance_node_amsl::Reference outputRef_;
 // guidance_node_amsl::Reference LVP_;
 mms::Arm outputArm_;
 mms::Ack_cmd outputAckCmd_;
-
 // guidance_node_amsl::Reference Target_Position_;
 guidance_node_amsl::Position Home;
 
