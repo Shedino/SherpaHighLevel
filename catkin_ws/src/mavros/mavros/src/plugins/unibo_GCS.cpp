@@ -93,7 +93,7 @@ private:
 		mission_item_msg->param6 = mission_item.y;	
 		mission_item_msg->param7 = mission_item.z;		
 		//publish topic Command
-		ROS_INFO("Command: %d",mission_item.command);
+		ROS_INFO("Command: %d. Params: %f,%f,%f,%f,%f,%f,%f",mission_item.command,mission_item_msg->param1,mission_item_msg->param2,mission_item_msg->param3,mission_item_msg->param4,mission_item_msg->param5,mission_item_msg->param6,mission_item_msg->param7);
 		command_pub.publish(mission_item_msg);
 	}
 
