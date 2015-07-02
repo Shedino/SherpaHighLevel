@@ -1,6 +1,6 @@
 #!/bin/bash
 #---parameters
-local_path=/home/odroid/launch_scripts/toSend
+local_path=/home/odroid/SherpaHighLevel/scripts/toSend
 server_path=/home/casy/RosOdroidDev_Marco/Odroid_file_transfer/received_files
 user=casy
 password=casy
