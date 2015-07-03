@@ -1,10 +1,10 @@
 #!/bin/bash
 #---parameters
-local_path=/home/odroid/SherpaHighLevel/scripts/toSend
-server_path=/home/casy/RosOdroidDev_Marco/Odroid_file_transfer/received_files
-user=casy
-password=casy
-server_ip=192.168.1.111
+local_path=/home/odroid/Photo_Mission
+server_path=/home/sherpa/Desktop/Photo_Mission
+user=sherpa
+password=sherpa
+server_ip=192.168.0.108
 echo "[FILE TRANSFER:] parameters initialised"
 #---
 
