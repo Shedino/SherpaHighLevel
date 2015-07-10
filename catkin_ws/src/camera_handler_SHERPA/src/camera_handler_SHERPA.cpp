@@ -4,6 +4,9 @@
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <cstdio>
+#include <iostream>
+#include <fstream>
 
 #include "camera_handler_SHERPA/Camera.h"
 #include <mms/Ack_cmd.h>
@@ -54,8 +57,9 @@ class CameraHandler
 
 	void startVideo()
 	{
-		sprintf(dest_video,"/home/odroid/Video_Mission/video_%d.avi",video_count);
-		video.open(dest_video, CV_FOURCC('M','J','P','G'), 15, cv::Size(640,480), true);             //TODO take size and fps dynamicly
+		sprintf(dest_video,"/home/odroid/Video_Mission/video_%d.mpg",video_count);
+		video.open(dest_video, CV_FOURCC('P','I','M','1'), 20, cv::Size(800,600), true);             //TODO take size and fps dynamicly
+		//video.open(dest_video, CV_FOURCC('M','J','P','G'), 20, cv::Size(800,600), true);             //TODO take size and fps dynamicly
 		take_video = true;
 
 		outputAckCmd_.mission_item_reached = true;
@@ -65,8 +69,15 @@ class CameraHandler
 	}
 	void stopVideo()
 	{
-		video_count++;
 		take_video = false;
+		
+		std::ifstream  src(dest_video, std::ios::binary);
+		sprintf(dest_video,"/home/odroid/Photo_Mission/video_%d.mpg",video_count);
+		std::ofstream  dst(dest_video,   std::ios::binary);
+		dst << src.rdbuf();
+		
+		video_count++;
+		//remove("C:\\Temp\\somefile.txt");
 
 		outputAckCmd_.mission_item_reached = true;
 		outputAckCmd_.mav_mission_accepted = false;

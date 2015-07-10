@@ -29,8 +29,8 @@ double PI = 3.1416; // pi
 double eps_LAND = 10000.0; // distance to the target LAND position in millimeter
 double eps_WP = 1500.0; // distance to the target WAYPOINT position in millimeters
 double eps_TO = 1500.0; // distance to the target TAKEOFF position in millimeters
-double eps_YAW = 7.0; // distance to the target YAW position in deg
-double Dh_TO = 500.0; // takeoff height above the groung in millimeters
+double eps_YAW = 20.0; // distance to the target YAW position in deg
+double Dh_TO = 8000.0; // takeoff height above the groung in millimeters
 
 class MmsNodeClass {
 public:
@@ -275,8 +275,13 @@ public:
 		error_yaw = outputRef_.Yawangle - inputPos_.Yawangle;
 		error_to_t.error_pos = 1000.0f*sqrt(error_x*error_x + error_y*error_y + error_z*error_z);
 		error_to_t.error_ang = 180.0f/PI*sqrt(error_yaw*error_yaw);
-        //ROS_INFO("DISTANCE TO TARGET")        
-        ROS_INFO("DISTANCE TO TARGET: Linear [mm], %f, Angular [deg], %f", error_to_t.error_pos, error_to_t.error_ang);
+        //ROS_INFO("DISTANCE TO TARGET")
+		
+		counter_print++;
+		if (counter_print >= 10){
+			counter_print = 0;
+			ROS_INFO("DISTANCE TO TARGET: Linear [mm], %f, Angular [deg], %f", error_to_t.error_pos, error_to_t.error_ang);
+		}
 	}
 
 	void set_events_false()
@@ -396,6 +401,7 @@ public:
 				pubToArm_.publish(outputArm_);
 				ROS_INFO("MMS->APM: ARMING");
 
+				counter_ = 0;     //start timing to rearm
 				currentState = ARMING;
 				ROS_INFO("MMS_CURRENT_STATE: ARMING");
 				break;
@@ -451,7 +457,11 @@ public:
 				ROS_INFO("MMS_CURRENT_STATE: ON_GROUND_ARMED");
 				break;
 			}
-		
+			if (counter_>=50)    //5 seconds
+			{
+				currentState = ON_GROUND_DISARMED;
+				ROS_INFO("MMS_ARMING FAILED. BACK TO STATE: ON_GROUND_DISARMED");
+			}
 		        break;
 
 		case DISARMING:
@@ -699,7 +709,7 @@ case READY_TO_GO:
 	{
 		set_events_false();
 
-		get_target_position();
+		//get_target_position();
 		pubToReference_.publish(target_);
 		outputRef_ = target_;
 		ROS_INFO("MMS->NAV: REFERENCE = TARGET WAYPOINT");
@@ -712,6 +722,9 @@ case READY_TO_GO:
 	break;
 
 case PERFORMING_GO_TO:
+	if (counter_print>=9){
+		ROS_INFO("MMS PERFOMING_GO_TO");
+	}
 	// ROS_INFO("MMS_CURRENT_STATE:PERFOMING_GO_TO");
 	distance(); // error_to_t,
 	if (LAND)
@@ -763,6 +776,7 @@ case PERFORMING_GO_TO:
 
 		break;
 	}
+
 	if (error_to_t.error_pos < eps_WP and error_to_t.error_ang < eps_YAW)
 	{
 		set_events_false();
@@ -830,7 +844,7 @@ case PERFORMING_LANDING:
 
 		//outputRef_.Latitude = inputPos_.Latitude;
 		//outputRef_.Longitude = inputPos_.Longitude;
-		outputRef_.AltitudeRelative -= 50; // 5 cm @ frequencey
+		outputRef_.AltitudeRelative -= 80; // 5 cm @ frequencey
 		//outputRef_.Yawangle = 0;
 		//outputRef_.Mode = 0;
 		pubToReference_.publish(outputRef_);
@@ -863,6 +877,7 @@ void run() {
 		// ROS_INFO("MMS running");
 
 		MMS_Handle();
+		counter_++;
 		ros::spinOnce();
 
 		loop_rate.sleep();
@@ -932,6 +947,8 @@ int rate = 10;
 
 private:
 
+uint16_t counter_ = 0;
+uint16_t counter_print = 0;
 };
 
 int main(int argc, char **argv)
