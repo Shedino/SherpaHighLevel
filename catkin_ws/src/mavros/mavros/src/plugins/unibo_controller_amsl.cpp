@@ -33,7 +33,7 @@ public:
 		position_pub = nodeHandle.advertise<guidance_node_amsl::Position>("/position", 10);
 		arm_sub = nodeHandle.subscribe("/arm", 10, &UniboControllerAMSLPlugin::arming, this);
 		arm_ack_pub = nodeHandle.advertise<mms::Ack_arm>("acknowledge_arming", 10);
-		velocity_publisher_=nodeHandle.advertise<mavros::OverrideRCIn>("mavros/rc/override", 10);
+		//velocity_publisher_=nodeHandle.advertise<mavros::OverrideRCIn>("mavros/rc/override", 10);
 		sys_status_pub = nodeHandle.advertise<mms::Sys_status>("/system_status", 10);
 
 		nodeHandle.param("guidance_node_amsl/param/sat_xy", v_xy_max, 3.0);
@@ -62,7 +62,7 @@ private:
 
 	ros::Publisher position_pub;
 	ros::Subscriber directive_sub;
-	ros::Publisher velocity_publisher_;
+	//ros::Publisher velocity_publisher_;
 	ros::Subscriber arm_sub;
 	ros::Publisher arm_ack_pub;
 	ros::Publisher sys_status_pub;
@@ -260,7 +260,10 @@ private:
 				velocity_.channels[4], velocity_.channels[5],
 				velocity_.channels[6], velocity_.channels[7]);*/
 
-		velocity_publisher_.publish(velocity_);
+		//velocity_publisher_.publish(velocity_);
+		mavlink_message_t msg_mav;
+		mavlink_msg_rc_channels_raw_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,0,1,velocity_.channels[0],velocity_.channels[1],velocity_.channels[2],velocity_.channels[3],0,0,0,0,100);      //1 is the sequence that we are not considering right now
+		UAS_FCU(uas)->send_message(&msg_mav);
 
 	}
 

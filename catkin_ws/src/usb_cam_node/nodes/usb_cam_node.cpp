@@ -76,11 +76,11 @@ public:
     node_.param("sharpness", sharpness_, -1); //0-255, -1 "leave alone"
     // possible values: mmap, read, userptr
     node_.param("io_method", io_method_name_, std::string("mmap"));
-    node_.param("image_width", image_width_, 640);
-    node_.param("image_height", image_height_, 480);
-    node_.param("framerate", framerate_, 15);
+    node_.param("image_width", image_width_, 800);
+    node_.param("image_height", image_height_, 600);
+    node_.param("framerate", framerate_, 20);
     // possible values: yuyv, uyvy, mjpeg, yuvmono10, rgb24
-    node_.param("pixel_format", pixel_format_name_, std::string("mjpeg"));
+    node_.param("pixel_format", pixel_format_name_, std::string("yuyv"));
     // enable/disable autofocus
     node_.param("autofocus", autofocus_, false);
     node_.param("focus", focus_, -1); //0-255, -1 "leave alone"

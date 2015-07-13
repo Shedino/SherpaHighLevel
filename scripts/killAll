@@ -9,4 +9,5 @@ rosnode kill guidance_node_amsl
 rosnode kill mavros
 rosnode kill mms
 rosnode kill usb_cam
+rosnode kill web_video_server
 rosnode kill rosout
