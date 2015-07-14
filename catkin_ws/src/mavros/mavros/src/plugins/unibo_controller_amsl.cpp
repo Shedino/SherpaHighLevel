@@ -97,7 +97,8 @@ private:
 		 */
 		//DEBUG
 		//ROS_INFO("CHANNEL 6 IS: %u",channels_raw.chan6_raw);
-		if(channels_raw.chan6_raw > 1800){
+		if(channels_raw.chan6_raw > 1700 && channels_raw.chan5_raw > 1300 && channels_raw.chan5_raw < 1700){
+		//            ODROID_ON                 HIGHER THAN STABILIZE     &&            LOWER THAN RTL        -->      LOITER
 			safetyOn = false;
 			commonMessage.Safety = 0;
 		}
