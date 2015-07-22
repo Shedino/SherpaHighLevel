@@ -71,6 +71,10 @@ add_message_files(
   VFR_HUD.msg
   FileEntry.msg
   ActuatorControl.msg
+  Sonar.msg
+  Attitude.msg
+  Global_position_int.msg
+  Safety.msg
 )
 
 ## Generate services in the 'srv' folder

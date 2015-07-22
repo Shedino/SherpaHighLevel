@@ -2,8 +2,11 @@
 #include <vector>
 
 #include "guidance_node_amsl/Directive.h"
-#include "guidance_node_amsl/Position.h"
+#include "guidance_node_amsl/Position_nav.h"
 #include "guidance_node_amsl/Reference.h"
+
+#include <mavros/Safety.h>
+#include <mavros/Attitude.h>
 
 #include "Model_GS.h" //qui devo stare attento a come si chiama il file.h
 
@@ -33,9 +36,11 @@ public:
 		node.param("guidance_node_amsl/param/gain_integralDown", param_[8],0.025);
 
 		//subscribers and publishers
-		subFromReference_=n_.subscribe("/reference",10, &GuidanceNodeClass::readReferenceMessage, this);
-		subFromPosition_=n_.subscribe("/position", 10, &GuidanceNodeClass::readPositionMessage,this);
+		subFromReference_=n_.subscribe("/reference",10, &GuidanceNodeClass::readReferenceMessage, this);       //this shoud be published by reference_traj node based on flightmode
+		subFromPosition_=n_.subscribe("/position_nav", 10, &GuidanceNodeClass::readPositionMessage,this);      //this shoud be published by reference_traj node based on flightmode
 		pub_=n_.advertise<guidance_node_amsl::Directive>("/directive", 10);
+		safety_sub = n_.subscribe("/safety_odroid",10, &GuidanceNodeClass::handle_safety, this);
+		attitude_sub = n_.subscribe("/attitude",10, &GuidanceNodeClass::handle_attitude, this);
 
 		//Initializing inputRef_
 		node.param<int>("guidance_node_amsl/ref/latitude_ref", inputRef_.Latitude, 0);
@@ -56,40 +61,46 @@ public:
 		 */
 		if(msg->Mode==100){
 			//relative
-			inputRef_.Latitude=inputPos_.Latitude + msg->Latitude;
-			inputRef_.Longitude=inputPos_.Longitude + msg->Longitude;
-			inputRef_.AltitudeRelative = inputPos_.AltitudeRelative + msg->AltitudeRelative;
-			inputRef_.Yawangle= inputPos_.Yawangle + msg->Yawangle;
+			inputRef_.Latitude = position_nav_.Latitude + msg->Latitude;
+			inputRef_.Longitude = position_nav_.Longitude + msg->Longitude;
+			inputRef_.AltitudeRelative = position_nav_.Altitude + msg->AltitudeRelative;
+			inputRef_.Yawangle = yaw_ + msg->Yawangle;
 		} else {
 			//absolute
-			inputRef_.Latitude=msg->Latitude;
-			inputRef_.Longitude=msg->Longitude;
-			inputRef_.AltitudeRelative =msg->AltitudeRelative;
-			inputRef_.Yawangle=msg->Yawangle;
+			inputRef_.Latitude = msg->Latitude;
+			inputRef_.Longitude = msg->Longitude;
+			inputRef_.AltitudeRelative = msg->AltitudeRelative;
+			inputRef_.Yawangle = msg->Yawangle;
 		}
 	}
 
-	void readPositionMessage(const guidance_node_amsl::Position::ConstPtr& msg)
+	void readPositionMessage(const guidance_node_amsl::Position_nav::ConstPtr& msg)  
 	{
-		inputPos_.Latitude=msg->Latitude;
-		inputPos_.Longitude=msg->Longitude;
-		inputPos_.AltitudeRelative = msg->AltitudeRelative;
-		inputPos_.AltitudeAMSL = msg->AltitudeAMSL;
-		inputPos_.Yawangle=msg->Yawangle;
-		inputPos_.Timestamp=msg->Timestamp;
-		inputPos_.Safety = msg->Safety;
+		position_nav_.Latitude = msg->Latitude;
+		position_nav_.Longitude = msg->Longitude;
+		position_nav_.Altitude = msg->Altitude;
+		position_nav_.Timestamp = msg->Timestamp;
+	}
+
+	void handle_safety(const mavros::Safety::ConstPtr& msg)
+	{
+		safety_ = msg->safety;
+	}
+
+	void handle_attitude(const mavros::Attitude::ConstPtr& msg)
+	{
+		yaw_ = msg->yaw;          //need only yaw for navigation
 	}
 
 	void process(Model_GSModelClass &guidanceClass)
 	{
 
-		guidance_node_amsl::Reference inputRef = inputRef_;
-		guidance_node_amsl::Position inputPos = inputPos_;
+		guidance_node_amsl::Reference inputRef = inputRef_;             //TODO check that this is not needed, I can pass directly the private one
 
 		guidance_node_amsl::Directive output;
 
-		initializeParameters(guidanceClass, inputPos, inputRef, param_);//initialize input parameters;
-		guidanceClass.step(); //step the function
+		initializeParameters(guidanceClass, position_nav_, inputRef, param_, yaw_, safety_);//initialize input parameters;        
+		guidanceClass.step(); //step the Simulink function
 		getOutput(guidanceClass, &output); //get the output
 
 		pub_.publish(output);
@@ -114,11 +125,17 @@ protected:
 
 	ros::Subscriber subFromReference_;
 	ros::Subscriber subFromPosition_;
+	ros::Subscriber safety_sub;
+	ros::Subscriber attitude_sub;
 
 	guidance_node_amsl::Reference inputRef_;
-	guidance_node_amsl::Position inputPos_;
+	//guidance_node_amsl::Position inputPos_;
+	guidance_node_amsl::Position_nav position_nav_;
 
 	ros::Publisher pub_;
+
+	bool safety_;
+	float yaw_;
 
 	int rate;
 
@@ -126,17 +143,19 @@ protected:
 	double debugParam;
 
 private:
-
+	// OLD WAS (Model_GSModelClass &guidanceClass, const guidance_node_amsl::Position &inputPos, const guidance_node_amsl::Reference &inputRef, const std::vector<double> &param)
 	void initializeParameters(Model_GSModelClass &guidanceClass,
-			const guidance_node_amsl::Position &inputPos,
+			const guidance_node_amsl::Position_nav &inputPos,
 			const guidance_node_amsl::Reference &inputRef,
-			const std::vector<double> &param) {
+			const std::vector<double> &param,
+			float yaw,
+			bool safety) {
 
-		guidanceClass.Model_GS_U.Actual_Pos[0]=inputPos.Latitude;
-		guidanceClass.Model_GS_U.Actual_Pos[1]=inputPos.Longitude;
-		guidanceClass.Model_GS_U.Actual_Pos[2]=inputPos.AltitudeRelative;
-		guidanceClass.Model_GS_U.Actual_Pos[3]=inputPos.AltitudeAMSL;
-		guidanceClass.Model_GS_U.Actual_Yaw=inputPos.Yawangle;
+		guidanceClass.Model_GS_U.Actual_Pos[0] = inputPos.Latitude;
+		guidanceClass.Model_GS_U.Actual_Pos[1] = inputPos.Longitude;
+		guidanceClass.Model_GS_U.Actual_Pos[2] = inputPos.Altitude;     //WAS inputPos.AltitudeRelative
+		guidanceClass.Model_GS_U.Actual_Pos[3] = 0; 			//WAS inputPos.AltitudeAMSL
+		guidanceClass.Model_GS_U.Actual_Yaw = yaw;
 
 		guidanceClass.Model_GS_U.Reference_Pos[0]=inputRef.Latitude;
 		guidanceClass.Model_GS_U.Reference_Pos[1]=inputRef.Longitude;
@@ -162,7 +181,7 @@ private:
 		guidanceClass.Model_GS_U.Time=inputPos.Timestamp;
 
 		//Safety trigger
-		guidanceClass.Model_GS_U.Trigger = (inputPos.Safety == 0) ? true : false;
+		guidanceClass.Model_GS_U.Trigger = (safety == 0) ? true : false;       //if safety is 0, means ODROID on, so trigger
 
 		//DEBUG Test for AMSL offset or not
 		guidanceClass.Model_GS_U.Test = (float) debugParam;

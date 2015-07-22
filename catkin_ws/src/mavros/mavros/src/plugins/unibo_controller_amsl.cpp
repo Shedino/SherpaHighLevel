@@ -3,6 +3,10 @@
 #include <pluginlib/class_list_macros.h>
 
 #include "mavros/OverrideRCIn.h"
+#include "mavros/Sonar.h"
+#include "mavros/Attitude.h"
+#include "mavros/Global_position_int.h"
+#include "mavros/Safety.h"
 
 #include <guidance_node_amsl/Directive.h>
 #include <guidance_node_amsl/Position.h>
@@ -29,19 +33,24 @@ public:
 	{
 		uas = &uas_;
 
+		/* --- SUBSCRIPTIONS --- */
 		directive_sub = nodeHandle.subscribe("/directive", 10, &UniboControllerAMSLPlugin::directive_cb, this);
-		position_pub = nodeHandle.advertise<guidance_node_amsl::Position>("/position", 10);
 		arm_sub = nodeHandle.subscribe("/arm", 10, &UniboControllerAMSLPlugin::arming, this);
+
+		/* --- PUBLISHERS --- */
+		position_pub = nodeHandle.advertise<mavros::Global_position_int>("/global_position_int", 10);               //TODO this should become a mavros topic and removed from amsl and splitted from attitude
 		arm_ack_pub = nodeHandle.advertise<mms::Ack_arm>("acknowledge_arming", 10);
-		//velocity_publisher_=nodeHandle.advertise<mavros::OverrideRCIn>("mavros/rc/override", 10);
 		sys_status_pub = nodeHandle.advertise<mms::Sys_status>("/system_status", 10);
+		distance_sensor_pub = nodeHandle.advertise<mavros::Sonar>("/sonar", 10);
+		attitude_pub = nodeHandle.advertise<mavros::Attitude>("/attitude", 10);
+		safety_pub = nodeHandle.advertise<mavros::Safety>("/safety_odroid", 10);
+
+
 
 		nodeHandle.param("guidance_node_amsl/param/sat_xy", v_xy_max, 3.0);
 		nodeHandle.param("guidance_node_amsl/param/sat_z", v_z_max, 1.5);
 		nodeHandle.param("guidance_node_amsl/param/sat_yaw", v_psi_max, 3.14);
 
-		//DEBUG
-//		ROS_INFO("INITIALIZE UNIBO PLUGIN");
 	}
 
 	//should be logic mapping between id number and message type
@@ -52,7 +61,8 @@ public:
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_RC_CHANNELS_RAW, &UniboControllerAMSLPlugin::handle_rc_channels_raw),
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_COMMAND_ACK, &UniboControllerAMSLPlugin::handle_arm_ack),
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_HEARTBEAT, &UniboControllerAMSLPlugin::handle_heartbeat),
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_SYS_STATUS, &UniboControllerAMSLPlugin::handle_status)
+			MESSAGE_HANDLER(MAVLINK_MSG_ID_SYS_STATUS, &UniboControllerAMSLPlugin::handle_status),
+			MESSAGE_HANDLER(MAVLINK_MSG_ID_DISTANCE_SENSOR, &UniboControllerAMSLPlugin::handle_distance_sensor)
 		};
 	}
 
@@ -62,18 +72,21 @@ private:
 
 	ros::Publisher position_pub;
 	ros::Subscriber directive_sub;
-	//ros::Publisher velocity_publisher_;
 	ros::Subscriber arm_sub;
 	ros::Publisher arm_ack_pub;
 	ros::Publisher sys_status_pub;
+	ros::Publisher distance_sensor_pub;
+	ros::Publisher attitude_pub;
+	ros::Publisher safety_pub;
 	
 	mms::Sys_status _system_status;
 
+	mavros::Attitude attitude_msg;  //private and accessed by many handlers
+	mavros::Safety safety_;
+	mavros::Global_position_int global_pos_;
+
 	//message to move the quadcopter
 	mavros::OverrideRCIn velocity_;
-
-	//common message to join data from handles
-	guidance_node_amsl::Position commonMessage;
 
 	//safety flag
 	bool safetyOn;
@@ -100,12 +113,13 @@ private:
 		if(channels_raw.chan6_raw > 1700 && channels_raw.chan5_raw > 1300 && channels_raw.chan5_raw < 1700){
 		//            ODROID_ON                 HIGHER THAN STABILIZE     &&            LOWER THAN RTL        -->      LOITER
 			safetyOn = false;
-			commonMessage.Safety = 0;
+			safety_.safety = false;
 		}
 		else {
 			safetyOn=true;
-			commonMessage.Safety= 1;
+			safety_.safety = true;
 		}
+		safety_pub.publish(safety_);
 
 		//DEBUG
 //		ROS_INFO("HANDLE RC RAW");
@@ -117,26 +131,18 @@ private:
 		mavlink_attitude_t attitude;
 		mavlink_msg_attitude_decode(msg, &attitude);
 
-		auto position_msg = boost::make_shared<guidance_node_amsl::Position>();
+		attitude_msg.roll = attitude.roll;
+		attitude_msg.pitch = attitude.pitch;
+		attitude_msg.yaw = attitude.yaw;
+		attitude_msg.rollspeed = attitude.rollspeed;
+		attitude_msg.pitchspeed = attitude.pitchspeed;
+		attitude_msg.yawspeed = attitude.yawspeed;
+		attitude_msg.time_boot_ms = attitude.time_boot_ms;
 
-		//getting new data
-		position_msg->Yawangle=attitude.yaw;
+		global_pos_.hdg = (int)(attitude.yaw*360/3.14*100);
 
-		//copying data from commonMessage
-		position_msg->Timestamp=commonMessage.Timestamp;
-		position_msg->AltitudeRelative=commonMessage.AltitudeRelative;
-		position_msg->AltitudeAMSL=commonMessage.AltitudeAMSL;
-		position_msg->Latitude=commonMessage.Latitude;
-		position_msg->Longitude=commonMessage.Longitude;
-		position_msg->Safety = commonMessage.Safety;
-
-		//saving data
-		commonMessage.Yawangle=attitude.yaw;
-
-		//DEBUG
-//		ROS_INFO("%f", commonMessage.Yawangle);
-
-		position_pub.publish(position_msg);
+		//position_pub.publish(position_msg);       //already published when received position_int
+		attitude_pub.publish(attitude_msg);
 	}
 
 	void handle_heartbeat(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
@@ -185,33 +191,35 @@ private:
 		mavlink_global_position_int_t global_position;
 		mavlink_msg_global_position_int_decode(msg, &global_position);
 
-		auto position_msg = boost::make_shared<guidance_node_amsl::Position>();
+		//auto position_msg = boost::make_shared<guidance_node_amsl::Position>();
 
 		//getting new data
-		position_msg->Timestamp=global_position.time_boot_ms;
-		position_msg->AltitudeRelative=global_position.relative_alt;
-		position_msg->AltitudeAMSL = global_position.alt;
-		position_msg->Latitude=global_position.lat;
-		position_msg->Longitude=global_position.lon;
-
-		//copying data from commonMessage
-		position_msg->Yawangle=commonMessage.Yawangle;
-		position_msg->Safety = commonMessage.Safety;
-
-		//saving data
-		commonMessage.Timestamp=global_position.time_boot_ms;
-		commonMessage.AltitudeRelative=global_position.relative_alt;
-		commonMessage.AltitudeAMSL=global_position.alt;
-		commonMessage.Latitude=global_position.lat;
-		commonMessage.Longitude=global_position.lon;
+		global_pos_.time_boot_ms = global_position.time_boot_ms;
+		global_pos_.relative_alt = global_position.relative_alt;
+		global_pos_.alt = global_position.alt;
+		global_pos_.lat = global_position.lat;
+		global_pos_.lon = global_position.lon;
+		global_pos_.vx = 0;            //NOT USED NOW
+		global_pos_.vy = 0;            //NOT USED NOW
+		global_pos_.vz = 0;            //NOT USED NOW
 
 		//DEBUG
 //		ROS_INFO("HANDLE POSITION");
 
 
-		position_pub.publish(position_msg);
+		position_pub.publish(global_pos_);
 	}
 
+	void handle_distance_sensor(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+
+		mavlink_distance_sensor_t distance_sensor;
+		mavlink_msg_distance_sensor_decode(msg, &distance_sensor);
+
+		auto distance_msg = boost::make_shared<mavros::Sonar>();
+	
+		distance_msg->distance = (int)(distance_sensor.current_distance*10*cos(attitude_msg.roll)*cos(attitude_msg.pitch));   //from mavlink received in centimiters, converted in milimiters and corrected with attitude
+		distance_sensor_pub.publish(distance_msg);
+	}
 	/*
 	 * From directive to RC
 	 */

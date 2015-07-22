@@ -47,8 +47,8 @@ find_package(Boost REQUIRED COMPONENTS system)
 add_message_files(
    FILES
    Directive.msg
-   Position.msg
    Reference.msg
+   Position_nav.msg
  )
 
 ## Generate services in the 'srv' folder

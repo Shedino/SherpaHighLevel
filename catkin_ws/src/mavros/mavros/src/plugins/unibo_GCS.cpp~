@@ -5,7 +5,7 @@
 #include <mms/Cmd.h>
 #include <mms/Ack_cmd.h>
 #include <mms/Sys_status.h>
-#include <guidance_node_amsl/Position.h>
+#include <mavros/Global_position_int.h>
 #include <camera_handler_SHERPA/Camera.h>
 
 
@@ -28,7 +28,7 @@ public:
 		ack_sub = nodeHandle.subscribe("/ack_cmd", 10, &UniboGCSPlugin::ack_callback, this);
 		command_pub = nodeHandle.advertise<mms::Cmd>("/command", 10);
 		camera_pub = nodeHandle.advertise<camera_handler_SHERPA::Camera>("/camera_trigger", 10);
-		position_sub= nodeHandle.subscribe("/position", 10, &UniboGCSPlugin::position_callback, this);
+		position_sub= nodeHandle.subscribe("/global_position_int", 10, &UniboGCSPlugin::position_callback, this);
 		status_sub = nodeHandle.subscribe("/system_status", 10, &UniboGCSPlugin::status_callback, this);
 
 		/*nodeHandle.param("guidance_node_amsl/param/sat_xy", v_xy_max, 3.0);
@@ -83,8 +83,6 @@ private:
 			camera_pub.publish(camera_msg);
 			break;
 
-			default:
-			break
 		}
 		mission_item_msg->command = mission_item.command;
 		mission_item_msg->param1 = mission_item.param1;
@@ -95,7 +93,7 @@ private:
 		mission_item_msg->param6 = mission_item.y;	
 		mission_item_msg->param7 = mission_item.z;		
 		//publish topic Command
-		ROS_INFO("Command: %d",mission_item.command);
+		ROS_INFO("Command: %d. Params: %f,%f,%f,%f,%f,%f,%f",mission_item.command,mission_item_msg->param1,mission_item_msg->param2,mission_item_msg->param3,mission_item_msg->param4,mission_item_msg->param5,mission_item_msg->param6,mission_item_msg->param7);
 		command_pub.publish(mission_item_msg);
 	}
 
@@ -131,15 +129,15 @@ private:
 		}	
 	}
 
-	void position_callback(const guidance_node_amsl::Position::ConstPtr& msg){
+	void position_callback(const mavros::Global_position_int::ConstPtr& msg){
 		mavlink_message_t msg_mav;
-		int16_t yaw_int;
-		yaw_int = (int16_t)(msg->Yawangle * 180.0f / 3.14f * 100);       // rad --> degrees * 100
+		/*int16_t yaw_int;
+		yaw_int = (int16_t)(msg->yaw * 180.0f / 3.14f * 100);       // rad --> degrees * 100
 		if (yaw_int<0){
 			yaw_int += 36000;    //if negative adding 360 degree because heading is uint16_t from 0 o 359.99
-		}
+		}*/
 		//ROS_INFO("Yaw: %d",yaw_int);
-		mavlink_msg_global_position_int_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,msg->Timestamp,msg->Latitude,msg->Longitude,msg->AltitudeAMSL,msg->AltitudeRelative, 0, 0, 0, yaw_int);
+		mavlink_msg_global_position_int_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,msg->time_boot_ms,msg->lat,msg->lon,msg->alt,msg->relative_alt, 0, 0, 0, msg->hdg);
 		UAS_FCU(uas)->send_message(&msg_mav);	
 	}
 	
