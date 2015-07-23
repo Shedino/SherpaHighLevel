@@ -46,8 +46,6 @@ find_package(Boost REQUIRED COMPONENTS system)
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  Position.msg
-  Sonar.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -104,13 +102,17 @@ include_directories(
 
 ## Declare a cpp executable
  add_executable(pos_mixer src/pos_mixer.cpp)
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS} ${boost_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_message_cpp)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${boost_LIBRARIES})
+
+ add_executable(test_PositionMSG src/test_PositionMSG.cpp)
+target_link_libraries(test_PositionMSG ${catkin_LIBRARIES})
+add_dependencies(test_PositionMSG ${PROJECT_NAME}_generate_messages_cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS} ${boost_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_message_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${boost_LIBRARIES})
 
 #############
 ## Install ##

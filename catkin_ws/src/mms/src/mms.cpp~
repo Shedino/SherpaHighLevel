@@ -9,6 +9,7 @@
 #include "mms/Arm.h"
 #include "mms/Ack_arm.h"
 #include "mms/Sys_status.h"
+#include <mavros/Sonar.h>
 
 
 // STATES DEFINITION
@@ -61,11 +62,13 @@ public:
 		//subscribers
 		subFromPosition_=n_.subscribe("/global_position_int", 10, &MmsNodeClass::readPositionMessage,this);
 		subFromCmd_=n_.subscribe("/command", 10, &MmsNodeClass::readCmdMessage,this);
+                subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
 		// subFromAckArm_=n_.subscribe("/acknowledge_arming", 10, &MmsNodeClass::readAckArmMessage,this);
 		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
+		
 		// publishers
 		pubToAckCmd_=n_.advertise<mms::Ack_cmd>("/ack_cmd", 10);
-		pubToSysStatus_=n_.advertise<mms::Sys_status>("/sys_status", 10);
+		pubToSysStatus_=n_.advertise<mms::Sys_status>("/system_status", 10);
 		pubToArm_=n_.advertise<mms::Arm>("/arm", 10);
 		pubToReference_=n_.advertise<guidance_node_amsl::Reference>("/reference",10);
 
@@ -84,6 +87,12 @@ public:
 		//Initializing outputArm_
 		outputArm_.arm_disarm = false;
 		outputArm_.new_arm_disarm = false;
+	}
+
+	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
+	{
+		ROS_INFO("MMS: SONAR_MSG_RECEIVED");
+		inputSonar_.distance = msg -> distance;
 	}
 
 	void get_current_position()
@@ -159,7 +168,7 @@ public:
 
 		//6 = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT
 		//11 = MAV_FRAME_GLOBAL_TERRAIN_ALT_INT
-		if ((inputCmd_.frame == 6) .or. (inputCmd_.frame == 11 .and. sonar_ok))     
+		if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11 && inputSonar_.distance > 0))     
 		{
 			outputAckCmd_.mission_item_reached = false;
 			outputAckCmd_.mav_mission_accepted = true;
@@ -937,8 +946,10 @@ ros::Subscriber subFromPosition_;
 ros::Subscriber subFromCmd_;
 ros::Subscriber subFromAckArm_;
 ros::Subscriber subFromSysStatus_;
+ros::Subscriber subFromSonar_;
 
 mavros::Global_position_int inputPos_;
+mavros::Sonar inputSonar_;
 mms::Cmd inputCmd_;
 mms::Ack_arm inputAckArm_;
 mms::Sys_status inputSysStatus_;
