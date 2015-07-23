@@ -75,6 +75,7 @@ add_message_files(
   Attitude.msg
   Global_position_int.msg
   Safety.msg
+  ArtvaRead.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -232,6 +233,12 @@ target_link_libraries(gcs_bridge
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
 )
+
+
+add_executable(test_ARTVA src/test_ARTVA.cpp)
+target_link_libraries(test_ARTVA ${catkin_LIBRARIES})
+add_dependencies(test_ARTVA mavros_generate_messages_cpp)
+
 
 #############
 ## Install ##

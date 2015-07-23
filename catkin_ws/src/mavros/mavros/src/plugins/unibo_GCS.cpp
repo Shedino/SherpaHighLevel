@@ -6,6 +6,7 @@
 #include <mms/Ack_cmd.h>
 #include <mms/Sys_status.h>
 #include <mavros/Global_position_int.h>
+#include <mavros/ArtvaRead.h>
 #include <camera_handler_SHERPA/Camera.h>
 
 
@@ -30,6 +31,8 @@ public:
 		camera_pub = nodeHandle.advertise<camera_handler_SHERPA::Camera>("/camera_trigger", 10);
 		position_sub= nodeHandle.subscribe("/global_position_int", 10, &UniboGCSPlugin::position_callback, this);
 		status_sub = nodeHandle.subscribe("/system_status", 10, &UniboGCSPlugin::status_callback, this);
+		ArtvaRead_sub = nodeHandle.subscribe("/artva_read",10,&UniboGCSPlugin::artva_callback,this);
+		ROS_INFO("ArtvaRead.msg subscribed here!");
 
 		/*nodeHandle.param("guidance_node_amsl/param/sat_xy", v_xy_max, 3.0);
 		nodeHandle.param("guidance_node_amsl/param/sat_z", v_z_max, 1.5);
@@ -53,6 +56,16 @@ private:
 	ros::Publisher	camera_pub;
 	ros::Subscriber	position_sub;
 	ros::Subscriber	status_sub;
+	ros::Subscriber ArtvaRead_sub;
+
+	
+	void artva_callback(const mavros::ArtvaRead::ConstPtr& msg){
+//		mavlink_message_t msg_mav;
+		ROS_INFO("new ArtvaRead.msg received!");
+		ROS_INFO("Distance: %d m",msg->rec1_modulus);
+//		mavlink_msg_sys_status_pack_chan(UAS_PACK_CHAN(uas), &msg_mav, 1, 1, 1, 500, msg->voltage_battery, 0, 50, 0, 0, 0, 0, 0, 0);           //only voltage battery is sent
+//		UAS_FCU(uas)->send_message(&msg_mav);	
+	}
 
 	void handle_mission_item(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
 		ROS_INFO("Inside Mission Item");

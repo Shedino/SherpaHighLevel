@@ -65,6 +65,7 @@ public:
 		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
 		// publishers
 		pubToAckCmd_=n_.advertise<mms::Ack_cmd>("/ack_cmd", 10);
+		pubToSysStatus_=n_.advertise<mms::Sys_status>("/sys_status", 10);
 		pubToArm_=n_.advertise<mms::Arm>("/arm", 10);
 		pubToReference_=n_.advertise<guidance_node_amsl::Reference>("/reference",10);
 
@@ -116,12 +117,12 @@ public:
 		if (inputSysStatus_.armed)
 		{
 			ARMED = true;
-            //ROS_INFO("ARMED");
+                //ROS_INFO("ARMED");
 		}
 		else
 		{
 			ARMED = false;
-            //ROS_INFO("DISARMED");
+                //ROS_INFO("DISARMED");
 		}
 		//MMS_Handle();
 	}
@@ -149,11 +150,35 @@ public:
 		inputCmd_.param5  = msg -> param5;
 		inputCmd_.param6  = msg -> param6;
 		inputCmd_.param7  = msg -> param7;
+                inputCmd_.frame  = msg -> frame;
 
 		/*Target_Position_.Latitude = inputCmd_.param5;
 		Target_Position_.Longitude = inputCmd_.param6;
 		Target_Position_.AltitudeRelative = inputCmd_.param7;
 		Target_Position_.Yawangle = inputCmd_.param4;*/
+
+		//6 = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT
+		//11 = MAV_FRAME_GLOBAL_TERRAIN_ALT_INT
+		if ((inputCmd_.frame == 6) .or. (inputCmd_.frame == 11 .and. sonar_ok))     
+		{
+			outputAckCmd_.mission_item_reached = false;
+			outputAckCmd_.mav_mission_accepted = true;
+			outputAckCmd_.mav_cmd_id = inputCmd_.command;
+			pubToAckCmd_.publish(outputAckCmd_);
+			ROS_INFO("MMS->GCS: MISSION_ITEM_ACCEPTED");
+			outputSysStatus_.valid_ref_frame = inputCmd_.frame;
+			pubToSysStatus_.publish(outputSysStatus_);
+			ROS_INFO("MMS: VALID_MAV_FRAME = %d", inputCmd_.frame);
+		}
+		else
+		{
+			outputAckCmd_.mission_item_reached = false;
+			outputAckCmd_.mav_mission_accepted = false;
+			outputAckCmd_.mav_cmd_id = inputCmd_.command;
+			pubToAckCmd_.publish(outputAckCmd_);
+			ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
+                        inputCmd_.command = 0; // 0 = NOT USED it's used to disable the switch-case structure
+		}
 
 		switch(inputCmd_.command)
 		{
@@ -165,7 +190,27 @@ public:
 			target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
 			target_.Yawangle = inputCmd_.param4;
 			target_.Mode = 0;
-			WAYPOINT = true;
+
+            		/*if (inputCmd_.frame == 11)     //11 = MAV_FRAME_GLOBAL_TERRAIN_ALT_INT
+			{
+				if (sonar_ok)
+ 				{
+					WAYPOINT = true;
+				}
+				else
+				{
+					outputAckCmd_.mission_item_reached = false;
+					outputAckCmd_.mav_mission_accepted = false;
+					outputAckCmd_.mav_cmd_id = inputCmd_.command;
+					pubToAckCmd_.publish(outputAckCmd_);
+					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+                                        WAYPOINT = false;
+				}
+			} 
+                        else // any of the remaining frames
+			{				
+			        WAYPOINT = true;
+			}*/			
 			//MMS_Handle();
 		} break;
 		case 21:  // MAV_CMD_NAV_LAND
@@ -901,11 +946,13 @@ mms::Sys_status inputSysStatus_;
 ros::Publisher pubToAckCmd_;
 ros::Publisher pubToArm_;
 ros::Publisher pubToReference_;
+ros::Publisher pubToSysStatus_;
 
 guidance_node_amsl::Reference outputRef_;
 // guidance_node_amsl::Reference LVP_;
 mms::Arm outputArm_;
 mms::Ack_cmd outputAckCmd_;
+mms::Sys_status outputSysStatus_;
 // guidance_node_amsl::Reference Target_Position_;
 mavros::Global_position_int Home;                              //TODO HERE
 
@@ -941,6 +988,8 @@ int currentState = ON_GROUND_NO_HOME;
 	int eps_TO = 100; // target distance to the TAKEOFF position in millimeters*/
 
 int rate = 10;
+
+bool sonar_ok;
 
 //std::vector<double> param_;
 //double debugParam;
