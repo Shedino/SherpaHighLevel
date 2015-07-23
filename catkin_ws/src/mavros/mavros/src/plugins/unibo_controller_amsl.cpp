@@ -218,6 +218,7 @@ private:
 		auto distance_msg = boost::make_shared<mavros::Sonar>();
 	
 		distance_msg->distance = (int)(distance_sensor.current_distance*10*cos(attitude_msg.roll)*cos(attitude_msg.pitch));   //from mavlink received in centimiters, converted in milimiters and corrected with attitude
+		//ROS_INFO("Sonar received. Distance: %d - Type: %d - MaxDist: %d",distance_msg->distance, distance_sensor.type, distance_sensor.max_distance);
 		distance_sensor_pub.publish(distance_msg);
 	}
 	/*
