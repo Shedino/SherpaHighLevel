@@ -6,3 +6,5 @@ int32 Longitude
 int32 Altitude
 # milliseconds since system boot)
 uint32 Timestamp
+# heading as (rad)
+float32 YawAngle

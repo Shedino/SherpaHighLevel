@@ -4,12 +4,13 @@
 //#include "guidance_node_amsl/Position.h"
 #include "mavros/Global_position_int.h"
 #include "guidance_node_amsl/Reference.h"
+#include "guidance_node_amsl/Position_nav.h"
 #include "mms/Cmd.h"
 #include "mms/Ack_cmd.h"
 #include "mms/Arm.h"
 #include "mms/Ack_arm.h"
 #include "mms/Sys_status.h"
-#include <mavros/Sonar.h>
+//#include <mavros/Sonar.h>
 
 
 // STATES DEFINITION
@@ -32,7 +33,7 @@ double eps_LAND = 10000.0; // distance to the target LAND position in millimeter
 double eps_WP = 1500.0; // distance to the target WAYPOINT position in millimeters
 double eps_TO = 1500.0; // distance to the target TAKEOFF position in millimeters
 double eps_YAW = 20.0; // distance to the target YAW position in deg
-double Dh_TO = 8000.0; // takeoff height above the groung in millimeters
+double Dh_TO = 2000.0; // takeoff height above the groung in millimeters
 
 class MmsNodeClass {
 public:
@@ -60,15 +61,17 @@ public:
 		node.param("guidance_node_amsl/param/gain_integralDown", param_[8],0.025);*/
 
 		//subscribers
-		subFromPosition_=n_.subscribe("/global_position_int", 10, &MmsNodeClass::readPositionMessage,this);
+		//subFromPosition_=n_.subscribe("/global_position_int", 10, &MmsNodeClass::readPositionMessage,this);
+		subFromPosition_=n_.subscribe("/position_nav", 10, &MmsNodeClass::readPositionMessage,this);
+		subFromGlobPosInt_=n_.subscribe("/global_position_int", 10, &MmsNodeClass::readGlobalPosIntMessage,this);
 		subFromCmd_=n_.subscribe("/command", 10, &MmsNodeClass::readCmdMessage,this);
-                subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
+        //subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
 		// subFromAckArm_=n_.subscribe("/acknowledge_arming", 10, &MmsNodeClass::readAckArmMessage,this);
 		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
 		
 		// publishers
 		pubToAckCmd_=n_.advertise<mms::Ack_cmd>("/ack_cmd", 10);
-		pubToSysStatus_=n_.advertise<mms::Sys_status>("/system_status", 10);
+		//pubToSysStatus_=n_.advertise<mms::Sys_status>("/system_status", 10);
 		pubToArm_=n_.advertise<mms::Arm>("/arm", 10);
 		pubToReference_=n_.advertise<guidance_node_amsl::Reference>("/reference",10);
 
@@ -89,22 +92,22 @@ public:
 		outputArm_.new_arm_disarm = false;
 	}
 
-	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
+	/*void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
 	{
-		ROS_INFO("MMS: SONAR_MSG_RECEIVED");
+		//ROS_INFO("MMS: SONAR_MSG_RECEIVED");
 		inputSonar_.distance = msg -> distance;
-	}
+	}*/
 
 	void get_current_position()
 	{
-		outputRef_.Latitude = inputPos_.lat;
-		outputRef_.Longitude = inputPos_.lon;
-		outputRef_.AltitudeRelative = inputPos_.relative_alt;//inputPos_.alt - Home.AltitudeAMSL;
-		outputRef_.Yawangle = inputPos_.hdg*3.14/100/360;
+		outputRef_.Latitude = inputPos_.Latitude;
+		outputRef_.Longitude = inputPos_.Longitude;
+		outputRef_.AltitudeRelative = inputPos_.Altitude;//inputPos_.Altitude - Home.AltitudeAMSL;
+		outputRef_.Yawangle = inputPos_.YawAngle;//*3.14/100/360;
 		outputRef_.Mode = 0;
 		//ROS_INFO("CURRENT POSITION")
-		ROS_INFO("CURRENT POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f", inputPos_.lat, inputPos_.lon, inputPos_.relative_alt, inputPos_.hdg);
-        // ROS_INFO("pos AMSL, %d, Home AMSL, %d, rel, %d", inputPos_.alt, Home.alt, outputRef_.AltitudeRelative);
+		ROS_INFO("CURRENT POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f", inputPos_.Latitude, inputPos_.Longitude, inputPos_.Altitude, inputPos_.YawAngle);
+        // ROS_INFO("pos AMSL, %d, Home AMSL, %d, rel, %d", inputPos_.Altitude, Home.alt, outputRef_.AltitudeRelative);
 	}
 
 	void get_target_position()
@@ -136,21 +139,57 @@ public:
 		//MMS_Handle();
 	}
 
-	void readPositionMessage(const mavros::Global_position_int::ConstPtr& msg)
+	//void readPositionMessage(const mavros::Global_position_int::ConstPtr& msg)
+	void readPositionMessage(const guidance_node_amsl::Position_nav::ConstPtr& msg)
 	{
-		inputPos_.lat = msg->lat;
-		inputPos_.lon = msg->lon;
-		inputPos_.relative_alt = msg->relative_alt;
-		inputPos_.alt = msg->alt;
-		inputPos_.hdg = msg->hdg;     
-		inputPos_.time_boot_ms = msg->time_boot_ms;
+		inputPos_.Latitude = msg->Latitude;
+		inputPos_.Longitude = msg->Longitude;
+		// inputPos_.Altitude = msg->Altitude;
+		inputPos_.Altitude = msg->Altitude;
+		inputPos_.YawAngle = msg->YawAngle;
+		inputPos_.Timestamp = msg->Timestamp;
 
 		//MMS_Handle();
 	}
+	
+	void readGlobalPosIntMessage(const mavros::Global_position_int::ConstPtr& msg)
+	{
+		inputGlobPosInt_.lat = msg->lat;
+		inputGlobPosInt_.lon = msg->lon;
+		inputGlobPosInt_.alt = msg->alt;
+		inputGlobPosInt_.relative_alt = msg->relative_alt;
+		inputGlobPosInt_.hdg = msg->hdg;
+		inputGlobPosInt_.time_boot_ms = msg->time_boot_ms;
+
+		//MMS_Handle();
+	}
+	
+	/*void check_frame (mms::Cmd inputCmd_,mavros::Sonar inputSonar_){
+		if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11 && inputSonar_.distance > 0))     
+			{
+				outputAckCmd_.mission_item_reached = false;
+				outputAckCmd_.mav_mission_accepted = true;
+				outputAckCmd_.mav_cmd_id = inputCmd_.command;
+				pubToAckCmd_.publish(outputAckCmd_);
+				ROS_INFO("MMS->GCS: MISSION_ITEM_ACCEPTED");
+				outputSysStatus_.valid_ref_frame = inputCmd_.frame;
+				pubToSysStatus_.publish(outputSysStatus_);
+				ROS_INFO("MMS: VALID_MAV_FRAME = %d", inputCmd_.frame);
+			}
+			else
+			{
+				outputAckCmd_.mission_item_reached = false;
+				outputAckCmd_.mav_mission_accepted = false;
+				outputAckCmd_.mav_cmd_id = inputCmd_.command;
+				pubToAckCmd_.publish(outputAckCmd_);
+				ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
+				inputCmd_.command = 0; // 0 = NOT USED it's used to disable the switch-case structure
+		}
+	}*/
 
 	void readCmdMessage(const mms::Cmd::ConstPtr& msg)
 	{
-		ROS_INFO("CMD_RECEIVED");
+		ROS_INFO("MMS: CMD_RECEIVED");
 		inputCmd_.command = msg -> command;
 		inputCmd_.param1  = msg -> param1;
 		inputCmd_.param2  = msg -> param2;
@@ -159,7 +198,7 @@ public:
 		inputCmd_.param5  = msg -> param5;
 		inputCmd_.param6  = msg -> param6;
 		inputCmd_.param7  = msg -> param7;
-                inputCmd_.frame  = msg -> frame;
+        inputCmd_.frame  = msg -> frame;
 
 		/*Target_Position_.Latitude = inputCmd_.param5;
 		Target_Position_.Longitude = inputCmd_.param6;
@@ -168,26 +207,7 @@ public:
 
 		//6 = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT
 		//11 = MAV_FRAME_GLOBAL_TERRAIN_ALT_INT
-		if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11 && inputSonar_.distance > 0))     
-		{
-			outputAckCmd_.mission_item_reached = false;
-			outputAckCmd_.mav_mission_accepted = true;
-			outputAckCmd_.mav_cmd_id = inputCmd_.command;
-			pubToAckCmd_.publish(outputAckCmd_);
-			ROS_INFO("MMS->GCS: MISSION_ITEM_ACCEPTED");
-			outputSysStatus_.valid_ref_frame = inputCmd_.frame;
-			pubToSysStatus_.publish(outputSysStatus_);
-			ROS_INFO("MMS: VALID_MAV_FRAME = %d", inputCmd_.frame);
-		}
-		else
-		{
-			outputAckCmd_.mission_item_reached = false;
-			outputAckCmd_.mav_mission_accepted = false;
-			outputAckCmd_.mav_cmd_id = inputCmd_.command;
-			pubToAckCmd_.publish(outputAckCmd_);
-			ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
-                        inputCmd_.command = 0; // 0 = NOT USED it's used to disable the switch-case structure
-		}
+		
 
 		switch(inputCmd_.command)
 		{
@@ -199,6 +219,7 @@ public:
 			target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
 			target_.Yawangle = inputCmd_.param4;
 			target_.Mode = 0;
+			//check_frame(inputCmd_, inputSonar_);
 
             		/*if (inputCmd_.frame == 11)     //11 = MAV_FRAME_GLOBAL_TERRAIN_ALT_INT
 			{
@@ -226,12 +247,14 @@ public:
 		{
 			ROS_INFO("MAV_CMD_DO_NAV_LAND");
 			LAND = true;
+			//check_frame(inputCmd_, inputSonar_);
 			//MMS_Handle();
 		}break;
 		case 22:  // MAV_CMD_NAV_TAKEOFF
 		{
 			ROS_INFO("MAV_CMD_NAV_TAKEOFF");
 			TAKEOFF = true;
+			//check_frame(inputCmd_, inputSonar_);
 			//MMS_Handle();
 		}break;
 		/*		case 115: // MAV_CMD_CONDITION_YAW
@@ -314,19 +337,19 @@ public:
 		End_Point.Z=(End_Point.Ne*(1.0f-0.08181919*0.08181919)+alt)*sin(outputRef_.Latitude*1e-7f*PI/180.0f);
         //ROS_INFO("ne, %f, endp_x, %f, endp_y, %f ,endp_z, %f", End_Point.Ne,End_Point.X, End_Point.Y,End_Point.Z);
 		
-        alt = ((double)inputPos_.relative_alt)/1000.0f;//AltitudeAMSL*1e-3;// AltitudeRelative + Home.AltitudeAMSL;
-		Starting_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(inputPos_.lat/10000000.0f*PI/180.0f)*sin(inputPos_.lat/10000000.0f*PI/180.0f));
-		Starting_Point.X=(Starting_Point.Ne+alt)*cos(inputPos_.lat/10000000.0f*PI/180.0f)*cos(inputPos_.lon/10000000.0f*PI/180);
-		Starting_Point.Y=(Starting_Point.Ne+alt)*cos(inputPos_.lat/10000000.0f*PI/180.0f)*sin(inputPos_.lon/10000000.0f*PI/180);
-		Starting_Point.Z=(Starting_Point.Ne*(1.0f-0.08181919f*0.08181919f)+alt)*sin(inputPos_.lat/10000000.0f*PI/180.0f);
-		//ROS_INFO("ne, %f, sp_x, %f, sp_y, %f ,sp_z, %f, alt %d", Starting_Point.Ne,Starting_Point.X, Starting_Point.Y,Starting_Point.Z,inputPos_.relative_alt);
+        alt = ((double)inputPos_.Altitude)/1000.0f;//AltitudeAMSL*1e-3;// AltitudeRelative + Home.AltitudeAMSL;
+		Starting_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f));
+		Starting_Point.X=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*cos(inputPos_.Longitude/10000000.0f*PI/180);
+		Starting_Point.Y=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Longitude/10000000.0f*PI/180);
+		Starting_Point.Z=(Starting_Point.Ne*(1.0f-0.08181919f*0.08181919f)+alt)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f);
+		//ROS_INFO("ne, %f, sp_x, %f, sp_y, %f ,sp_z, %f, alt %d", Starting_Point.Ne,Starting_Point.X, Starting_Point.Y,Starting_Point.Z,inputPos_.Altitude);
 
-		error_x = End_Point.X - Starting_Point.X; //outputRef_.Latitude - inputPos_.lat;
-		error_y = End_Point.Y - Starting_Point.Y; //outputRef_.Longitude - inputPos_.lon;
-		error_z = End_Point.Z - Starting_Point.Z; //outputRef_.AltitudeRelative - (inputPos_.alt-Home.AltitudeAMSL);
+		error_x = End_Point.X - Starting_Point.X; //outputRef_.Latitude - inputPos_.Latitude;
+		error_y = End_Point.Y - Starting_Point.Y; //outputRef_.Longitude - inputPos_.Longitude;
+		error_z = End_Point.Z - Starting_Point.Z; //outputRef_.AltitudeRelative - (inputPos_.Altitude-Home.AltitudeAMSL);
 		//ROS_INFO("error_x, %f, error_y, %f ,error_z, %f", error_x,error_y, error_z);
 		
-		error_yaw = outputRef_.Yawangle - inputPos_.hdg*3.14/100/360;
+		error_yaw = outputRef_.Yawangle - inputPos_.YawAngle;//*3.14/100/360;
 		error_to_t.error_pos = 1000.0f*sqrt(error_x*error_x + error_y*error_y + error_z*error_z);
 		error_to_t.error_ang = 180.0f/PI*sqrt(error_yaw*error_yaw);
         //ROS_INFO("DISTANCE TO TARGET")
@@ -410,11 +433,11 @@ public:
 			pubToReference_.publish(outputRef_);
 			ROS_INFO("PUSHING THE DRONE DOWN ...");*/
 
-			Home.lat = inputPos_.lat;
-			Home.lon = inputPos_.lon;
-			Home.alt = inputPos_.alt;
-			Home.relative_alt = inputPos_.relative_alt;
-			Home.hdg = inputPos_.hdg;
+			Home.lat = inputGlobPosInt_.lat;
+			Home.lon = inputGlobPosInt_.lon;
+			Home.alt = inputGlobPosInt_.alt;
+			Home.relative_alt = inputGlobPosInt_.relative_alt;
+			Home.hdg = inputGlobPosInt_.hdg;
 			ROS_INFO("HOME POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f",Home.lat, Home.lon, Home.relative_alt, Home.hdg);
 			//ROS_INFO("Home AMSL, %d, rel, %d", Home.alt, Home.relative_alt);
 			currentState = ON_GROUND_DISARMED;
@@ -649,7 +672,7 @@ case PERFORMING_TAKEOFF:
 		break;
 	}
 	if (error_to_t.error_pos < eps_TO and error_to_t.error_ang < eps_YAW)
-		//if (abs(inputPos_.relative_alt - Dh_TO) < eps_TO and error_to_t.error_ang < eps_YAW)
+		//if (abs(inputPos_.Altitude - Dh_TO) < eps_TO and error_to_t.error_ang < eps_YAW)
 	{
 		set_events_false();
 
@@ -855,10 +878,10 @@ case READY_TO_LAND:
 		set_events_false();
 		LAND = true;
 
-		outputRef_.Latitude = inputPos_.lat;
-		outputRef_.Longitude = inputPos_.lon;
-		outputRef_.AltitudeRelative = inputPos_.relative_alt; // 5 cm @ frequencey
-		outputRef_.Yawangle = inputPos_.hdg*3.14/100/360;
+		outputRef_.Latitude = inputPos_.Latitude;
+		outputRef_.Longitude = inputPos_.Longitude;
+		outputRef_.AltitudeRelative = inputPos_.Altitude; // 5 cm @ frequencey
+		outputRef_.Yawangle = inputPos_.YawAngle;//*3.14/100/360;
 		outputRef_.Mode = 0;
 		//pubToReference_.publish(outputRef_);
 		//ROS_INFO("MMS->NAV: REFERENCE = VERT. LAND SPEED");
@@ -896,15 +919,15 @@ case READY_TO_LAND:
 case PERFORMING_LANDING:
 	// ROS_INFO("MMS_CURRENT_STATE:PERFORMING_LANDING");
 
-		//outputRef_.Latitude = inputPos_.lat;
-		//outputRef_.Longitude = inputPos_.lon;
+		//outputRef_.Latitude = inputPos_.Latitude;
+		//outputRef_.Longitude = inputPos_.Longitude;
 		outputRef_.AltitudeRelative -= 80; // 5 cm @ frequencey
 		//outputRef_.Yawangle = 0;
 		//outputRef_.Mode = 0;
 		pubToReference_.publish(outputRef_);
 		ROS_INFO("MMS->NAV: REFERENCE = VERT. LAND SPEED");
 
-	if (inputPos_.relative_alt - outputRef_.AltitudeRelative > eps_LAND)
+	if (inputPos_.Altitude - outputRef_.AltitudeRelative > eps_LAND)
 	{
 		set_events_false();
 		LAND = true;
@@ -947,9 +970,12 @@ ros::Subscriber subFromCmd_;
 ros::Subscriber subFromAckArm_;
 ros::Subscriber subFromSysStatus_;
 ros::Subscriber subFromSonar_;
+ros::Subscriber subFromGlobPosInt_;
 
-mavros::Global_position_int inputPos_;
-mavros::Sonar inputSonar_;
+guidance_node_amsl::Position_nav inputPos_;
+mavros::Global_position_int inputGlobPosInt_;
+
+// mavros::Sonar inputSonar_;
 mms::Cmd inputCmd_;
 mms::Ack_arm inputAckArm_;
 mms::Sys_status inputSysStatus_;
@@ -957,13 +983,13 @@ mms::Sys_status inputSysStatus_;
 ros::Publisher pubToAckCmd_;
 ros::Publisher pubToArm_;
 ros::Publisher pubToReference_;
-ros::Publisher pubToSysStatus_;
+// ros::Publisher pubToSysStatus_;
 
 guidance_node_amsl::Reference outputRef_;
 // guidance_node_amsl::Reference LVP_;
 mms::Arm outputArm_;
 mms::Ack_cmd outputAckCmd_;
-mms::Sys_status outputSysStatus_;
+// mms::Sys_status outputSysStatus_;
 // guidance_node_amsl::Reference Target_Position_;
 mavros::Global_position_int Home;                              //TODO HERE
 
