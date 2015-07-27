@@ -9,7 +9,7 @@
 #include "mavros/Safety.h"
 
 #include <guidance_node_amsl/Directive.h>
-#include <guidance_node_amsl/Position.h>
+//#include <guidance_node_amsl/Position.h>
 #include <mms/Ack_arm.h>
 #include <mms/Arm.h>
 #include <mms/Sys_status.h>

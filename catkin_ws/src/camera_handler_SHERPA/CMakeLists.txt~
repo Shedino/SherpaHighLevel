@@ -97,7 +97,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
-  ${catkin_INCLUDE_DIRS}
+  ${catkin_INCLUDE_DIRS} ~exiv2-0.24
 )
 
 ## Declare a cpp library
@@ -107,15 +107,17 @@ include_directories(
 
 ## Declare a cpp executable
 add_executable(${PROJECT_NAME} src/${PROJECT_NAME}.cpp)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+add_dependencies(${PROJECT_NAME} wasp_follow_human1_generate_messages_cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(camera_handler_SHERPA_node camera_handler_SHERPA_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(camera_handler_SHERPA
-   ${catkin_LIBRARIES}
-)
+#target_link_libraries(camera_handler_SHERPA
+#   ${catkin_LIBRARIES}
+#)
 
 #############
 ## Install ##

@@ -8,6 +8,8 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   message_generation
+  mavros
+  guidance_node_amsl
 )
 
 ## System dependencies are found with CMake's conventions
@@ -85,7 +87,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES mms
- CATKIN_DEPENDS roscpp std_msgs message_runtime
+ CATKIN_DEPENDS roscpp std_msgs message_runtime mavros guidance_node_amsl
 #  DEPENDS system_lib
 )
 

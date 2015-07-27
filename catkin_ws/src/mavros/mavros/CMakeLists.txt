@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   angles
   libmavconn
   rosconsole_bridge
+  guidance_node_amsl
 )
 
 ## System dependencies are found with CMake's conventions
@@ -138,7 +139,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mavros
-  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf geometry_msgs libmavconn
+  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf geometry_msgs libmavconn guidance_node_amsl message_runtime
   DEPENDS Boost mavlink
 )
 
@@ -215,7 +216,8 @@ add_executable(mavros_node
   src/mavros_node.cpp
 )
 add_dependencies(mavros_node
-  mavros
+  mavros 
+  mavros_generate_messages_cpp
 )
 target_link_libraries(mavros_node
   mavros

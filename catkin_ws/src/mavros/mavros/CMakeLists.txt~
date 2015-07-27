@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   angles
   libmavconn
   rosconsole_bridge
+  guidance_node_amsl
 )
 
 ## System dependencies are found with CMake's conventions
@@ -75,6 +76,7 @@ add_message_files(
   Attitude.msg
   Global_position_int.msg
   Safety.msg
+  ArtvaRead.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -137,7 +139,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mavros
-  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf geometry_msgs libmavconn
+  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf geometry_msgs libmavconn guidance_node_amsl message_runtime
   DEPENDS Boost mavlink
 )
 
@@ -232,6 +234,12 @@ target_link_libraries(gcs_bridge
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
 )
+
+
+add_executable(test_ARTVA src/test_ARTVA.cpp)
+target_link_libraries(test_ARTVA ${catkin_LIBRARIES})
+add_dependencies(test_ARTVA mavros_generate_messages_cpp)
+
 
 #############
 ## Install ##
