@@ -14,6 +14,7 @@
 #include <mms/Arm.h>
 #include <mms/Sys_status.h>
 
+#define SONAR_THRESHOLD 300          //maximum centimetres of a reliable sonar reading
 namespace mavplugin {
 /**
  * @brief Mavros plugin
@@ -51,6 +52,9 @@ public:
 		nodeHandle.param("guidance_node_amsl/param/sat_z", v_z_max, 1.5);
 		nodeHandle.param("guidance_node_amsl/param/sat_yaw", v_psi_max, 3.14);
 
+		mavros::Sonar temp_sonar;
+		temp_sonar.distance = -1;      //if there is no sonar, the distance is initialized to -1
+		distance_sensor_pub.publish(temp_sonar);
 	}
 
 	//should be logic mapping between id number and message type
@@ -139,7 +143,7 @@ private:
 		attitude_msg.yawspeed = attitude.yawspeed;
 		attitude_msg.time_boot_ms = attitude.time_boot_ms;
 
-		global_pos_.hdg = (int)(attitude.yaw*360/3.14*100);
+		global_pos_.hdg = (int)((attitude.yaw+3.14)*180/3.14*100);   //attitude comes in +-pi but hdg is 0..359.99 deg. Adding pi to attitude.
 
 		//position_pub.publish(position_msg);       //already published when received position_int
 		attitude_pub.publish(attitude_msg);
@@ -151,7 +155,7 @@ private:
 		mavlink_msg_heartbeat_decode(msg, &heart);
 
 		//auto position_msg = boost::make_shared<guidance_node_amsl::Position>();
-		//ROS_INFO("Heatbeat. Base Mode: %d - Sys Status: %d ",heart.base_mode, heart.system_status);
+		ROS_INFO("Heatbeat. Base Mode: %d - Sys Status: %d ",heart.base_mode, heart.system_status);
 		if (heart.base_mode >= 128)	_system_status.armed = true;
 		else	_system_status.armed = false;
 		sys_status_pub.publish(_system_status);
@@ -216,8 +220,11 @@ private:
 		mavlink_msg_distance_sensor_decode(msg, &distance_sensor);
 
 		auto distance_msg = boost::make_shared<mavros::Sonar>();
-	
-		distance_msg->distance = (int)(distance_sensor.current_distance*10*cos(attitude_msg.roll)*cos(attitude_msg.pitch));   //from mavlink received in centimiters, converted in milimiters and corrected with attitude
+		if (distance_sensor.current_distance > SONAR_THRESHOLD){    //more than 300cm-->not reliable
+			distance_msg->distance = 0;         //if the distance is over threshold-->put zero
+		} else {
+			distance_msg->distance = (int)(distance_sensor.current_distance*10*cos(attitude_msg.roll)*cos(attitude_msg.pitch));   //from mavlink received in centimiters, converted in millimiters and corrected with attitude
+		}
 		//ROS_INFO("Sonar received. Distance: %d - Type: %d - MaxDist: %d",distance_msg->distance, distance_sensor.type, distance_sensor.max_distance);
 		distance_sensor_pub.publish(distance_msg);
 	}

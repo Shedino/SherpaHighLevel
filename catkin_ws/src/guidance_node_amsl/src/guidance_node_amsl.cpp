@@ -79,6 +79,7 @@ public:
 		position_nav_.Latitude = msg->Latitude;
 		position_nav_.Longitude = msg->Longitude;
 		position_nav_.Altitude = msg->Altitude;
+		position_nav_.YawAngle = msg->YawAngle;
 		position_nav_.Timestamp = msg->Timestamp;
 	}
 
@@ -155,7 +156,7 @@ private:
 		guidanceClass.Model_GS_U.Actual_Pos[1] = inputPos.Longitude;
 		guidanceClass.Model_GS_U.Actual_Pos[2] = inputPos.Altitude;     //WAS inputPos.AltitudeRelative
 		guidanceClass.Model_GS_U.Actual_Pos[3] = 0; 			//WAS inputPos.AltitudeAMSL
-		guidanceClass.Model_GS_U.Actual_Yaw = yaw;
+		guidanceClass.Model_GS_U.Actual_Yaw = inputPos.YawAngle;
 
 		guidanceClass.Model_GS_U.Reference_Pos[0]=inputRef.Latitude;
 		guidanceClass.Model_GS_U.Reference_Pos[1]=inputRef.Longitude;

@@ -8,6 +8,7 @@
 #include <mavros/Global_position_int.h>
 #include <mavros/ArtvaRead.h>
 #include <camera_handler_SHERPA/Camera.h>
+#include <guidance_node_amsl/Position_nav.h>
 
 
 namespace mavplugin {
@@ -29,7 +30,7 @@ public:
 		ack_sub = nodeHandle.subscribe("/ack_cmd", 10, &UniboGCSPlugin::ack_callback, this);
 		command_pub = nodeHandle.advertise<mms::Cmd>("/command", 10);
 		camera_pub = nodeHandle.advertise<camera_handler_SHERPA::Camera>("/camera_trigger", 10);
-		position_sub= nodeHandle.subscribe("/global_position_int", 10, &UniboGCSPlugin::position_callback, this);
+		position_sub= nodeHandle.subscribe("/position_nav", 10, &UniboGCSPlugin::position_callback, this);
 		status_sub = nodeHandle.subscribe("/system_status", 10, &UniboGCSPlugin::status_callback, this);
 		ArtvaRead_sub = nodeHandle.subscribe("/artva_read",10,&UniboGCSPlugin::artva_callback,this);
 		ROS_INFO("ArtvaRead.msg subscribed here!");
@@ -148,7 +149,7 @@ private:
 		}	
 	}
 
-	void position_callback(const mavros::Global_position_int::ConstPtr& msg){
+	void position_callback(const guidance_node_amsl::Position_nav::ConstPtr& msg){
 		mavlink_message_t msg_mav;
 		/*int16_t yaw_int;
 		yaw_int = (int16_t)(msg->yaw * 180.0f / 3.14f * 100);       // rad --> degrees * 100
@@ -156,7 +157,7 @@ private:
 			yaw_int += 36000;    //if negative adding 360 degree because heading is uint16_t from 0 o 359.99
 		}*/
 		//ROS_INFO("Yaw: %d",yaw_int);
-		mavlink_msg_global_position_int_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,msg->time_boot_ms,msg->lat,msg->lon,msg->alt,msg->relative_alt, 0, 0, 0, msg->hdg);
+		mavlink_msg_global_position_int_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,msg->Timestamp,msg->Latitude,msg->Longitude,0,msg->Altitude, 0, 0, 0, msg->YawAngle*180/3.14*100);
 		UAS_FCU(uas)->send_message(&msg_mav);	
 	}
 	
