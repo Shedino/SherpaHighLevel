@@ -58,12 +58,21 @@ private:
 	ros::Subscriber	position_sub;
 	ros::Subscriber	status_sub;
 	ros::Subscriber ArtvaRead_sub;
-
+        int ArtvaBuffer[][8];
+	int ArtvaInd=0;
 	
 	void artva_callback(const mavros::ArtvaRead::ConstPtr& msg){
 //		mavlink_message_t msg_mav;
-		ROS_INFO("new ArtvaRead.msg received!");
-		ROS_INFO("Distance: %d m",msg->rec1_modulus);
+//		ROS_INFO("new ArtvaRead.msg received!");
+		ArtvaBuffer[ArtvaInd][0]=msg->rec1_modulus;
+		ArtvaBuffer[ArtvaInd][1]=msg->rec1_direction;
+		ArtvaBuffer[ArtvaInd][2]=msg->rec2_modulus;
+		ArtvaBuffer[ArtvaInd][3]=msg->rec2_direction;
+		ArtvaBuffer[ArtvaInd][4]=msg->rec3_modulus;
+		ArtvaBuffer[ArtvaInd][5]=msg->rec3_direction;
+		ArtvaBuffer[ArtvaInd][6]=msg->rec4_modulus;
+		ArtvaBuffer[ArtvaInd++][7]=msg->rec4_direction;
+		ROS_INFO("Distance: %d m",ArtvaBuffer[0][0]);
 //		mavlink_msg_sys_status_pack_chan(UAS_PACK_CHAN(uas), &msg_mav, 1, 1, 1, 500, msg->voltage_battery, 0, 50, 0, 0, 0, 0, 0, 0);           //only voltage battery is sent
 //		UAS_FCU(uas)->send_message(&msg_mav);	
 	}
