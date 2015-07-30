@@ -58,22 +58,40 @@ private:
 	ros::Subscriber	position_sub;
 	ros::Subscriber	status_sub;
 	ros::Subscriber ArtvaRead_sub;
-        int ArtvaBuffer[][8];
 	int ArtvaInd=0;
+	int ArtvaBufferMaxNum=20;
+    int ArtvaBuffer[20][8];
+	int ArtvaLat;
+	int ArtvaLon;
+	int ArtvaYaw;
+	int ArtvaAlt;
 	
 	void artva_callback(const mavros::ArtvaRead::ConstPtr& msg){
-//		mavlink_message_t msg_mav;
-//		ROS_INFO("new ArtvaRead.msg received!");
-		ArtvaBuffer[ArtvaInd][0]=msg->rec1_modulus;
-		ArtvaBuffer[ArtvaInd][1]=msg->rec1_direction;
-		ArtvaBuffer[ArtvaInd][2]=msg->rec2_modulus;
-		ArtvaBuffer[ArtvaInd][3]=msg->rec2_direction;
-		ArtvaBuffer[ArtvaInd][4]=msg->rec3_modulus;
-		ArtvaBuffer[ArtvaInd][5]=msg->rec3_direction;
-		ArtvaBuffer[ArtvaInd][6]=msg->rec4_modulus;
-		ArtvaBuffer[ArtvaInd++][7]=msg->rec4_direction;
-		ROS_INFO("Distance: %d m",ArtvaBuffer[0][0]);
-//		mavlink_msg_sys_status_pack_chan(UAS_PACK_CHAN(uas), &msg_mav, 1, 1, 1, 500, msg->voltage_battery, 0, 50, 0, 0, 0, 0, 0, 0);           //only voltage battery is sent
+		//ROS_INFO("new ArtvaRead.msg received!");
+		if(true){
+			ROS_INFO("ROGER; transmitting now");
+			mavlink_message_t msg_mav;
+			mavlink_vfr_hud_t ARTVA1send;
+			ROS_INFO("ARTVA 1 Current Reading: LAT %.0f, LON %.0f, YAW %d, ALT %d, DST %.0f, DIR %.0f",
+				(float)ArtvaLat,(float)ArtvaLon,(int)ArtvaYaw,(unsigned int)ArtvaAlt,
+				(float)msg->rec1_distance,(float)msg->rec1_direction);
+			mavlink_msg_vfr_hud_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,
+				(float)ArtvaLat,(float)ArtvaLon,(int)ArtvaYaw,(unsigned int)ArtvaAlt,
+				(float)msg->rec1_distance,(float)msg->rec1_direction);
+		}else{
+			if(ArtvaInd==ArtvaBufferMaxNum){
+				ArtvaInd=0;
+			}
+			ArtvaBuffer[ArtvaInd][0]=msg->rec1_distance;
+			ArtvaBuffer[ArtvaInd][1]=msg->rec1_direction;
+			ArtvaBuffer[ArtvaInd][2]=msg->rec2_distance;
+			ArtvaBuffer[ArtvaInd][3]=msg->rec2_direction;
+			ArtvaBuffer[ArtvaInd][4]=msg->rec3_distance;
+			ArtvaBuffer[ArtvaInd][5]=msg->rec3_direction;
+			ArtvaBuffer[ArtvaInd][6]=msg->rec4_distance;
+			ROS_INFO("log %d: ARTVA 4 Distance: %d m",ArtvaInd,ArtvaBuffer[ArtvaInd][6]);
+			ArtvaBuffer[ArtvaInd++][7]=msg->rec4_direction;
+		}
 //		UAS_FCU(uas)->send_message(&msg_mav);	
 	}
 
@@ -166,6 +184,10 @@ private:
 			yaw_int += 36000;    //if negative adding 360 degree because heading is uint16_t from 0 o 359.99
 		}*/
 		//ROS_INFO("Yaw: %d",yaw_int);
+		ArtvaLat=msg->Latitude;
+		ArtvaLon=msg->Longitude;
+		ArtvaYaw=msg->YawAngle*180/3.14;
+		ArtvaAlt=msg->Altitude;
 		mavlink_msg_global_position_int_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,msg->Timestamp,msg->Latitude,msg->Longitude,0,msg->Altitude, 0, 0, 0, msg->YawAngle*180/3.14*100);
 		UAS_FCU(uas)->send_message(&msg_mav);	
 	}

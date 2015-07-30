@@ -8,3 +8,5 @@ int32 Altitude
 uint32 Timestamp
 # heading as (rad)
 float32 YawAngle
+# reference system 6 = baro 11 = sonar
+uint16 frame
