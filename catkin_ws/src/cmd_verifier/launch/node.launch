@@ -1,0 +1,5 @@
+<launch>
+
+	<node pkg="cmd_verifier" type="cmd_verifier" name="cmd_verifier" output="screen">
+	</node>
+</launch>

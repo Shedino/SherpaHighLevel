@@ -7,6 +7,7 @@
 #include "mms/MMS_status.h"
 #include <mavros/Sonar.h>
 #include <frame/Ref_system.h>
+#include "reference/Distance.h"
 
 
 // STATES DEFINITION
@@ -24,6 +25,8 @@
 #define READY_TO_LAND 110
 #define PERFORMING_LANDING 120
 
+double PI = 3.1416; // pi
+
 class ReferenceNodeClass {
 public:
 	ReferenceNodeClass(ros::NodeHandle& node){
@@ -40,6 +43,7 @@ public:
 		
 		// publishers
 		pubToReference_=n_.advertise<guidance_node_amsl::Reference>("/reference",10);
+		pubToDistance_=n_.advertise<reference::Distance>("/distance",10);
 
 		//Initializing outputRef_
 		outputRef_.Latitude = 0;
@@ -59,7 +63,7 @@ public:
 		inputFrame_.target_ref_frame = 6;
 	}
 
-	/*class e_to_tartget{
+	class e_to_tartget{
 	public:
 		double error_pos; // linear error
 		double error_ang; // angular error
@@ -114,7 +118,7 @@ public:
 			counter_print = 0;
 			ROS_INFO("DISTANCE TO TARGET: Linear [mm], %f, Angular [deg], %f", error_to_t.error_pos, error_to_t.error_ang);
 		}
-	}*/
+	}
 
 
 	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
@@ -189,6 +193,7 @@ public:
 		inputCmd_.param6  = msg -> param6;
 		inputCmd_.param7  = msg -> param7;
         inputCmd_.frame  = msg -> frame;
+        inputCmd_.seq  = msg -> seq;
 
         // new_cmd = true;
 
@@ -211,12 +216,15 @@ public:
 			target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
 			target_.Yawangle = inputCmd_.param4;
 			target_.frame = inputCmd_.frame;
+			outputDist_.seq = inputCmd_.seq;
 			ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %d - %d",target_.Latitude,target_.Longitude,target_.AltitudeRelative,target_.Yawangle,target_.frame);
 			// target_.Mode = 0;
 		} break;
 		case 21:  // MAV_CMD_NAV_LAND
 		{
 			ROS_INFO("REF: MAV_CMD_DO_NAV_LAND");
+			outputRef_.frame = inputCmd_.frame;
+			outputDist_.seq = inputCmd_.seq;
 		}break;
 		case 22:  // MAV_CMD_NAV_TAKEOFF
 		{
@@ -226,6 +234,7 @@ public:
 			outputRef_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
 			outputRef_.Yawangle = inputCmd_.param4;
 			outputRef_.frame = inputCmd_.frame;
+			outputDist_.seq = inputCmd_.seq;
 			Dh_TO = outputRef_.AltitudeRelative;
 		}break;
 		/*		case 115: // MAV_CMD_CONDITION_YAW
@@ -270,6 +279,7 @@ public:
 					//ROS_INFO("REF: NEW_FRAME");
 					if (new_state == true)
 					{
+						ROS_INFO("REF: ON_GROUND_NO_HOME");
 						new_state = false;
 
 						get_current_position();
@@ -325,6 +335,8 @@ public:
 			{
 				new_state = false;
 
+				ROS_INFO("REF: SETTING_HOME");
+
 				Home.lat = inputGlobPosInt_.lat;
 				Home.lon = inputGlobPosInt_.lon;
 				Home.alt = inputGlobPosInt_.alt;
@@ -351,6 +363,7 @@ public:
 					//ROS_INFO("REF: NEW_FRAME");
 					if (new_state == true)
 					{
+						ROS_INFO("REF: ON_GROUND_DISARMED");
 						new_state = false;
 
 						get_current_position();
@@ -402,6 +415,11 @@ public:
 			break;
 
 		case ARMING:
+			if (new_state == true)
+			{
+				ROS_INFO("REF: ARMING");
+				new_state = false;
+			}
 			/*if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
 						{
 							if (new_frame == true)
@@ -452,6 +470,12 @@ public:
 		    break;
 
 		case DISARMING:
+			if (new_state == true)
+			{
+				ROS_INFO("REF: DISARMING");
+				new_state = false;
+			}
+
 			/*if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
 						{
 							if (new_frame == true)
@@ -508,6 +532,7 @@ public:
 							{
 								if (new_state == true)
 								{
+									ROS_INFO("REF: ON_GROUND_ARMED");
 									new_state = false;
 
 									get_current_position();
@@ -561,6 +586,7 @@ public:
 							{
 								if (new_state == true)
 								{
+									ROS_INFO("REF: ON_GROUND_READY_TO_TAKEOFF");
 									new_state = false;
 
 									get_current_position();
@@ -612,6 +638,7 @@ public:
 			{
 				if (new_state == true)
 				{
+					ROS_INFO("REF: PERFORMING_TAKEOFF");
 					new_state = false;
 					get_current_position();
 					outputRef_.frame = actual_frame;
@@ -653,6 +680,11 @@ public:
 						ROS_INFO("REF: NO REFERENCE PUBLISHED");
 					}
 				}
+				distance();
+				outputDist_.error_pos = error_to_t.error_pos;
+				outputDist_.error_ang = error_to_t.error_ang;
+				outputDist_.command = 22; // TAKEOFF
+				pubToDistance_.publish(outputDist_);
 			}
 			break;
 
@@ -661,6 +693,7 @@ public:
 			{
 				if (new_state == true)
 				{
+					ROS_INFO("REF: IN_FLIGHT");
 					new_state = false;
 					get_current_position();
 					outputRef_.frame = actual_frame;
@@ -707,6 +740,7 @@ public:
 			{
 				if (new_state == true)
 				{
+					ROS_INFO("REF: READY_TO_GO");
 					new_state = false;
 					get_current_position();
 					outputRef_.frame = actual_frame;
@@ -753,6 +787,7 @@ public:
 		{
 			if (new_state == true)
 			{
+				ROS_INFO("REF: PERFORMING_GO_TO");
 				new_state = false;
 
 				/*outputRef_.Latitude = 123; // ONLY FOR TEST
@@ -814,6 +849,11 @@ public:
 				outputRef_.AltitudeRelative -= 80;
 				pubToReference_.publish(outputRef_);
 			}
+			distance();
+			outputDist_.error_pos = error_to_t.error_pos;
+			outputDist_.error_ang = error_to_t.error_ang;
+			outputDist_.command = 16; // WAYPOINT
+			pubToDistance_.publish(outputDist_);
 		}
 		break;
 
@@ -822,6 +862,7 @@ case READY_TO_LAND:
 	{
 		if (new_state == true)
 		{
+			ROS_INFO("REF: READY_TO_LAND");
 			new_state = false;
 			get_current_position();
 			outputRef_.frame = actual_frame;
@@ -868,6 +909,7 @@ case PERFORMING_LANDING:
 	{
 		if (new_state == true)
 		{
+			    ROS_INFO("REF: PERFORMING_LANDING");
 				new_state = false;
 				get_current_position();
 				outputRef_.frame = actual_frame;
@@ -902,6 +944,11 @@ case PERFORMING_LANDING:
 		outputRef_.AltitudeRelative -= 80; // 5 cm @ frequencey
 		tempRelAlt -= 80;
 		pubToReference_.publish(outputRef_);
+		distance();
+		outputDist_.error_pos = error_to_t.error_pos;
+		outputDist_.error_ang = error_to_t.error_ang;
+		outputDist_.command = 21; // LAND
+		pubToDistance_.publish(outputDist_);
 	}
 	break;
 }
@@ -946,10 +993,13 @@ frame::Ref_system oldFrame_;
 //ros::Publisher pubToAckCmd_;
 //ros::Publisher pubToArm_;
 ros::Publisher pubToReference_;
-// ros::Publisher pubToSysStatus_;
-
 guidance_node_amsl::Reference outputRef_;
 guidance_node_amsl::Reference target_;
+
+// ros::Publisher pubToSysStatus_;
+ros::Publisher pubToDistance_;
+reference::Distance outputDist_;
+
 // guidance_node_amsl::Reference last_valid_ref;
 guidance_node_amsl::Reference tempRef_;
 guidance_node_amsl::Reference waypointRef_;

@@ -1,6 +1,4 @@
-# false = mission item not reached, true = mission item reached
-bool mission_item_reached
 # MISSION_ITEM ID, see MavLink MAV_CMD ID table
-int16 mav_cmd_id
-# false = mission item not accepted, true = mission item accepted
-bool mav_mission_accepted
+uint16 command
+# false = cmd not accepted, true = cmd accepted
+bool mav_command_accepted

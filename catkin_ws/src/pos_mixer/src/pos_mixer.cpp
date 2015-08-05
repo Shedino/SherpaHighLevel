@@ -9,6 +9,9 @@ class PosmixerNodeClass
 {
 
 public:
+	bool new_frame = false;
+	int old_frame = 0;
+
 	PosmixerNodeClass(ros::NodeHandle& node)
 {
 
@@ -35,11 +38,13 @@ public:
 		inputPos_.alt = msg->alt;
 		inputPos_.hdg = msg->hdg;     
 		inputPos_.time_boot_ms = msg->time_boot_ms;
+		Posmixer_Handle();
 	}
 	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
 	{
 		// ROS_INFO("POSMIXER: SONAR_RECEIVED");
 		inputSonar_.distance = msg -> distance;
+		Posmixer_Handle();
 	}
 
 	void readFrameMessage(const frame::Ref_system::ConstPtr& msg)
@@ -48,6 +53,7 @@ public:
 		inputRefSystem_.target_ref_frame=msg->target_ref_frame;
 		// ROS_INFO("POS_MIXER: Ref_system received");
 		// new_frame = true;
+		Posmixer_Handle();
 	}
 
 	void Posmixer_Handle()
@@ -96,17 +102,17 @@ public:
 
 	void run()
 	{
-		ros::Rate loop_rate(rate);
+		//ros::Rate loop_rate(rate);
 
 		while (ros::ok())
 		{
 			ROS_INFO_ONCE("POS_MIXER: RUNNING");
-			ROS_INFO_ONCE("POS_MIXER: RELATIVE_ALT SET");
+			// ROS_INFO_ONCE("POS_MIXER: RELATIVE_ALT SET");
 
-			Posmixer_Handle();
+			// Posmixer_Handle();
 			ros::spinOnce();
 
-			loop_rate.sleep();
+			//loop_rate.sleep();
 		}
 	}
 
@@ -127,9 +133,7 @@ protected:
 	ros::Publisher pubToPosNav_;
 	guidance_node_amsl::Position_nav outputPosNav_;
 
-	int rate = 10;
-	bool new_frame = false;
-	int old_frame = 0;
+//	int rate = 10;
 
 	// private:
 };

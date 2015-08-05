@@ -2,6 +2,7 @@
 
 #include <mms/Cmd.h>
 #include <mms/Ack_cmd.h>
+#include <mms/Ack_mission.h>
 //#include <mavros/mavros.h>
 #include "mloader/Mission.h"
 
@@ -25,6 +26,7 @@ public:
 		//subscribers
 		subFromMission_=n_.subscribe("/mission", 10, &MloaderNodeClass::readMission,this);
 		subFromAckCmd_=n_.subscribe("/ack_cmd", 10, &MloaderNodeClass::readAckCmd,this);
+		subFromAckMission_=n_.subscribe("/ack_mission", 10, &MloaderNodeClass::readAckCmd,this);
 		//subFromCmd_ = n_.subscribe("/command", 10, &MmsNodeClass::readCmdMessage,this);
 
 		// publishers
@@ -64,23 +66,17 @@ public:
 	{
 		ROS_INFO("ACK_CMD_RECEIVED");
 
-		inputAckCmd_.mission_item_reached = msg -> mission_item_reached;
-		inputAckCmd_.mav_cmd_id  = msg -> mav_cmd_id;
-		inputAckCmd_.mav_mission_accepted  = msg -> mav_mission_accepted;
+		inputAckCmd_.command = msg -> command;
+		inputAckCmd_.mav_command_accepted  = msg -> mav_command_accepted;
+	}
 
-		if (inputAckCmd_.mission_item_reached)
-		{
-			ROS_INFO("MISSION_ITEM_REACHED");
-			MISSION_ITEM_REACHED = true;
-			//MMS_Handle();
-		}
-		if (inputAckCmd_.mav_mission_accepted)
-		{
-			ROS_INFO("MISSION_ACCEPTED");
-			MISSION_ACCEPTED = true;
-			//MMS_Handle();
-		}
-		
+	void readAckMission(const mms::Ack_mission::ConstPtr& msg)
+	{
+		ROS_INFO("ACK_MISSION_RECEIVED");
+
+		inputAckMission_.mission_item_reached = msg -> mission_item_reached;
+		inputAckMission_.seq  = msg -> seq;
+		inputAckMission_.mav_mission_accepted  = msg -> mav_mission_accepted;
 	}
 
 	void set_events_false()
@@ -203,13 +199,16 @@ protected:
 	ros::NodeHandle n_;
 
 	ros::Subscriber subFromAckCmd_;
-	ros::Subscriber subFromMission_;
 	mms::Ack_cmd inputAckCmd_;
+
+	ros::Subscriber subFromAckMission_;
+	mms::Ack_mission inputAckMission_;
+
+	ros::Subscriber subFromMission_;
 	mloader::Mission inputMission_;
 
 	ros::Publisher pubToCmd_;
 	mms::Cmd outputCmd_;
-
 	
 	// INPUTS GCS -> MLOADER
 	// bool MISSION_COUNT = false;

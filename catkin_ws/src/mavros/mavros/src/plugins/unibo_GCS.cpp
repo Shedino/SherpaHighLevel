@@ -4,6 +4,7 @@
 
 #include <mms/Cmd.h>
 #include <mms/Ack_cmd.h>
+#include <mms/Ack_mission.h>
 #include <mms/Sys_status.h>
 #include <mavros/Global_position_int.h>
 #include <mavros/ArtvaRead.h>
@@ -27,8 +28,9 @@ public:
 		uas = &uas_;
 		
 		
-		ack_sub = nodeHandle.subscribe("/ack_cmd", 10, &UniboGCSPlugin::ack_callback, this);
-		command_pub = nodeHandle.advertise<mms::Cmd>("/command", 10);
+		ack_sub = nodeHandle.subscribe("/ack_cmd", 10, &UniboGCSPlugin::ack_cmd_callback, this);
+		ack_mission_sub = nodeHandle.subscribe("/ack_mission", 10, &UniboGCSPlugin::ack_mission_callback, this);
+		command_pub = nodeHandle.advertise<mms::Cmd>("/sent_command", 10);     //before command check
 		camera_pub = nodeHandle.advertise<camera_handler_SHERPA::Camera>("/camera_trigger", 10);
 		position_sub= nodeHandle.subscribe("/position_nav", 10, &UniboGCSPlugin::position_callback, this);
 		status_sub = nodeHandle.subscribe("/system_status", 10, &UniboGCSPlugin::status_callback, this);
@@ -53,6 +55,7 @@ private:
 	UAS *uas;
 
 	ros::Subscriber ack_sub;
+	ros::Subscriber ack_mission_sub;
 	ros::Publisher command_pub;
 	ros::Publisher	camera_pub;
 	ros::Subscriber	position_sub;
@@ -69,12 +72,12 @@ private:
 	void artva_callback(const mavros::ArtvaRead::ConstPtr& msg){
 		//ROS_INFO("new ArtvaRead.msg received!");
 		if(true){
-			ROS_INFO("ROGER; transmitting now");
+			//ROS_INFO("ROGER; transmitting now");
 			mavlink_message_t msg_mav;
 			mavlink_vfr_hud_t ARTVA1send;
-			ROS_INFO("ARTVA 1 Current Reading: LAT %.0f, LON %.0f, YAW %d, ALT %d, DST %.0f, DIR %.0f",
+			/*ROS_INFO("ARTVA 1 Current Reading: LAT %.0f, LON %.0f, YAW %d, ALT %d, DST %.0f, DIR %.0f",
 				(float)ArtvaLat,(float)ArtvaLon,(int)ArtvaYaw,(unsigned int)ArtvaAlt,
-				(float)msg->rec1_distance,(float)msg->rec1_direction);
+				(float)msg->rec1_distance,(float)msg->rec1_direction);*/
 			mavlink_msg_vfr_hud_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,
 				(float)ArtvaLat,(float)ArtvaLon,(int)ArtvaYaw,(unsigned int)ArtvaAlt,
 				(float)msg->rec1_distance,(float)msg->rec1_direction);
@@ -89,7 +92,7 @@ private:
 			ArtvaBuffer[ArtvaInd][4]=msg->rec3_distance;
 			ArtvaBuffer[ArtvaInd][5]=msg->rec3_direction;
 			ArtvaBuffer[ArtvaInd][6]=msg->rec4_distance;
-			ROS_INFO("log %d: ARTVA 4 Distance: %d m",ArtvaInd,ArtvaBuffer[ArtvaInd][6]);
+			//ROS_INFO("log %d: ARTVA 4 Distance: %d m",ArtvaInd,ArtvaBuffer[ArtvaInd][6]);
 			ArtvaBuffer[ArtvaInd++][7]=msg->rec4_direction;
 		}
 //		UAS_FCU(uas)->send_message(&msg_mav);	
@@ -102,7 +105,7 @@ private:
 		auto mission_item_msg = boost::make_shared<mms::Cmd>();
 		auto camera_msg = boost::make_shared<camera_handler_SHERPA::Camera>();
 
-		switch (mission_item.command){
+		/*switch (mission_item.command){
 			case MAV_CMD_IMAGE_START_CAPTURE:   //MAV_CMD_IMAGE_START_CAPTURE:
 			camera_msg->take_pic = true;
 			camera_msg->take_vid = false;
@@ -124,7 +127,7 @@ private:
 			camera_pub.publish(camera_msg);
 			break;
 
-		}
+		}*/
 		mission_item_msg->target_system = mission_item.target_system;
 		mission_item_msg->target_component = mission_item.target_component;
 		mission_item_msg->seq = mission_item.seq;
@@ -155,14 +158,28 @@ private:
 		//auto pos_target_msg = boost::make_shared<mms::Cmd>();     //TODO put the topic created in MMS for the commands the name can be different
 	}
 
-	void ack_callback(const mms::Ack_cmd::ConstPtr msg_ack){
+	void ack_cmd_callback(const mms::Ack_cmd::ConstPtr msg_ack_cmd){
+		mavlink_message_t msg;
+		
+		enum MAV_RESULT mav_result;
+		if (msg_ack_cmd->mav_command_accepted){
+			mav_result = MAV_RESULT_ACCEPTED;
+		} else {
+			mav_result = MAV_RESULT_TEMPORARILY_REJECTED;
+		}
+		mavlink_msg_command_ack_pack_chan(UAS_PACK_CHAN(uas),&msg,msg_ack_cmd->command,mav_result);
+		UAS_FCU(uas)->send_message(&msg);
+		ROS_INFO("Sent command ACK");
+	}
+	
+	void ack_mission_callback(const mms::Ack_mission::ConstPtr msg_ack_mission){
 		mavlink_message_t msg;		
-		if (msg_ack->mission_item_reached){           //TODO maybe separate topics....bad implementation
-			mavlink_msg_mission_item_reached_pack_chan(UAS_PACK_CHAN(uas),&msg,msg_ack->mav_cmd_id);      //1 is the sequence that we are not considering right now
+		if (msg_ack_mission->mission_item_reached){           //TODO maybe separate topics....bad implementation
+			mavlink_msg_mission_item_reached_pack_chan(UAS_PACK_CHAN(uas),&msg,msg_ack_mission->seq);
 			UAS_FCU(uas)->send_message(&msg);
 			ROS_INFO("Sent message ITEM_REACHED");
-		} else {
-			if (msg_ack->mav_mission_accepted){
+		} else {     //mission accepted ack
+			if (msg_ack_mission->mav_mission_accepted){
 				enum MAV_MISSION_RESULT type = MAV_MISSION_ACCEPTED;
 				mavlink_msg_mission_ack_pack_chan(UAS_PACK_CHAN(uas),&msg,UAS_PACK_TGT(uas),type);
 				UAS_FCU(uas)->send_message(&msg);

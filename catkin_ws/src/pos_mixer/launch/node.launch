@@ -1,0 +1,5 @@
+<launch>
+
+	<node pkg="pos_mixer" type="pos_mixer" name="pos_mixer" output="screen">
+	</node>
+</launch>

@@ -168,8 +168,13 @@ private:
 		attitude_msg.pitchspeed = attitude.pitchspeed;
 		attitude_msg.yawspeed = attitude.yawspeed;
 		attitude_msg.time_boot_ms = attitude.time_boot_ms;
-
-		global_pos_.hdg = (int)((attitude.yaw+3.14)*180/3.14*100);   //attitude comes in +-pi but hdg is 0..359.99 deg. Adding pi to attitude.
+		
+		if (attitude.yaw >= 0){
+			global_pos_.hdg = (int)((attitude.yaw)*180/3.14*100);   //attitude comes in +-pi but hdg is 0..359.99 deg.
+		} else {
+			global_pos_.hdg = (int)((attitude.yaw+6.28)*180/3.14*100);   //attitude comes in +-pi but hdg is 0..359.99 deg. Adding 2*pi to attitude if negative.
+		}
+		
 
 		//position_pub.publish(position_msg);       //already published when received position_int
 		attitude_pub.publish(attitude_msg);
@@ -297,17 +302,15 @@ private:
 		}
 
 		//DEBUG
-		/*ROS_INFO("RC_OVERRIDE: [CH1:%u, CH2:%u, CH3:%u, CH4:%u, CH5:%u, CH6:%u, CH7:%u, CH8:%u]",
+		ROS_INFO("RC_OVERRIDE: [CH1:%u, CH2:%u, CH3:%u, CH4:%u, CH5:%u, CH6:%u, CH7:%u, CH8:%u]",
 				velocity_.channels[0], velocity_.channels[1],
 				velocity_.channels[2], velocity_.channels[3],
 				velocity_.channels[4], velocity_.channels[5],
-				velocity_.channels[6], velocity_.channels[7]);*/
+				velocity_.channels[6], velocity_.channels[7]);
 
-		//velocity_publisher_.publish(velocity_);
 		mavlink_message_t msg_mav;
 		mavlink_msg_rc_channels_raw_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,0,1,velocity_.channels[0],velocity_.channels[1],velocity_.channels[2],velocity_.channels[3],0,0,0,0,100);      //1 is the sequence that we are not considering right now
 		UAS_FCU(uas)->send_message(&msg_mav);
-
 	}
 
 	/*

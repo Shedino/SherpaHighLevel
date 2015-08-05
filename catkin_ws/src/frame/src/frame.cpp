@@ -8,6 +8,13 @@ class FrameNodeClass
 {
 
 public:
+
+//	int rate = 10;
+	int actual_frame = 6;
+	int old_frame = 0;
+	int old_target_frame = 0;
+	bool new_frame = false;
+
 	FrameNodeClass(ros::NodeHandle& node)
 {
 
@@ -21,16 +28,19 @@ public:
 		pubToRefSystem_=n_.advertise<frame::Ref_system>("/ref_system", 10);
 }
 
+
 	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
 	{
 		inputSonar_.distance = msg -> distance;
 		// ROS_INFO("FRAME: SONAR DISTANCE = %d", inputSonar_.distance);
+		Frame_Handle();
 	}
 
 	void readMMSStatusMessage(const mms::MMS_status::ConstPtr& msg)
 	{
 		inputMMSStatus_.target_ref_frame=msg->target_ref_frame;
 		// ROS_INFO("FRAME: MMS_STATE RECEIVED");
+		Frame_Handle();
 	}
 
 
@@ -102,17 +112,18 @@ public:
 
 	void run()
 	{
-		ros::Rate loop_rate(rate);
+		// ros::Rate loop_rate(rate);
 
+		// ros::spin();
 		while (ros::ok())
 		{
 			ROS_INFO_ONCE("FRAME: RUNNING");
-			ROS_INFO_ONCE("FRAME: RELATIVE_ALT SET");
+			// ROS_INFO_ONCE("FRAME: RELATIVE_ALT SET");
 
-			Frame_Handle();
+			// Frame_Handle();
 			ros::spinOnce();
 
-			loop_rate.sleep();
+			// loop_rate.sleep();
 		}
 	}
 
@@ -132,11 +143,11 @@ protected:
 
 	frame::Ref_system outputRefSystem_;
 
-	int rate = 10;
-	int actual_frame = 6;
+//	int rate = 10;
+/*	int actual_frame = 6;
 	int old_frame = 0;
 	int old_target_frame = 0;
-	bool new_frame = false;
+	bool new_frame = false;*/
 
 	// private:
 };

@@ -8,6 +8,8 @@
 #include <mavros/Safety.h>
 #include <mavros/Attitude.h>
 
+#include <mms/MMS_status.h>
+
 #include "Model_GS.h" //qui devo stare attento a come si chiama il file.h
 
 class GuidanceNodeClass {
@@ -41,6 +43,7 @@ public:
 		pub_=n_.advertise<guidance_node_amsl::Directive>("/directive", 10);
 		safety_sub = n_.subscribe("/safety_odroid",10, &GuidanceNodeClass::handle_safety, this);
 		attitude_sub = n_.subscribe("/attitude",10, &GuidanceNodeClass::handle_attitude, this);
+		mms_status_sub = n_.subscribe("/mms_status",10, &GuidanceNodeClass::handle_mms_status, this);
 
 		//Initializing inputRef_
 		node.param<int>("guidance_node_amsl/ref/latitude_ref", inputRef_.Latitude, 0);
@@ -87,6 +90,12 @@ public:
 	{
 		safety_ = msg->safety;
 	}
+	
+	void handle_mms_status(const mms::MMS_status::ConstPtr& msg)
+	{
+		if (msg->mms_state == 60) trigger_ = true;          //trigger integral on READY_TO_TAKEOFF state
+		else if (msg->mms_state == 30) trigger_ = false;		//disable integral on ON_GROUND_DISARMED state --> this happens after LAND
+	}
 
 	void handle_attitude(const mavros::Attitude::ConstPtr& msg)
 	{
@@ -128,6 +137,7 @@ protected:
 	ros::Subscriber subFromPosition_;
 	ros::Subscriber safety_sub;
 	ros::Subscriber attitude_sub;
+	ros::Subscriber mms_status_sub;
 
 	guidance_node_amsl::Reference inputRef_;
 	//guidance_node_amsl::Position inputPos_;
@@ -136,6 +146,7 @@ protected:
 	ros::Publisher pub_;
 
 	bool safety_;
+	bool trigger_;    //trigger for integral
 	float yaw_;
 
 	int rate;
@@ -181,8 +192,8 @@ private:
 		//Time
 		guidanceClass.Model_GS_U.Time=inputPos.Timestamp;
 
-		//Safety trigger
-		guidanceClass.Model_GS_U.Trigger = (safety == 0) ? true : false;       //if safety is 0, means ODROID on, so trigger
+		//Integral trigger when we are ready to takeoff
+		guidanceClass.Model_GS_U.Trigger = trigger_;       //if safety is 0, means ODROID on, so trigger
 
 		//DEBUG Test for AMSL offset or not
 		guidanceClass.Model_GS_U.Test = (float) debugParam;
@@ -191,7 +202,7 @@ private:
 		ROS_INFO("Loaded Matlab Pos: [Lat:%i, Long:%i, Alt:%i, Yaw:%f, SafeOn:%s,(Time:%u)]",         //TODO uncomment
 				guidanceClass.Model_GS_U.Actual_Pos[0], guidanceClass.Model_GS_U.Actual_Pos[1],
 				guidanceClass.Model_GS_U.Actual_Pos[2], guidanceClass.Model_GS_U.Actual_Yaw,
-				!guidanceClass.Model_GS_U.Trigger ? "true" : "false", inputPos.Timestamp);
+				safety_ ? "true" : "false", inputPos.Timestamp);
 		ROS_INFO("Loaded Matlab Ref: [Lat:%i, Long:%i, Alt:%i, Yaw:%f]",
 				guidanceClass.Model_GS_U.Reference_Pos[0], guidanceClass.Model_GS_U.Reference_Pos[1],
 				guidanceClass.Model_GS_U.Reference_Pos[2], guidanceClass.Model_GS_U.Reference_Yaw);

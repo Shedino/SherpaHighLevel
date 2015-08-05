@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(mms)
+project(cmd_verifier)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -8,7 +8,6 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   message_generation
-  guidance_node_amsl
 )
 
 ## System dependencies are found with CMake's conventions
@@ -45,16 +44,9 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  Cmd.msg
-  Ack_cmd.msg
-  Arm.msg
-  Ack_arm.msg
-  Sys_status.msg
-  MMS_status.msg
-  Ack_mission.msg
-)
+# add_message_files(
+#  FILES
+#)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -87,7 +79,7 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES mms
+#  LIBRARIES cmd_verifier
  CATKIN_DEPENDS roscpp std_msgs message_runtime
 #  DEPENDS system_lib
 )
@@ -107,12 +99,12 @@ include_directories(include
 #)
 
 ## Declare a cpp library
-# add_library(mms
-#   src/${PROJECT_NAME}/mms.cpp
+# add_library(cmd_verifier
+#   src/${PROJECT_NAME}/cmd_verifier.cpp
 # )
 
 ## Declare a cpp executable
- add_executable(mms src/mms.cpp)
+ add_executable(cmd_verifier src/cmd_verifier.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -136,7 +128,7 @@ target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${boost_LIBRARIES})
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS mms mms_node
+# install(TARGETS cmd_verifier cmd_verifier_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -161,7 +153,7 @@ target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${boost_LIBRARIES})
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_mms.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_cmd_verifier.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
