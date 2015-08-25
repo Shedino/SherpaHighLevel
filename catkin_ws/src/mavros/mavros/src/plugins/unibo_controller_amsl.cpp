@@ -110,7 +110,7 @@ private:
 
 	void handle_vfr_hud(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
 
-//		ROS_INFO("ARTVA message received! :-)");
+		//ROS_INFO("ARTVA message received! :-)");
 		mavlink_vfr_hud_t ARTVAread;
 		mavlink_msg_vfr_hud_decode(msg, &ARTVAread);
 
@@ -209,13 +209,13 @@ private:
 		auto arm_ack_msg = boost::make_shared<mms::Ack_arm>();
 
 		if (cmd_ack.command == 400){      //ARM_DISARM command
-			ROS_INFO("Received arm_disarm");
+			//ROS_INFO("Received arm_disarm");
 			if (cmd_ack.result == MAV_RESULT_ACCEPTED){
 				arm_ack_msg->mav_result = true;
-				ROS_INFO("Arm-disarm: succsessful");
+				//ROS_INFO("Arm-disarm: succsessful");
 			} else {
 				arm_ack_msg->mav_result = false;
-				ROS_INFO("Arm-disarm: fail");
+				//ROS_INFO("Arm-disarm: fail");
 			}
 			arm_ack_pub.publish(arm_ack_msg);
 		}
@@ -302,11 +302,11 @@ private:
 		}
 
 		//DEBUG
-		ROS_INFO("RC_OVERRIDE: [CH1:%u, CH2:%u, CH3:%u, CH4:%u, CH5:%u, CH6:%u, CH7:%u, CH8:%u]",
+		/*ROS_INFO("RC_OVERRIDE: [CH1:%u, CH2:%u, CH3:%u, CH4:%u, CH5:%u, CH6:%u, CH7:%u, CH8:%u]",
 				velocity_.channels[0], velocity_.channels[1],
 				velocity_.channels[2], velocity_.channels[3],
 				velocity_.channels[4], velocity_.channels[5],
-				velocity_.channels[6], velocity_.channels[7]);
+				velocity_.channels[6], velocity_.channels[7]);*/
 
 		mavlink_message_t msg_mav;
 		mavlink_msg_rc_channels_raw_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,0,1,velocity_.channels[0],velocity_.channels[1],velocity_.channels[2],velocity_.channels[3],0,0,0,0,100);      //1 is the sequence that we are not considering right now
@@ -338,7 +338,7 @@ private:
 								param5, param6,
 								param7);
 			UAS_FCU(uas)->send_message(&msg_mav);
-			ROS_INFO("Arming UAV");
+			//ROS_INFO("Arming UAV");
 		} else {
 			enum MAV_CMD command = MAV_CMD_COMPONENT_ARM_DISARM;
 			float param1 = 0;      //1-->arm 0-->disarm
@@ -359,7 +359,7 @@ private:
 								param5, param6,
 								param7);
 			UAS_FCU(uas)->send_message(&msg_mav);                        //TODO decide if send or not disarm by software
-			ROS_INFO("Disarming UAV");
+			//ROS_INFO("Disarming UAV");
 		}
 	}
 };

@@ -40,6 +40,7 @@ public:
         subFromSonar_ = n_.subscribe("/sonar", 10, &ReferenceNodeClass::readSonarMessage,this);
 		subFromMmsStatus_=n_.subscribe("/mms_status", 10, &ReferenceNodeClass::readMmsStatusMessage,this);
 		subFromFrame_=n_.subscribe("/ref_system", 10, &ReferenceNodeClass::readFrameMessage,this);
+		subFromHome_=n_.subscribe("/home", 10, &ReferenceNodeClass::readHomeMessage,this);
 		
 		// publishers
 		pubToReference_=n_.advertise<guidance_node_amsl::Reference>("/reference",10);
@@ -61,12 +62,20 @@ public:
 		actual_frame = 6;
 		inputMmsStatus_.target_ref_frame = 6;
 		inputFrame_.target_ref_frame = 6;
+
+		inputHome_.lat = 0;
+		inputHome_.lon = 0;
+		inputHome_.relative_alt = 0;
+		inputHome_.alt = 0;
+		inputHome_.hdg = 0;
+		inputHome_.time_boot_ms = 0;
 	}
 
 	class e_to_tartget{
 	public:
 		double error_pos; // linear error
 		double error_ang; // angular error
+		double error_alt; // altitude error
 	};
 	e_to_tartget error_to_t;
 
@@ -86,17 +95,18 @@ public:
 		static double error_x;
 		static double error_y;
 		static double error_z;
+		static double error_alt;
 		static double error_yaw;
 		static double alt;
 
-		alt = outputRef_.AltitudeRelative/1000.0f;// + Home.AltitudeAMSL*1e-3;
+		alt = (double)outputRef_.AltitudeRelative/1000.0f;// + Home.AltitudeAMSL*1e-3;
 		End_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(outputRef_.Latitude/10000000.0f*PI/180.0f)*sin(outputRef_.Latitude/10000000.0f*PI/180.0f));
 		End_Point.X=(End_Point.Ne+alt)*cos(outputRef_.Latitude/10000000.0f*PI/180.0f)*cos(outputRef_.Longitude/10000000.0f*PI/180.0f);
 		End_Point.Y=(End_Point.Ne+alt)*cos(outputRef_.Latitude/10000000.0f*PI/180.0f)*sin(outputRef_.Longitude/10000000.0f*PI/180.0f);
 		End_Point.Z=(End_Point.Ne*(1.0f-0.08181919*0.08181919)+alt)*sin(outputRef_.Latitude*1e-7f*PI/180.0f);
         //ROS_INFO("ne, %f, endp_x, %f, endp_y, %f ,endp_z, %f", End_Point.Ne,End_Point.X, End_Point.Y,End_Point.Z);
 
-        alt = ((double)inputPos_.Altitude)/1000.0f;//AltitudeAMSL*1e-3;// AltitudeRelative + Home.AltitudeAMSL;
+        alt = (double)inputPos_.Altitude/1000.0f;//AltitudeAMSL*1e-3;// AltitudeRelative + Home.AltitudeAMSL;
 		Starting_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f));
 		Starting_Point.X=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*cos(inputPos_.Longitude/10000000.0f*PI/180);
 		Starting_Point.Y=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Longitude/10000000.0f*PI/180);
@@ -109,8 +119,9 @@ public:
 		//ROS_INFO("error_x, %f, error_y, %f ,error_z, %f", error_x,error_y, error_z);
 
 		error_yaw = outputRef_.Yawangle - inputPos_.YawAngle;//*3.14/100/360;
-		error_to_t.error_pos = 1000.0f*sqrt(error_x*error_x + error_y*error_y + error_z*error_z);
+		error_to_t.error_pos = 1000.0f*sqrt(error_x*error_x + error_y*error_y);
 		error_to_t.error_ang = 180.0f/PI*sqrt(error_yaw*error_yaw);
+		error_to_t.error_alt = 1000.0f*sqrt(error_z*error_z);
         //ROS_INFO("DISTANCE TO TARGET")
 
 		counter_print++;
@@ -120,6 +131,16 @@ public:
 		}
 	}
 
+	void readHomeMessage(const mavros::Global_position_int::ConstPtr& msg)
+	{
+		// ROS_INFO("POSMIXER: POSITION_RECEIVED");
+		inputHome_.lat = msg->lat;
+		inputHome_.lon = msg->lon;
+		inputHome_.relative_alt = msg->relative_alt;
+		inputHome_.alt = msg->alt;
+		inputHome_.hdg = msg->hdg;
+		inputHome_.time_boot_ms = msg->time_boot_ms;
+	}
 
 	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
 	{
@@ -131,12 +152,10 @@ public:
 	{
 		outputRef_.Latitude = inputPos_.Latitude;
 		outputRef_.Longitude = inputPos_.Longitude;
-		outputRef_.AltitudeRelative = inputPos_.Altitude;//inputPos_.Altitude - Home.AltitudeAMSL;
+		outputRef_.AltitudeRelative = inputPos_.Altitude;
 		outputRef_.Yawangle = inputPos_.YawAngle;//*3.14/100/360;
 		outputRef_.Mode = 0;
-		// ROS_INFO("CURRENT POSITION")
 		ROS_INFO("REF: CURRENT POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f", inputPos_.Latitude, inputPos_.Longitude, inputPos_.Altitude, inputPos_.YawAngle);
-        // ROS_INFO("pos AMSL, %d, Home AMSL, %d, rel, %d", inputPos_.Altitude, Home.alt, outputRef_.AltitudeRelative);
 	}
 
 	void readMmsStatusMessage(const mms::MMS_status::ConstPtr& msg)
@@ -167,7 +186,6 @@ public:
 		inputPos_.YawAngle = msg->YawAngle;
 		inputPos_.Timestamp = msg->Timestamp;
 		inputPos_.frame = msg->frame;
-
 		//new_pos = true;
 	}
 	
@@ -285,7 +303,7 @@ public:
 						get_current_position();
 						outputRef_.frame = actual_frame;
 						tempRef_ = outputRef_;
-						tempRelAlt = inputGlobPosInt_.relative_alt;
+						tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
 						//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
 						//pubToReference_.publish(outputRef_);
 						ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
@@ -335,14 +353,14 @@ public:
 			{
 				new_state = false;
 
-				ROS_INFO("REF: SETTING_HOME");
+				/*ROS_INFO("REF: SETTING_HOME");
 
 				Home.lat = inputGlobPosInt_.lat;
 				Home.lon = inputGlobPosInt_.lon;
 				Home.alt = inputGlobPosInt_.alt;
 				Home.relative_alt = inputGlobPosInt_.relative_alt;
 				Home.hdg = inputGlobPosInt_.hdg;
-				ROS_INFO("HOME POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %d",Home.lat, Home.lon, Home.relative_alt, Home.hdg);
+				ROS_INFO("HOME POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %d",Home.lat, Home.lon, Home.relative_alt, Home.hdg);*/
 			}
 			if (new_frame == true)
 			{
@@ -369,7 +387,7 @@ public:
 						get_current_position();
 						outputRef_.frame = actual_frame;
 						tempRef_ = outputRef_;
-						tempRelAlt = inputGlobPosInt_.relative_alt;
+						tempRelAlt = inputGlobPosInt_.relative_alt - inputHome_.relative_alt;
 						//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
 						//pubToReference_.publish(outputRef_);
 						ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
@@ -431,7 +449,7 @@ public:
 									get_current_position();
 									outputRef_.frame = actual_frame;
 									tempRef_ = outputRef_;
-									tempRelAlt = inputGlobPosInt_.relative_alt;
+									tempRelAlt = inputGlobPosInt_.relative_alt;// - Home.relative_alt;
 									//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
 									//pubToReference_.publish(outputRef_);
 									ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
@@ -487,7 +505,7 @@ public:
 									get_current_position();
 									outputRef_.frame = actual_frame;
 									tempRef_ = outputRef_;
-									tempRelAlt = inputGlobPosInt_.relative_alt;
+									tempRelAlt = inputGlobPosInt_.relative_alt;// - Home.relative_alt;
 									//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
 									//pubToReference_.publish(outputRef_);
 									ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
@@ -538,7 +556,7 @@ public:
 									get_current_position();
 									outputRef_.frame = actual_frame;
 									tempRef_ = outputRef_;
-									tempRelAlt = inputGlobPosInt_.relative_alt;
+									tempRelAlt = inputGlobPosInt_.relative_alt - inputHome_.relative_alt;
 									//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
 									//pubToReference_.publish(outputRef_);
 									ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
@@ -592,7 +610,7 @@ public:
 									get_current_position();
 									outputRef_.frame = actual_frame;
 									tempRef_ = outputRef_;
-									tempRelAlt = inputGlobPosInt_.relative_alt;
+									tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
 									//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
 									//pubToReference_.publish(outputRef_);
 									ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
@@ -643,7 +661,7 @@ public:
 					get_current_position();
 					outputRef_.frame = actual_frame;
 					tempRef_ = outputRef_;
-					tempRelAlt = inputGlobPosInt_.relative_alt;
+					tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
 					ROS_INFO("REF->NAV: REFERENCE = TAKEOFF");
 				}
 				if (new_frame == true)
@@ -683,6 +701,7 @@ public:
 				distance();
 				outputDist_.error_pos = error_to_t.error_pos;
 				outputDist_.error_ang = error_to_t.error_ang;
+				outputDist_.error_alt = error_to_t.error_alt;
 				outputDist_.command = 22; // TAKEOFF
 				pubToDistance_.publish(outputDist_);
 			}
@@ -698,7 +717,7 @@ public:
 					get_current_position();
 					outputRef_.frame = actual_frame;
 					tempRef_ = outputRef_;
-					tempRelAlt = inputGlobPosInt_.relative_alt;
+					tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
 					ROS_INFO("REF->NAV: REFERENCE = IN_FLIGHT");
 				}
 
@@ -745,7 +764,7 @@ public:
 					get_current_position();
 					outputRef_.frame = actual_frame;
 					tempRef_ = outputRef_;
-					tempRelAlt = inputGlobPosInt_.relative_alt;
+					tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
 					ROS_INFO("REF->NAV: REFERENCE = READY_TO_GO");
 				}
 
@@ -799,7 +818,7 @@ public:
 
 				// get_current_position();
 				tempRef_ = target_;
-				// tempRelAlt = inputGlobPosInt_.relative_alt;
+				// tempRelAlt = inputGlobPosInt_.relative_alt;// - Home.relative_alt;
 				ROS_INFO("REF->NAV: REFERENCE = TARGET WAYPOINT");
 			}
 			if (new_frame == true)
@@ -831,7 +850,7 @@ public:
 					outputRef_ = tempRef_;
 					outputRef_.frame = actual_frame;
 					//tempRef_.frame = actual_frame;
-					outputRef_.AltitudeRelative = inputGlobPosInt_.relative_alt;
+					outputRef_.AltitudeRelative = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
 					ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
 					pubToReference_.publish(outputRef_);
 					ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %d - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
@@ -852,6 +871,7 @@ public:
 			distance();
 			outputDist_.error_pos = error_to_t.error_pos;
 			outputDist_.error_ang = error_to_t.error_ang;
+			outputDist_.error_alt = error_to_t.error_alt;
 			outputDist_.command = 16; // WAYPOINT
 			pubToDistance_.publish(outputDist_);
 		}
@@ -867,7 +887,7 @@ case READY_TO_LAND:
 			get_current_position();
 			outputRef_.frame = actual_frame;
 			tempRef_ = outputRef_;
-			tempRelAlt = inputGlobPosInt_.relative_alt;
+			tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
 			ROS_INFO("REF->NAV: REFERENCE = READY_TO_LAND");
 		}
 
@@ -914,7 +934,7 @@ case PERFORMING_LANDING:
 				get_current_position();
 				outputRef_.frame = actual_frame;
 				tempRef_ = outputRef_;
-				tempRelAlt = inputGlobPosInt_.relative_alt;
+				tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
 				ROS_INFO("REF->NAV: REFERENCE = VERT. LAND SPEED");
 		}
 		if (new_frame == true)
@@ -947,6 +967,7 @@ case PERFORMING_LANDING:
 		distance();
 		outputDist_.error_pos = error_to_t.error_pos;
 		outputDist_.error_ang = error_to_t.error_ang;
+		outputDist_.error_alt = error_to_t.error_alt;
 		outputDist_.command = 21; // LAND
 		pubToDistance_.publish(outputDist_);
 	}
@@ -978,11 +999,17 @@ ros::Subscriber subFromCmd_;
 //ros::Subscriber subFromAckArm_;
 ros::Subscriber subFromMmsStatus_;
 ros::Subscriber subFromSonar_;
-ros::Subscriber subFromGlobPosInt_;
+
+ros::Subscriber subFromHome_;
+mavros::Global_position_int inputHome_;
+
 ros::Subscriber subFromFrame_;
 
 guidance_node_amsl::Position_nav inputPos_;
+
+ros::Subscriber subFromGlobPosInt_;
 mavros::Global_position_int inputGlobPosInt_;
+
 mavros::Sonar inputSonar_;
 mms::Cmd inputCmd_;
 //mms::Ack_arm inputAckArm_;
@@ -1009,7 +1036,7 @@ guidance_node_amsl::Reference waypointRef_;
 // mms::Ack_cmd outputAckCmd_;
 // mms::Sys_status outputSysStatus_;
 // guidance_node_amsl::Reference Target_Position_;
-mavros::Global_position_int Home;
+// mavros::Global_position_int Home;
 
 
 // STATE INITIALIZATION

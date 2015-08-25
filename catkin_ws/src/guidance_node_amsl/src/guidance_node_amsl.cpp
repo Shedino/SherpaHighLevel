@@ -12,6 +12,8 @@
 
 #include "Model_GS.h" //qui devo stare attento a come si chiama il file.h
 
+uint16_t counter_print;
+
 class GuidanceNodeClass {
 public:
 	GuidanceNodeClass(ros::NodeHandle& node){
@@ -122,6 +124,10 @@ public:
 		ros::Rate loop_rate(rate);
 		Model_GSModelClass guidanceClass;
 		guidanceClass.initialize();
+		counter_print++;
+		if (counter_print >= 11){
+			counter_print = 0;
+		}
 		while (ros::ok())
 		{
 			process(guidanceClass);
@@ -199,13 +205,15 @@ private:
 		guidanceClass.Model_GS_U.Test = (float) debugParam;
 
 		//DEBUG
-		ROS_INFO("Loaded Matlab Pos: [Lat:%i, Long:%i, Alt:%i, Yaw:%f, SafeOn:%s,(Time:%u)]",         //TODO uncomment
-				guidanceClass.Model_GS_U.Actual_Pos[0], guidanceClass.Model_GS_U.Actual_Pos[1],
-				guidanceClass.Model_GS_U.Actual_Pos[2], guidanceClass.Model_GS_U.Actual_Yaw,
-				safety_ ? "true" : "false", inputPos.Timestamp);
-		ROS_INFO("Loaded Matlab Ref: [Lat:%i, Long:%i, Alt:%i, Yaw:%f]",
-				guidanceClass.Model_GS_U.Reference_Pos[0], guidanceClass.Model_GS_U.Reference_Pos[1],
-				guidanceClass.Model_GS_U.Reference_Pos[2], guidanceClass.Model_GS_U.Reference_Yaw);
+		if (counter_print >= 10){
+			ROS_INFO("Loaded Matlab Pos: [Lat:%i, Long:%i, Alt:%i, Yaw:%f, SafeOn:%s,(Time:%u)]",         //TODO uncomment
+					guidanceClass.Model_GS_U.Actual_Pos[0], guidanceClass.Model_GS_U.Actual_Pos[1],
+					guidanceClass.Model_GS_U.Actual_Pos[2], guidanceClass.Model_GS_U.Actual_Yaw,
+					safety_ ? "true" : "false", inputPos.Timestamp);
+			ROS_INFO("Loaded Matlab Ref: [Lat:%i, Long:%i, Alt:%i, Yaw:%f]",
+					guidanceClass.Model_GS_U.Reference_Pos[0], guidanceClass.Model_GS_U.Reference_Pos[1],
+					guidanceClass.Model_GS_U.Reference_Pos[2], guidanceClass.Model_GS_U.Reference_Yaw);
+		}
 	}
 
 	void getOutput(const Model_GSModelClass &guidanceClass, guidance_node_amsl::Directive *output) {
@@ -214,10 +222,12 @@ private:
 		output->vyBody=guidanceClass.Model_GS_Y.FakeDirective[1];
 		output->vzBody=guidanceClass.Model_GS_Y.FakeDirective[2];
 		output->yawRate=guidanceClass.Model_GS_Y.FakeDirective[3];
-
-		ROS_INFO("Calc Matlab Direc: [vx:%f, vy:%f, vz:%f, yawRate:%f]",			//TODO uncomment
-						guidanceClass.Model_GS_Y.FakeDirective[0],guidanceClass.Model_GS_Y.FakeDirective[1],
-						guidanceClass.Model_GS_Y.FakeDirective[2],guidanceClass.Model_GS_Y.FakeDirective[3]);
+		
+		if (counter_print >= 10){
+			ROS_INFO("Calc Matlab Direc: [vx:%f, vy:%f, vz:%f, yawRate:%f]",			//TODO uncomment
+							guidanceClass.Model_GS_Y.FakeDirective[0],guidanceClass.Model_GS_Y.FakeDirective[1],
+							guidanceClass.Model_GS_Y.FakeDirective[2],guidanceClass.Model_GS_Y.FakeDirective[3]);
+		}
 	}
 };
 
@@ -226,6 +236,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "guidance_node_amsl");
 	ros::NodeHandle node;
 
+	counter_print = 0;
 	GuidanceNodeClass guidanceNode(node);
 	guidanceNode.run();
 	return 0;

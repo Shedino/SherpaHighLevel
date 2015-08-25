@@ -1,8 +1,8 @@
 #include "ros/ros.h"
 // #include <vector>
 
-#include "guidance_node_amsl/Reference.h" // input
-#include "guidance_node_amsl/Position_nav.h" // input
+//#include "guidance_node_amsl/Reference.h" // input
+//#include "guidance_node_amsl/Position_nav.h" // input
 #include "mms/Cmd.h" // input
 //#include "mms/Ack_cmd.h"// output
 #include "mms/Ack_mission.h"// output
@@ -13,7 +13,7 @@
 #include "mms/MMS_status.h"// output
 #include <reference/Distance.h>// input
 
-// STATES DEFINITION
+// STATES DEFINITION -> CREATE A DEDICATED LIBRARY = TODO
 #define ON_GROUND_NO_HOME 10
 #define SETTING_HOME 20
 #define ON_GROUND_DISARMED 30
@@ -32,6 +32,7 @@ double PI = 3.1416; // pi
 double eps_LAND = 10000.0; // distance to the target LAND position in millimeter
 double eps_WP = 1500.0; // distance to the target WAYPOINT position in millimeters
 double eps_TO = 1500.0; // distance to the target TAKEOFF position in millimeters
+double eps_alt = 500.0; // distance to the target altitude in millimeters
 double eps_YAW = 20.0; // distance to the target YAW position in deg
 
 class MmsNodeClass {
@@ -41,11 +42,11 @@ public:
 		n_=node;
 
 		//subscribers
-		subFromPosition_=n_.subscribe("/position_nav", 10, &MmsNodeClass::readPositionMessage,this);
+		// subFromPosition_=n_.subscribe("/position_nav", 10, &MmsNodeClass::readPositionMessage,this);
 		subFromCmd_=n_.subscribe("/command", 10, &MmsNodeClass::readCmdMessage,this);
         subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
 		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
-		subFromReference_=n_.subscribe("/reference", 10, &MmsNodeClass::readReferenceMessage,this);
+		// subFromReference_=n_.subscribe("/reference", 10, &MmsNodeClass::readReferenceMessage,this);
 		subFromDistance_=n_.subscribe("/distance", 10, &MmsNodeClass::readDistanceMessage,this);
 		
 		// publishers
@@ -76,6 +77,7 @@ public:
 	{
 		inputDist_.error_pos=msg->error_pos;
 		inputDist_.error_ang=msg->error_ang;
+		inputDist_.error_alt=msg->error_alt;
 		inputDist_.command=msg->command;
 		inputDist_.seq=msg->seq;
 	}
@@ -103,16 +105,16 @@ public:
 		inputSonar_.distance = msg -> distance;
 	}
 
-	void readPositionMessage(const guidance_node_amsl::Position_nav::ConstPtr& msg)
+	/*void readPositionMessage(const guidance_node_amsl::Position_nav::ConstPtr& msg)
 	{
 		inputPos_.Latitude = msg->Latitude;
 		inputPos_.Longitude = msg->Longitude;
 		inputPos_.Altitude = msg->Altitude;
 		inputPos_.YawAngle = msg->YawAngle;
 		inputPos_.Timestamp = msg->Timestamp;
-	}
+	}*/
 
-	void readReferenceMessage(const guidance_node_amsl::Reference::ConstPtr& msg)
+	/*void readReferenceMessage(const guidance_node_amsl::Reference::ConstPtr& msg)
 	{
 		inputRef_.Latitude = msg->Latitude;
 		inputRef_.Longitude = msg->Longitude;
@@ -120,7 +122,7 @@ public:
 		inputRef_.Yawangle = msg->Yawangle;
 		// inputRef_.Timestamp = msg->Timestamp;
 		inputRef_.frame = msg->frame;
-	}
+	}*/
 
 /*	void check_cmd()
 	{
@@ -176,16 +178,16 @@ public:
 		case 16:  // MAV_CMD_NAV_WAYPOINT
 		{
 			ROS_INFO("MMS: CMD_WAYPOINT. Params: %f - %f - %f - %f",inputCmd_.param5,inputCmd_.param6,inputCmd_.param7,inputCmd_.param4);
-			target_.Latitude = (int)(inputCmd_.param5*10000000.0f);
+			/*target_.Latitude = (int)(inputCmd_.param5*10000000.0f);
 			target_.Longitude = (int)(inputCmd_.param6*10000000.0f);
 			target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
 			target_.Yawangle = inputCmd_.param4;
-			target_.Mode = 0;
+			target_.Mode = 0;*/
 			ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
-			ROS_INFO("MMS: CMD_ALTITUDE = %d",target_.AltitudeRelative);
+			ROS_INFO("MMS: CMD_ALTITUDE = %f",inputCmd_.param7);
 			ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
 
-			if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11 && target_.AltitudeRelative > 0 && target_.AltitudeRelative < 3000 && inputSonar_.distance != -1))
+			if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11 && inputCmd_.param7 > 0.0f && inputCmd_.param7 < 3.0f && inputSonar_.distance != -1))
 				{
 					/*outputAckCmd_.mav_command_accepted = true;
 					outputAckCmd_.command = inputCmd_.command;
@@ -858,7 +860,7 @@ case PERFORMING_TAKEOFF:
 	if (inputDist_.command == 22 && seq_number == inputDist_.seq)
 	{
 		ROS_INFO_ONCE("MMS: REACHING THE TAKEOFF TARGET");
-		if (inputDist_.error_pos < eps_TO and inputDist_.error_ang < eps_YAW)
+		if (inputDist_.error_pos < eps_TO and inputDist_.error_ang < eps_YAW and inputDist_.error_alt < eps_alt)
 		{
 			set_events_false();
 
@@ -1123,7 +1125,7 @@ case PERFORMING_GO_TO:
 	if (inputDist_.command == 16  && seq_number == inputDist_.seq)
 	{
 		ROS_INFO_ONCE("MMS: REACHING THE WAYPOINT TARGET");
-		if (inputDist_.error_pos < eps_WP && inputDist_.error_ang < eps_YAW)
+		if (inputDist_.error_pos < eps_WP and inputDist_.error_ang < eps_YAW and inputDist_.error_alt < eps_alt)
 		{
 			set_events_false();
 
@@ -1230,7 +1232,7 @@ case PERFORMING_LANDING:
 	if (inputDist_.command == 21  && seq_number == inputDist_.seq)
 	{
 		ROS_INFO_ONCE("MMS: REACHING THE LANDING TARGET");
-		if (inputDist_.error_pos > eps_LAND)
+		if (inputDist_.error_alt > eps_LAND) //inputDist_.error_pos > eps_LAND and
 		{
 			set_events_false();
 			LAND = true;
@@ -1282,8 +1284,8 @@ protected:
 ros::NodeHandle n_;
 
 // Subscribers
-ros::Subscriber subFromPosition_;
-guidance_node_amsl::Position_nav inputPos_;
+/*ros::Subscriber subFromPosition_;
+guidance_node_amsl::Position_nav inputPos_;*/
 
 ros::Subscriber subFromCmd_;
 mms::Cmd inputCmd_;
@@ -1297,9 +1299,9 @@ mms::Sys_status inputSysStatus_;
 ros::Subscriber subFromSonar_;
 mavros::Sonar inputSonar_;
 
-ros::Subscriber subFromReference_;
+/*ros::Subscriber subFromReference_;
 guidance_node_amsl::Reference inputRef_;
-guidance_node_amsl::Reference target_;
+guidance_node_amsl::Reference target_;*/
 
 ros::Subscriber subFromDistance_;
 reference::Distance inputDist_;

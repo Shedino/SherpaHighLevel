@@ -10,7 +10,7 @@ param/sat_xy: 4.5
 param/sat_z: 1.5
 param/sat_yaw: 0.785
 param/gain_NE: 0.24
-param/gain_D: 0.21
+param/gain_D: 0.25
 param/gain_yaw: 0.11
 param/deadzone_NE: 0.3
 param/deadzone_D: 0.1
