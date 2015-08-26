@@ -45,6 +45,7 @@ public:
 		sys_status_pub = nodeHandle.advertise<mms::Sys_status>("/system_status", 10);
 		distance_sensor_pub = nodeHandle.advertise<mavros::Sonar>("/sonar", 10);
 		attitude_pub = nodeHandle.advertise<mavros::Attitude>("/attitude", 10);
+//		ROS_INFO("reading ARTVA message from Arduino!");
 		artva_pub = nodeHandle.advertise<mavros::ArtvaRead>("/artva_read", 10);
 		safety_pub = nodeHandle.advertise<mavros::Safety>("/safety_odroid", 10);
 
@@ -114,15 +115,15 @@ private:
 		mavlink_vfr_hud_t ARTVAread;
 		mavlink_msg_vfr_hud_decode(msg, &ARTVAread);
 
-		ARTVAread_msg.rec1_distance = (int)ARTVAread.airspeed/1000;
-		ARTVAread_msg.rec1_direction = (int)ARTVAread.airspeed%(int)1000;
-		ARTVAread_msg.rec2_distance = (int)ARTVAread.groundspeed/1000;;
-		ARTVAread_msg.rec2_direction = (int)ARTVAread.groundspeed%(int)1000;
-		ARTVAread_msg.rec3_distance = (int)ARTVAread.heading/1000;
-		ARTVAread_msg.rec3_direction = (int)ARTVAread.heading%(int)1000;
-		ARTVAread_msg.rec4_distance = (int)ARTVAread.throttle/1000;;
-		ARTVAread_msg.rec4_direction = (int)ARTVAread.throttle%(int)1000;
-//		ROS_INFO("ARTVA 4 direction: %d",ARTVAread_msg.rec4_direction);
+		ARTVAread_msg.rec1_distance = (int)ARTVAread.airspeed;///1000;
+		ARTVAread_msg.rec1_direction = 0;//(int)ARTVAread.airspeed%(int)1000;
+		ARTVAread_msg.rec2_distance = (int)ARTVAread.groundspeed;///1000;;
+		ARTVAread_msg.rec2_direction = 0;//(int)ARTVAread.groundspeed%(int)1000;
+		ARTVAread_msg.rec3_distance = (int)ARTVAread.heading;///1000;
+		ARTVAread_msg.rec3_direction = 0;//(int)ARTVAread.heading%(int)1000;
+		ARTVAread_msg.rec4_distance = (int)ARTVAread.throttle;///1000;;
+		ARTVAread_msg.rec4_direction = 0;//(int)ARTVAread.throttle%(int)1000;
+//		ROS_INFO("ARTVA 1 distance: %d",ARTVAread_msg.rec1_distance);
 
 		// global_pos_.hdg = (int)((attitude.yaw+3.14)*180/3.14*100);   //attitude comes in +-pi but hdg is 0..359.99 deg. Adding pi to attitude.
 
