@@ -205,7 +205,7 @@ private:
 		guidanceClass.Model_GS_U.Test = (float) debugParam;
 
 		//DEBUG
-		if (counter_print >= 10){
+		//if (counter_print >= 10){
 			ROS_INFO("Loaded Matlab Pos: [Lat:%i, Long:%i, Alt:%i, Yaw:%f, SafeOn:%s,(Time:%u)]",         //TODO uncomment
 					guidanceClass.Model_GS_U.Actual_Pos[0], guidanceClass.Model_GS_U.Actual_Pos[1],
 					guidanceClass.Model_GS_U.Actual_Pos[2], guidanceClass.Model_GS_U.Actual_Yaw,
@@ -213,7 +213,7 @@ private:
 			ROS_INFO("Loaded Matlab Ref: [Lat:%i, Long:%i, Alt:%i, Yaw:%f]",
 					guidanceClass.Model_GS_U.Reference_Pos[0], guidanceClass.Model_GS_U.Reference_Pos[1],
 					guidanceClass.Model_GS_U.Reference_Pos[2], guidanceClass.Model_GS_U.Reference_Yaw);
-		}
+		//}
 	}
 
 	void getOutput(const Model_GSModelClass &guidanceClass, guidance_node_amsl::Directive *output) {

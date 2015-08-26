@@ -1,0 +1,1 @@
+rosbag record reference mms_status global_position_int position_nav artva_read camera_trigger command directive distance ref_system safety_odroid sonar system_status -O $1 

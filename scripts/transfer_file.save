@@ -1,5 +1,4 @@
-#!/bin/bash
-#---parameters
+#!/bin/bash ---parameters
 local_path=/home/odroid/Photo_Mission
 server_path=/home/jcacace/sherpa_multimedia_data/red
 user=jcacace
