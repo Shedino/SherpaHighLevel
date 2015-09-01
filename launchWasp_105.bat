@@ -1,6 +1,6 @@
 @echo off
 echo.
-set OdroidIP=192.168.0.106
+set OdroidIP=192.168.0.105
 set OdroidUser=odroid
 set OdroidPassWord=odroid
 echo [SHERPA WASP LAUNCH:] ROS environment initialisation started
@@ -28,7 +28,7 @@ timeout /t 2
 start "mavsys" cmd /c plink -v %OdroidIP% -l %OdroidUser% -pw %OdroidPassWord% bash /home/odroid/SherpaHighLevel/scripts/launch_mavsys
 echo [SHERPA WASP LAUNCH:] "mavsys" launched in "mavsys" command window
 timeout /t 2
-start "bag" cmd /c plink -v %OdroidIP% -l %OdroidUser% -pw %OdroidPassWord% bash /home/odroid/SherpaHighLevel/scripts/bag_script bag_artva
+start "bag" cmd /c plink -v %OdroidIP% -l %OdroidUser% -pw %OdroidPassWord% bash /home/odroid/SherpaHighLevel/scripts/bag_script.sh bag_artva
 echo [SHERPA WASP LAUNCH:] "bag" launched in "bag" command window
 timeout /t 1
 putty -ssh %OdroidUser%@%OdroidIP% -pw %OdroidPassWord%
