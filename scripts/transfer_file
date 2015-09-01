@@ -23,7 +23,7 @@ inotifywait -m $local_path -e create -e moved_to |
 		if sshpass -p $password scp -o 'StrictHostKeyChecking no' $local_path/$file $user@$server_ip:$server_path
 		then
 			echo "[FILE TRANSFER:] file '$file' successfully sent to " $server_ip
-			#rm $local_path/$file
+			rm $local_path/$file
 		else
 			echo "[FILE TRANSFER:] ERROR: transfer of file '$file' to '$server_ip' not accomplished"
 		fi

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=UNIBO launch
+Comment=Global launch for ROS nodes
+NoDisplay=true
+Exec=/home/odroid/SherpaHighLevel/scripts/launch_global.sh
+Path=/home/odroid/SherpaHighLevel/scripts/
+Icon=preferences-desktop-remote-desktop
+Terminal=false
+Type=Application
