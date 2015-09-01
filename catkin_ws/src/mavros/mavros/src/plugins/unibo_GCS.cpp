@@ -70,18 +70,31 @@ private:
 //	int ArtvaAlt=0;
 	
 	void artva_callback(const mavros::ArtvaRead::ConstPtr& msg){
-		//ROS_INFO("new ArtvaRead.msg received!");
+//		ROS_INFO("new ArtvaRead.msg received!");
 		if(true){
 			mavlink_message_t msg_mav;
 //			mavlink_vfr_hud_t ARTVA1send;
-			//ROS_INFO("ARTVA Current Reading: LAT %.0f, LON %.0f, YAW %d, NUM %d, DST %.0f, DIR %.0f",(float)ArtvaLat,(float)ArtvaLon,(int)(ArtvaYaw*180/3.14),1,(float)msg->rec1_distance,(float)msg->rec1_direction);
+			if(msg->rec1_distance>0){
+				ROS_INFO("ARTVA Wrote Current Reading: LAT %.0f, LON %.0f, YAW %d, NUM %d, DST %.0f, DIR %.0f",(float)ArtvaLat,(float)ArtvaLon,(int)(ArtvaYaw*180/3.14),1,(float)msg->rec1_distance,(float)msg->rec1_direction);
+			}
 			mavlink_msg_vfr_hud_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,(float)ArtvaLat,(float)ArtvaLon,(int)(ArtvaYaw*180/3.14),1,(float)msg->rec1_distance,(float)msg->rec1_direction);
-			//ROS_INFO("ARTVA Current Reading: LAT %.0f, LON %.0f, YAW %d, NUM %d, DST %.0f, DIR %.0f",(float)ArtvaLat,(float)ArtvaLon,(int)(ArtvaYaw*180/3.14),2,(float)msg->rec2_distance,(float)msg->rec2_direction);
+			UAS_FCU(uas)->send_message(&msg_mav);	
+			if(msg->rec2_distance>0){
+				ROS_INFO("ARTVA Wrote Current Reading: LAT %.0f, LON %.0f, YAW %d, NUM %d, DST %.0f, DIR %.0f",(float)ArtvaLat,(float)ArtvaLon,(int)(ArtvaYaw*180/3.14),2,(float)msg->rec2_distance,(float)msg->rec2_direction);
+			}
 			mavlink_msg_vfr_hud_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,(float)ArtvaLat,(float)ArtvaLon,(int)(ArtvaYaw*180/3.14),2,(float)msg->rec2_distance,(float)msg->rec2_direction);
+			UAS_FCU(uas)->send_message(&msg_mav);	
+			if(msg->rec3_distance>0){
+				ROS_INFO("ARTVA Wrote Current Reading: LAT %.0f, LON %.0f, YAW %d, NUM %d, DST %.0f, DIR %.0f",(float)ArtvaLat,(float)ArtvaLon,(int)(ArtvaYaw*180/3.14),3,(float)msg->rec3_distance,(float)msg->rec3_direction);
+			}
 			//ROS_INFO("ARTVA Current Reading: LAT %.0f, LON %.0f, YAW %d, NUM %d, DST %.0f, DIR %.0f",(float)ArtvaLat,(float)ArtvaLon,(int)(ArtvaYaw*180/3.14),3,(float)msg->rec3_distance,(float)msg->rec3_direction);
 			mavlink_msg_vfr_hud_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,(float)ArtvaLat,(float)ArtvaLon,(int)(ArtvaYaw*180/3.14),3,(float)msg->rec3_distance,(float)msg->rec3_direction);
-			//ROS_INFO("ARTVA Current Reading: LAT %.0f, LON %.0f, YAW %d, NUM %d, DST %.0f, DIR %.0f",(float)ArtvaLat,(float)ArtvaLon,(int)(ArtvaYaw*180/3.14),4,(float)msg->rec4_distance,(float)msg->rec4_direction);
+			UAS_FCU(uas)->send_message(&msg_mav);	
+			if(msg->rec4_distance>0){
+				ROS_INFO("ARTVA Wrote Current Reading: LAT %.0f, LON %.0f, YAW %d, NUM %d, DST %.0f, DIR %.0f",(float)ArtvaLat,(float)ArtvaLon,(int)(ArtvaYaw*180/3.14),4,(float)msg->rec4_distance,(float)msg->rec4_direction);
+			}
 			mavlink_msg_vfr_hud_pack_chan(UAS_PACK_CHAN(uas),&msg_mav,(float)ArtvaLat,(float)ArtvaLon,(int)(ArtvaYaw*180/3.14),4,(float)msg->rec4_distance,(float)msg->rec4_direction);
+			UAS_FCU(uas)->send_message(&msg_mav);	
 		}else{
 			if(ArtvaInd==ArtvaBufferMaxNum){
 				ArtvaInd=0;
