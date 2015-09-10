@@ -49,7 +49,7 @@ public:
 		sys_status_pub = nodeHandle.advertise<mms::Sys_status>("/system_status", 10);
 		distance_sensor_pub = nodeHandle.advertise<mavros::Sonar>("/sonar", 10);
 		attitude_pub = nodeHandle.advertise<mavros::Attitude>("/attitude", 10);
-//		ROS_INFO("reading ARTVA message from Arduino!");
+		ROS_INFO("reading ARTVA message from Arduino!");
 		artva_pub = nodeHandle.advertise<mavros::ArtvaRead>("/artva_read", 10);
 		safety_pub = nodeHandle.advertise<mavros::Safety>("/safety_odroid", 10);
 
@@ -79,7 +79,8 @@ public:
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_HEARTBEAT, &UniboControllerAMSLPlugin::handle_heartbeat),
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_SYS_STATUS, &UniboControllerAMSLPlugin::handle_status),
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_DISTANCE_SENSOR, &UniboControllerAMSLPlugin::handle_distance_sensor),
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_VFR_HUD, &UniboControllerAMSLPlugin::handle_vfr_hud)
+//			MESSAGE_HANDLER(MAVLINK_MSG_ID_VFR_HUD, &UniboControllerAMSLPlugin::handle_vfr_hud),
+			MESSAGE_HANDLER(MAVLINK_MSG_ID_DEBUG_VECT, &UniboControllerAMSLPlugin::handle_ARTVA_read)
 		};
 	}
 
@@ -122,24 +123,41 @@ private:
 	 */
 	double v_xy_max, v_z_max, v_psi_max;
 
-	void handle_vfr_hud(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+	// void test_ARTVA_mavlink_message(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		
+		// ROS_INFO("Mavlink message busy! :-(");
+	// }
+
+	void handle_ARTVA_read(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
 
 		//ROS_INFO("ARTVA message received! :-)");
-		mavlink_vfr_hud_t ARTVAread;
-		mavlink_msg_vfr_hud_decode(msg, &ARTVAread);
+		mavlink_debug_vect_t ARTVAread;
+		mavlink_msg_debug_vect_decode(msg, &ARTVAread);
 
-		ARTVAread_msg.rec1_distance = (int)ARTVAread.airspeed;///1000;
-		ARTVAread_msg.rec1_direction = 0;//(int)ARTVAread.airspeed%(int)1000;
-		ARTVAread_msg.rec2_distance = (int)ARTVAread.groundspeed;///1000;;
-		ARTVAread_msg.rec2_direction = 0;//(int)ARTVAread.groundspeed%(int)1000;
-		ARTVAread_msg.rec3_distance = (int)ARTVAread.heading;///1000;
-		ARTVAread_msg.rec3_direction = 0;//(int)ARTVAread.heading%(int)1000;
-		ARTVAread_msg.rec4_distance = (int)ARTVAread.throttle;///1000;;
-		ARTVAread_msg.rec4_direction = 0;//(int)ARTVAread.throttle%(int)1000;
-//		ROS_INFO("ARTVA 1 distance: %d",ARTVAread_msg.rec1_distance);
-
-		// global_pos_.hdg = (int)((attitude.yaw+3.14)*180/3.14*100);   //attitude comes in +-pi but hdg is 0..359.99 deg. Adding pi to attitude.
-
+		if(ARTVAread.name[0]=='a'){
+			//ROS_INFO("GREAT");
+			ARTVAread_msg.rec1_distance = (int)ARTVAread.time_usec;
+			ARTVAread_msg.rec1_direction =(int)ARTVAread.x;
+			if(ARTVAread_msg.rec1_distance>0){
+				ROS_INFO("ARTVA 1 read: distance %dm, heading %d DEG",ARTVAread_msg.rec1_distance,ARTVAread_msg.rec1_direction);
+			}
+			ARTVAread_msg.rec2_distance = (int)ARTVAread.y;
+			ARTVAread_msg.rec2_direction = (int)ARTVAread.z;
+			if(ARTVAread_msg.rec2_distance>0){
+				ROS_INFO("ARTVA 2 read: distance %dm, heading %d DEG",ARTVAread_msg.rec2_distance,ARTVAread_msg.rec2_direction);
+			}
+		}else if(ARTVAread.name[0]=='b'){
+			ARTVAread_msg.rec3_distance = (int)ARTVAread.time_usec;
+			ARTVAread_msg.rec3_direction = (int)ARTVAread.x;
+			if(ARTVAread_msg.rec3_distance>0){
+				ROS_INFO("ARTVA 3 read: distance %dm, heading %d DEG",ARTVAread_msg.rec3_distance,ARTVAread_msg.rec3_direction);
+			}
+			ARTVAread_msg.rec4_distance = (int)ARTVAread.y;
+			ARTVAread_msg.rec4_direction = (int)ARTVAread.z;
+			if(ARTVAread_msg.rec4_distance>0){
+				ROS_INFO("ARTVA 4 read: distance %dm, heading %d DEG",ARTVAread_msg.rec4_distance,ARTVAread_msg.rec4_direction);
+			}
+		}
 		artva_pub.publish(ARTVAread_msg);
 	}
 
