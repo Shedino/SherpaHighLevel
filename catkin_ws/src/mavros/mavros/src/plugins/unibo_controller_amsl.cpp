@@ -28,7 +28,11 @@ public:
 		safetyOn(true),
 		v_xy_max(3.0),
 		v_z_max(1.5),
-		v_psi_max(3.14)
+		v_psi_max(3.14),
+		RC1_trim_(1),
+		RC2_trim_(1),
+		RC3_trim_(1),
+		RC4_trim_(1)
 	{};
 
 	void initialize(UAS &uas_)
@@ -54,6 +58,11 @@ public:
 		nodeHandle.param("guidance_node_amsl/param/sat_xy", v_xy_max, 3.0);
 		nodeHandle.param("guidance_node_amsl/param/sat_z", v_z_max, 1.5);
 		nodeHandle.param("guidance_node_amsl/param/sat_yaw", v_psi_max, 3.14);
+		
+		/*nodeHandle.param("mavros/unibo_controller/trim_RC1", RC1_trim_, 1000.0);
+		nodeHandle.param("mavros/unibo_controller/trim_RC2", RC2_trim_, 1000.0);
+		nodeHandle.param("mavros/unibo_controller/trim_RC3", RC3_trim_, 1000.0);
+		nodeHandle.param("mavros/unibo_controller/trim_RC4", RC4_trim_, 1000.0);*/
 
 		mavros::Sonar temp_sonar;
 		temp_sonar.distance = -1;      //if there is no sonar, the distance is initialized to -1
@@ -77,6 +86,10 @@ public:
 private:
 	ros::NodeHandle nodeHandle;
 	UAS *uas;
+	double RC1_trim_;
+	double RC2_trim_;
+	double RC3_trim_;
+	double RC4_trim_;
 
 	ros::Publisher position_pub;
 	ros::Subscriber directive_sub;
@@ -276,23 +289,38 @@ private:
 			velocity_.channels[5]=0;
 			velocity_.channels[6]=0;
 			velocity_.channels[7]=0;
+		
+		
 
 		if(!safetyOn){
+			
+		    if (nodeHandle.getParam("mavros/unibo_controller/trim_RC1", RC1_trim_)){
+			//ROS_INFO("RC1_trim: %.3f",RC1_trim_);
+			}
+			if (nodeHandle.getParam("mavros/unibo_controller/trim_RC2", RC2_trim_)){
+				//ROS_INFO("RC2_trim: %.3f",RC2_trim_);
+			}
+			if (nodeHandle.getParam("mavros/unibo_controller/trim_RC3", RC3_trim_)){
+				//ROS_INFO("RC3_trim: %.3f",RC3_trim_);
+			}
+			if (nodeHandle.getParam("mavros/unibo_controller/trim_RC4", RC4_trim_)){
+				//ROS_INFO("RC4_trim: %.3f",RC4_trim_);
+			}
 			/*
 			 * If safety is off, I translate velocity in RC values
 			 */
-			uint16_t vx_RC= (uint16_t)400.0f*(-msg->vxBody)/v_xy_max + 1520;         //New: 400 + 1520; Old:  500 + 1500
-			uint16_t vy_RC=(uint16_t)400.0f*(msg->vyBody)/v_xy_max + 1520;		//New: 400 + 1520; Old:  500 + 1500
+			uint16_t vx_RC= (uint16_t)400.0f*(-msg->vxBody)/v_xy_max + RC1_trim_;         //New: 400 + 1520; Old:  500 + 1500
+			uint16_t vy_RC=(uint16_t)400.0f*(msg->vyBody)/v_xy_max + RC2_trim_;		//New: 400 + 1520; Old:  500 + 1500
 			/*
 			 * it seems it loiters with 1420 instead of 1500...
 			 */
-			uint16_t vz_RC= 1420;
+			uint16_t vz_RC= RC3_trim_;
 			if (msg->vzBody > 0){ //going down, mapped only in 420us
 				vz_RC = vz_RC + (uint16_t)320.0f*(-msg->vzBody)/v_z_max;        //New: 320; Old:  420
 			} else {        //going up, mapped in 580us
 				vz_RC = vz_RC + (uint16_t)480.0f*(-msg->vzBody)/v_z_max;     //New: 480 Old: 580
 			}
-			uint16_t v_psi_RC = (uint16_t)400.0f*(msg->yawRate)/v_psi_max + 1520;		//New: 400 + 1520; Old:  500 + 1500
+			uint16_t v_psi_RC = (uint16_t)400.0f*(msg->yawRate)/v_psi_max + RC4_trim_;		//New: 400 + 1520; Old:  500 + 1500
 
 			velocity_.channels[0]=vy_RC;
 			velocity_.channels[1]=vx_RC;

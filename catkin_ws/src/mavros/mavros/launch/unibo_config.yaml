@@ -146,3 +146,10 @@ visualization:
   marker_scale: 2.0
 
 # vim:ts=2 sw=2 et:
+
+# unibo_controller
+unibo_controller:
+  trim_RC1: 1520.0
+  trim_RC2: 1520.0
+  trim_RC3: 1420.0
+  trim_RC4: 1520.0
