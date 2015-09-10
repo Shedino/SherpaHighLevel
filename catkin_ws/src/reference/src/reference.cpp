@@ -213,6 +213,16 @@ public:
         inputCmd_.frame  = msg -> frame;
         inputCmd_.seq  = msg -> seq;
 
+        // new_cmd = true;
+
+		/*Target_Position_.Latitude = inputCmd_.param5;
+		Target_Position_.Longitude = inputCmd_.param6;
+		Target_Position_.AltitudeRelative = inputCmd_.param7;
+		Target_Position_.Yawangle = inputCmd_.param4;*/
+
+		//6 = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT
+		//11 = MAV_FRAME_GLOBAL_TERRAIN_ALT_INT
+
 		switch(inputCmd_.command)
 		{
 		case 16:  // MAV_CMD_NAV_WAYPOINT
@@ -226,6 +236,7 @@ public:
 			target_.frame = inputCmd_.frame;
 			outputDist_.seq = inputCmd_.seq;
 			ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %d - %d",target_.Latitude,target_.Longitude,target_.AltitudeRelative,target_.Yawangle,target_.frame);
+			// target_.Mode = 0;
 		} break;
 		case 21:  // MAV_CMD_NAV_LAND
 		{
@@ -244,6 +255,10 @@ public:
 			outputDist_.seq = inputCmd_.seq;
 			Dh_TO = outputRef_.AltitudeRelative;
 		}break;
+		/*		case 115: // MAV_CMD_CONDITION_YAW
+		{
+			CONDITION_YAW = true;
+		}break;*/
 		case 179: // MAV_CMD_DO_SET_HOME
 		{
 			ROS_INFO("REF: MAV_CMD_DO_SET_HOME");
@@ -946,15 +961,15 @@ case PERFORMING_LANDING:
 					ROS_INFO("REF: NO REFERENCE PUBLISHED");
 				}
 		}
-		outputRef_.AltitudeRelative = inputPos_.Altitude - 1000;// -= 80; // 5 cm @ frequencey
-		tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt - 1000;//-= 80;
+		outputRef_.AltitudeRelative -= 80; // 5 cm @ frequencey
+		tempRelAlt -= 80;
 		pubToReference_.publish(outputRef_);
-		/*distance();
+		distance();
 		outputDist_.error_pos = error_to_t.error_pos;
 		outputDist_.error_ang = error_to_t.error_ang;
 		outputDist_.error_alt = error_to_t.error_alt;
 		outputDist_.command = 21; // LAND
-		pubToDistance_.publish(outputDist_);*/
+		pubToDistance_.publish(outputDist_);
 	}
 	break;
 }
