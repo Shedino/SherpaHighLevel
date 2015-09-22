@@ -8,7 +8,7 @@
 #include <mavros/Safety.h>
 #include <mavros/Attitude.h>
 
-#include <mms/MMS_status.h>
+#include <mms_msgs/MMS_status.h>
 
 #include "Model_GS.h" //qui devo stare attento a come si chiama il file.h
 
@@ -93,7 +93,7 @@ public:
 		safety_ = msg->safety;
 	}
 	
-	void handle_mms_status(const mms::MMS_status::ConstPtr& msg)
+	void handle_mms_status(const mms_msgs::MMS_status::ConstPtr& msg)
 	{
 		if (msg->mms_state == 60) trigger_ = true;          //trigger integral on READY_TO_TAKEOFF state
 		else if (msg->mms_state == 30) trigger_ = false;		//disable integral on ON_GROUND_DISARMED state --> this happens after LAND

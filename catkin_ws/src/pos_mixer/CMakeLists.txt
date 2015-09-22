@@ -7,7 +7,6 @@ project(pos_mixer)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
-  message_generation
   mms
 )
 
@@ -64,10 +63,10 @@ find_package(Boost REQUIRED COMPONENTS system)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES 
-  std_msgs
-)
+#generate_messages(
+#  DEPENDENCIES 
+#  std_msgs
+#)
 
 ###################################
 ## catkin specific configuration ##
@@ -81,7 +80,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES pos_mixer
- CATKIN_DEPENDS roscpp std_msgs message_runtime mms
+ CATKIN_DEPENDS roscpp std_msgs mms
 #  DEPENDS system_lib
 )
 
@@ -103,12 +102,12 @@ include_directories(
 
 ## Declare a cpp executable
  add_executable(pos_mixer src/pos_mixer.cpp)
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS} ${boost_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_message_cpp)
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS} ${boost_EXPORTED_TARGETS} )
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${boost_LIBRARIES})
 
  add_executable(test_PositionMSG src/test_PositionMSG.cpp)
 target_link_libraries(test_PositionMSG ${catkin_LIBRARIES})
-add_dependencies(test_PositionMSG ${PROJECT_NAME}_generate_messages_cpp)
+#add_dependencies(test_PositionMSG)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes

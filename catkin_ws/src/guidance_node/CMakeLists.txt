@@ -93,10 +93,14 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(~/catkin_ws/src/${PROJECT_NAME}/include/${PROJECT_NAME} ~/Matlab/extern/include ~/Matlab/simulink/include)
-#include_directories(
-#  include ${catkin_INCLUDE_DIRS}
-#)
+##include_directories(~/catkin_ws/src/${PROJECT_NAME}/include/${PROJECT_NAME} )
+include_directories(
+  include 
+  include/${PROJECT_NAME}
+  ${catkin_INCLUDE_DIRS}
+  ~/Matlab/extern/include ~/Matlab/simulink/include
+  /opt/MATLAB/R2015a/extern/include /opt/MATLAB/R2015a/simulink/include
+)
 
 ## Declare a cpp library
 # add_library(guidance_node

@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 
 #include <mavros/Sonar.h>
-#include <mms/MMS_status.h>
+#include <mms_msgs/MMS_status.h>
 #include <frame/Ref_system.h>
 
 class FrameNodeClass
@@ -36,7 +36,7 @@ public:
 		Frame_Handle();
 	}
 
-	void readMMSStatusMessage(const mms::MMS_status::ConstPtr& msg)
+	void readMMSStatusMessage(const mms_msgs::MMS_status::ConstPtr& msg)
 	{
 		inputMMSStatus_.target_ref_frame=msg->target_ref_frame;
 		// ROS_INFO("FRAME: MMS_STATE RECEIVED");
@@ -135,7 +135,7 @@ protected:
 	ros::Subscriber subFromSonar_;
 	ros::Subscriber subFromMMSStatus_;
 
-	mms::MMS_status inputMMSStatus_;
+	mms_msgs::MMS_status inputMMSStatus_;
 	mavros::Sonar inputSonar_;
 
 	// publisher

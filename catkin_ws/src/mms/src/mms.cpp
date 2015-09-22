@@ -1,12 +1,12 @@
 #include "ros/ros.h"
 
-#include "mms/Cmd.h" // input
-#include "mms/Ack_mission.h"// output
-#include "mms/Arm.h"// output
-#include "mms/Ack_arm.h" // input
-#include "mms/Sys_status.h"// input
+#include "mms_msgs/Cmd.h" // input
+#include "mms_msgs/Ack_mission.h"// output
+#include "mms_msgs/Arm.h"// output
+#include "mms_msgs/Ack_arm.h" // input
+#include "mms_msgs/Sys_status.h"// input
 #include <mavros/Sonar.h> // input
-#include "mms/MMS_status.h"// output
+#include "mms_msgs/MMS_status.h"// output
 #include <reference/Distance.h>// input
 
 // STATES DEFINITION -> CREATE A DEDICATED LIBRARY = TODO
@@ -44,9 +44,9 @@ public:
 		subFromDistance_=n_.subscribe("/distance", 10, &MmsNodeClass::readDistanceMessage,this);
 		
 		// publishers
-		pubToAckMission_=n_.advertise<mms::Ack_mission>("/ack_mission", 10);
-		pubToArm_=n_.advertise<mms::Arm>("/arm", 10);
-		pubToMmsStatus_=n_.advertise<mms::MMS_status>("/mms_status", 10);
+		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
+		pubToArm_=n_.advertise<mms_msgs::Arm>("/arm", 10);
+		pubToMmsStatus_=n_.advertise<mms_msgs::MMS_status>("/mms_status", 10);
 
 		//Initializing outputAckMission_
 		outputAckMission_.mission_item_reached = false;
@@ -71,7 +71,7 @@ public:
 		inputDist_.seq=msg->seq;
 	}
 
-	void readSysStatusMessage(const mms::Sys_status::ConstPtr& msg)
+	void readSysStatusMessage(const mms_msgs::Sys_status::ConstPtr& msg)
 	{
 		inputSysStatus_.armed=msg->armed;
 		inputSysStatus_.voltage_battery=msg->voltage_battery;
@@ -94,7 +94,7 @@ public:
 		inputSonar_.distance = msg -> distance;
 	}
 
-	void readCmdMessage(const mms::Cmd::ConstPtr& msg)
+	void readCmdMessage(const mms_msgs::Cmd::ConstPtr& msg)
 	{
 		inputCmd_.command = msg -> command;
 		inputCmd_.param1  = msg -> param1;
@@ -756,13 +756,13 @@ ros::NodeHandle n_;
 guidance_node_amsl::Position_nav inputPos_;*/
 
 ros::Subscriber subFromCmd_;
-mms::Cmd inputCmd_;
+mms_msgs::Cmd inputCmd_;
 
 ros::Subscriber subFromAckArm_;
-mms::Ack_arm inputAckArm_;
+mms_msgs::Ack_arm inputAckArm_;
 
 ros::Subscriber subFromSysStatus_;
-mms::Sys_status inputSysStatus_;
+mms_msgs::Sys_status inputSysStatus_;
 
 ros::Subscriber subFromSonar_;
 mavros::Sonar inputSonar_;
@@ -776,16 +776,16 @@ reference::Distance inputDist_;
 
 // Publishers
 ros::Publisher pubToAckMission_;
-mms::Ack_mission outputAckMission_;
+mms_msgs::Ack_mission outputAckMission_;
 
 ros::Publisher pubToArm_;
-mms::Arm outputArm_;
+mms_msgs::Arm outputArm_;
 
 //ros::Publisher pubToAckCmd_;
-//mms::Ack_cmd outputAckCmd_;
+//mms_msgs::Ack_cmd outputAckCmd_;
 
 ros::Publisher pubToMmsStatus_;
-mms::MMS_status outputMmsStatus_;
+mms_msgs::MMS_status outputMmsStatus_;
 
 // INPUTS GCS -> MMS
 bool SET_HOME = false;

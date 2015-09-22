@@ -2,10 +2,10 @@
 #include <pluginlib/class_list_macros.h>
 
 
-#include <mms/Cmd.h>
-#include <mms/Ack_cmd.h>
-#include <mms/Ack_mission.h>
-#include <mms/Sys_status.h>
+#include <mms_msgs/Cmd.h>
+#include <mms_msgs/Ack_cmd.h>
+#include <mms_msgs/Ack_mission.h>
+#include <mms_msgs/Sys_status.h>
 #include <mavros/Global_position_int.h>
 #include <mavros/ArtvaRead.h>
 #include <camera_handler_SHERPA/Camera.h>
@@ -30,7 +30,7 @@ public:
 		
 		ack_sub = nodeHandle.subscribe("/ack_cmd", 10, &UniboGCSPlugin::ack_cmd_callback, this);
 		ack_mission_sub = nodeHandle.subscribe("/ack_mission", 10, &UniboGCSPlugin::ack_mission_callback, this);
-		command_pub = nodeHandle.advertise<mms::Cmd>("/sent_command", 10);     //before command check
+		command_pub = nodeHandle.advertise<mms_msgs::Cmd>("/sent_command", 10);     //before command check
 		camera_pub = nodeHandle.advertise<camera_handler_SHERPA::Camera>("/camera_trigger", 10);
 		position_sub= nodeHandle.subscribe("/position_nav", 10, &UniboGCSPlugin::position_callback, this);
 		status_sub = nodeHandle.subscribe("/system_status", 10, &UniboGCSPlugin::status_callback, this);
@@ -116,7 +116,7 @@ private:
 		ROS_INFO("Inside Mission Item");
 		mavlink_mission_item_t mission_item;
 		mavlink_msg_mission_item_decode(msg, &mission_item);
-		auto mission_item_msg = boost::make_shared<mms::Cmd>();
+		auto mission_item_msg = boost::make_shared<mms_msgs::Cmd>();
 		auto camera_msg = boost::make_shared<camera_handler_SHERPA::Camera>();
 
 		/*switch (mission_item.command){
@@ -169,10 +169,10 @@ private:
 		UAS_FCU(uas)->send_message(&msg);		*/
 		//mavlink_position_target_global_int_t pos_target;
 		//mavlink_msg_position_target_global_int_decode(msg, &pos_target);
-		//auto pos_target_msg = boost::make_shared<mms::Cmd>();     //TODO put the topic created in MMS for the commands the name can be different
+		//auto pos_target_msg = boost::make_shared<mms_msgs::Cmd>();     //TODO put the topic created in MMS_MSGS for the commands the name can be different
 	}
 
-	void ack_cmd_callback(const mms::Ack_cmd::ConstPtr msg_ack_cmd){
+	void ack_cmd_callback(const mms_msgs::Ack_cmd::ConstPtr msg_ack_cmd){
 		mavlink_message_t msg;
 		
 		enum MAV_RESULT mav_result;
@@ -186,7 +186,7 @@ private:
 		ROS_INFO("Sent command ACK");
 	}
 	
-	void ack_mission_callback(const mms::Ack_mission::ConstPtr msg_ack_mission){
+	void ack_mission_callback(const mms_msgs::Ack_mission::ConstPtr msg_ack_mission){
 		mavlink_message_t msg;		
 		if (msg_ack_mission->mission_item_reached){           //TODO maybe separate topics....bad implementation
 			mavlink_msg_mission_item_reached_pack_chan(UAS_PACK_CHAN(uas),&msg,msg_ack_mission->seq);
@@ -223,7 +223,7 @@ private:
 		UAS_FCU(uas)->send_message(&msg_mav);	
 	}
 	
-	void status_callback(const mms::Sys_status::ConstPtr& msg){
+	void status_callback(const mms_msgs::Sys_status::ConstPtr& msg){
 		mavlink_message_t msg_mav;
 		//ROS_INFO("Battery: %d",msg->voltage_battery);
 		mavlink_msg_sys_status_pack_chan(UAS_PACK_CHAN(uas), &msg_mav, 1, 1, 1, 500, msg->voltage_battery, 0, 50, 0, 0, 0, 0, 0, 0);           //only voltage battery is sent

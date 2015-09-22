@@ -1,8 +1,8 @@
 #include "ros/ros.h"
 // #include <vector>
 
-#include <mms/Cmd.h> // input & output
-#include <mms/Ack_cmd.h>// output
+#include <mms_msgs/Cmd.h> // input & output
+#include <mms_msgs/Ack_cmd.h>// output
 
 class CmdVerifierNodeClass{
 public:
@@ -14,11 +14,11 @@ public:
 		subFromSentCmd_=n_.subscribe("/sent_command", 10, &CmdVerifierNodeClass::readCmdMessage,this);
 
 		// publishers
-		pubToAckCmd_=n_.advertise<mms::Ack_cmd>("/ack_cmd", 10);
-		pubToVerifiedCmd_=n_.advertise<mms::Cmd>("/command", 10);
+		pubToAckCmd_=n_.advertise<mms_msgs::Ack_cmd>("/ack_cmd", 10);
+		pubToVerifiedCmd_=n_.advertise<mms_msgs::Cmd>("/command", 10);
 }
 
-	void readCmdMessage(const mms::Cmd::ConstPtr& msg)
+	void readCmdMessage(const mms_msgs::Cmd::ConstPtr& msg)
 	{
 		inputCmd_.command = msg -> command;
 		inputCmd_.param1  = msg -> param1;
@@ -170,14 +170,14 @@ ros::NodeHandle n_;
 
 // Subscribers
 ros::Subscriber subFromSentCmd_;
-mms::Cmd inputCmd_;
+mms_msgs::Cmd inputCmd_;
 
 // Publishers
 ros::Publisher pubToAckCmd_;
-mms::Ack_cmd outputAckCmd_;
+mms_msgs::Ack_cmd outputAckCmd_;
 
 ros::Publisher pubToVerifiedCmd_;
-mms::Cmd outputVerifiedCmd_;
+mms_msgs::Cmd outputVerifiedCmd_;
 
 // private:
 

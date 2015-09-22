@@ -11,9 +11,9 @@
 
 #include <guidance_node_amsl/Directive.h>
 //#include <guidance_node_amsl/Position.h>
-#include <mms/Ack_arm.h>
-#include <mms/Arm.h>
-#include <mms/Sys_status.h>
+#include <mms_msgs/Ack_arm.h>
+#include <mms_msgs/Arm.h>
+#include <mms_msgs/Sys_status.h>
 
 #define SONAR_THRESHOLD 300          //maximum centimetres of a reliable sonar reading
 namespace mavplugin {
@@ -45,8 +45,8 @@ public:
 
 		/* --- PUBLISHERS --- */
 		position_pub = nodeHandle.advertise<mavros::Global_position_int>("/global_position_int", 10);               //TODO this should become a mavros topic and removed from amsl and splitted from attitude
-		arm_ack_pub = nodeHandle.advertise<mms::Ack_arm>("acknowledge_arming", 10);
-		sys_status_pub = nodeHandle.advertise<mms::Sys_status>("/system_status", 10);
+		arm_ack_pub = nodeHandle.advertise<mms_msgs::Ack_arm>("acknowledge_arming", 10);
+		sys_status_pub = nodeHandle.advertise<mms_msgs::Sys_status>("/system_status", 10);
 		distance_sensor_pub = nodeHandle.advertise<mavros::Sonar>("/sonar", 10);
 		attitude_pub = nodeHandle.advertise<mavros::Attitude>("/attitude", 10);
 		ROS_INFO("reading ARTVA message from Arduino!");
@@ -102,7 +102,7 @@ private:
 	ros::Publisher safety_pub;
 	ros::Publisher artva_pub;
 	
-	mms::Sys_status _system_status;
+	mms_msgs::Sys_status _system_status;
 
 	mavros::ArtvaRead ARTVAread_msg;
 	mavros::Attitude attitude_msg;  //private and accessed by many handlers
@@ -238,7 +238,7 @@ private:
 		mavlink_command_ack_t cmd_ack;
 		mavlink_msg_command_ack_decode(msg, &cmd_ack);
 
-		auto arm_ack_msg = boost::make_shared<mms::Ack_arm>();
+		auto arm_ack_msg = boost::make_shared<mms_msgs::Ack_arm>();
 
 		if (cmd_ack.command == 400){      //ARM_DISARM command
 			//ROS_INFO("Received arm_disarm");
@@ -363,7 +363,7 @@ private:
 	/*
 	 * Arming/disarming the UAV
 	 */
-	void arming(const mms::Arm::ConstPtr msg){
+	void arming(const mms_msgs::Arm::ConstPtr msg){
 		mavlink_message_t msg_mav;
 		if (msg->arm_disarm){
 			enum MAV_CMD command = MAV_CMD_COMPONENT_ARM_DISARM;

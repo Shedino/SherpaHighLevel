@@ -1,8 +1,8 @@
 #include <ros/ros.h>
 
-#include <mms/Cmd.h>
-#include <mms/Ack_cmd.h>
-#include <mms/Ack_mission.h>
+#include <mms_msgs/Cmd.h>
+#include <mms_msgs/Ack_cmd.h>
+#include <mms_msgs/Ack_mission.h>
 //#include <mavros/mavros.h>
 #include "mloader/Mission.h"
 
@@ -30,7 +30,7 @@ public:
 		//subFromCmd_ = n_.subscribe("/command", 10, &MmsNodeClass::readCmdMessage,this);
 
 		// publishers
-		pubToCmd_ = n_.advertise<mms::Cmd>("/command", 10);
+		pubToCmd_ = n_.advertise<mms_msgs::Cmd>("/command", 10);
 
 		//Initializing outputCmd_
 		outputCmd_.command = 95; // 95 = MAV_CMD_NAV_LAST = NOT OPERATIVE
@@ -62,7 +62,7 @@ public:
 		
 	}
 
-	void readAckCmd(const mms::Ack_cmd::ConstPtr& msg)
+	void readAckCmd(const mms_msgs::Ack_cmd::ConstPtr& msg)
 	{
 		ROS_INFO("ACK_CMD_RECEIVED");
 
@@ -70,7 +70,7 @@ public:
 		inputAckCmd_.mav_command_accepted  = msg -> mav_command_accepted;
 	}
 
-	void readAckMission(const mms::Ack_mission::ConstPtr& msg)
+	void readAckMission(const mms_msgs::Ack_mission::ConstPtr& msg)
 	{
 		ROS_INFO("ACK_MISSION_RECEIVED");
 
@@ -199,16 +199,16 @@ protected:
 	ros::NodeHandle n_;
 
 	ros::Subscriber subFromAckCmd_;
-	mms::Ack_cmd inputAckCmd_;
+	mms_msgs::Ack_cmd inputAckCmd_;
 
 	ros::Subscriber subFromAckMission_;
-	mms::Ack_mission inputAckMission_;
+	mms_msgs::Ack_mission inputAckMission_;
 
 	ros::Subscriber subFromMission_;
 	mloader::Mission inputMission_;
 
 	ros::Publisher pubToCmd_;
-	mms::Cmd outputCmd_;
+	mms_msgs::Cmd outputCmd_;
 	
 	// INPUTS GCS -> MLOADER
 	// bool MISSION_COUNT = false;

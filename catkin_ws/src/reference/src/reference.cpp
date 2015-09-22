@@ -3,8 +3,8 @@
 #include "mavros/Global_position_int.h"
 #include "guidance_node_amsl/Reference.h"
 #include "guidance_node_amsl/Position_nav.h"
-#include "mms/Cmd.h"
-#include "mms/MMS_status.h"
+#include "mms_msgs/Cmd.h"
+#include "mms_msgs/MMS_status.h"
 #include <mavros/Sonar.h>
 #include <frame/Ref_system.h>
 #include "reference/Distance.h"
@@ -158,7 +158,7 @@ public:
 		ROS_INFO("REF: CURRENT POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f", inputPos_.Latitude, inputPos_.Longitude, inputPos_.Altitude, inputPos_.YawAngle);
 	}
 
-	void readMmsStatusMessage(const mms::MMS_status::ConstPtr& msg)
+	void readMmsStatusMessage(const mms_msgs::MMS_status::ConstPtr& msg)
 	{
 		inputMmsStatus_.mms_state=msg->mms_state;
 		inputMmsStatus_.target_ref_frame=msg->target_ref_frame;
@@ -199,7 +199,7 @@ public:
 		inputGlobPosInt_.time_boot_ms = msg->time_boot_ms;
 	}
 
-	void readCmdMessage(const mms::Cmd::ConstPtr& msg)
+	void readCmdMessage(const mms_msgs::Cmd::ConstPtr& msg)
 	{
 		ROS_INFO("REF: CMD_RECEIVED");
 		inputCmd_.command = msg -> command;
@@ -1011,9 +1011,9 @@ ros::Subscriber subFromGlobPosInt_;
 mavros::Global_position_int inputGlobPosInt_;
 
 mavros::Sonar inputSonar_;
-mms::Cmd inputCmd_;
-//mms::Ack_arm inputAckArm_;
-mms::MMS_status inputMmsStatus_;
+mms_msgs::Cmd inputCmd_;
+//mms_msgs::Ack_arm inputAckArm_;
+mms_msgs::MMS_status inputMmsStatus_;
 frame::Ref_system inputFrame_;
 frame::Ref_system oldFrame_;
 

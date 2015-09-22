@@ -9,8 +9,8 @@
 #include <fstream>
 
 #include "camera_handler_SHERPA/Camera.h"
-#include <mms/Cmd.h>
-#include <mms/Ack_mission.h>
+#include <mms_msgs/Cmd.h>
+#include <mms_msgs/Ack_mission.h>
 
 //#include <exiv2/exiv2.hpp>
 
@@ -26,7 +26,7 @@ ros::Subscriber camera_sub;
 ros::Subscriber command_sub;
 camera_handler_SHERPA::Camera camera_topic;
 //mms::Ack_cmd outputAckCmd_;
-mms::Ack_mission outputAckMission_;
+mms_msgs::Ack_mission outputAckMission_;
 uint16_t seq_photo;
 uint16_t seq_video;
 //Exiv2::ExifData exifData;	//Metadata
@@ -50,13 +50,13 @@ class CameraHandler
 
     image_pub_ = it_.advertise("/camera_handler/output_video", 1);
 	camera_pub = nh_.advertise<camera_handler_SHERPA::Camera>("/camera_trigger", 20);
-	//ack_pub = nh_.advertise<mms::Ack_cmd>("/ack_cmd", 10);
-	mission_pub = nh_.advertise<mms::Ack_mission>("/ack_mission", 10);
+	//ack_pub = nh_.advertise<mms_msgs::Ack_cmd>("/ack_cmd", 10);
+	mission_pub = nh_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
 
     //cv::namedWindow(OPENCV_WINDOW);
   }
   
-	void command_handler(const mms::Cmd::ConstPtr& msg){
+	void command_handler(const mms_msgs::Cmd::ConstPtr& msg){
 		if (msg->command == 2000){      //MAV_CMD_IMAGE_START_CAPTURE = 2000
 			camera_topic.take_pic = true;
 			seq_photo = msg->seq;

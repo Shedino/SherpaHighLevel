@@ -18,7 +18,6 @@
   <url type="bugtracker">https://github.com/mavlink/mavros/issues</url>
 
   <buildtool_depend>catkin</buildtool_depend>
-<depend>guidance_node_amsl</depend>
 
   <depend>boost</depend>
   <depend>diagnostic_msgs</depend>
@@ -37,6 +36,8 @@
   <depend>angles</depend>
   <depend>libmavconn</depend>
   <depend>rosconsole_bridge</depend>
+  <depend>camera_handler_SHERPA</depend>
+  <depend>mms_msgs</depend>
   <exec_depend>python-argparse</exec_depend>
 
   <export>
