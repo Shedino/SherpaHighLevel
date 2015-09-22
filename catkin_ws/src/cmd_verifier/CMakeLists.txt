@@ -7,6 +7,7 @@ project(cmd_verifier)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  mms_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -79,7 +80,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES cmd_verifier
- CATKIN_DEPENDS roscpp std_msgs
+ CATKIN_DEPENDS roscpp std_msgs mms_msgs
 #  DEPENDS system_lib
 )
 
@@ -107,7 +108,7 @@ include_directories(include
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS} ${boost_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS})
+add_dependencies(cmd_verifier ${catkin_EXPORTED_TARGETS} ${boost_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp ${catkin_EXPORTED_TARGETS} mms_msgs_gencpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${boost_LIBRARIES})
