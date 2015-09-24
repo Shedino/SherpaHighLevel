@@ -183,7 +183,7 @@ class CameraHandler
 
 		
 		if (camera_topic.take_pic){
-			ROS_INFO("CAMERA HANDLER: taking picture");
+			ROS_INFO("CAMERA HANDLER: taking picture!");
 			// Save Image
 			static int image_count = 0;
 			static char dest_img[50];                        
