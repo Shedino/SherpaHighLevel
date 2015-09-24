@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(camera_handler_SHERPA)
+project(camera_handler_sherpa)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   message_generation
+  mms_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -84,8 +85,8 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES camera_handler_SHERPA
-  CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs message_runtime
+#  LIBRARIES camera_handler_sherpa
+  CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs message_runtime mms_msgs
 #  DEPENDS system_lib
 )
 
@@ -101,21 +102,21 @@ include_directories(
 )
 
 ## Declare a cpp library
-# add_library(camera_handler_SHERPA
-#   src/${PROJECT_NAME}/camera_handler_SHERPA.cpp
+# add_library(camera_handler_sherpa
+#   src/${PROJECT_NAME}/camera_handler_sherpa.cpp
 # )
 
 ## Declare a cpp executable
 add_executable(${PROJECT_NAME} src/${PROJECT_NAME}.cpp)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
-add_dependencies(${PROJECT_NAME} wasp_follow_human1_generate_messages_cpp)
+add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_gencpp wasp_follow_human1_generate_messages_cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(camera_handler_SHERPA_node camera_handler_SHERPA_generate_messages_cpp)
+# add_dependencies(camera_handler_sherpa_node camera_handler_sherpa_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-#target_link_libraries(camera_handler_SHERPA
+#target_link_libraries(camera_handler_sherpa
 #   ${catkin_LIBRARIES}
 #)
 
@@ -134,7 +135,7 @@ add_dependencies(${PROJECT_NAME} wasp_follow_human1_generate_messages_cpp)
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS camera_handler_SHERPA camera_handler_SHERPA_node
+# install(TARGETS camera_handler_sherpa camera_handler_sherpa_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -159,7 +160,7 @@ add_dependencies(${PROJECT_NAME} wasp_follow_human1_generate_messages_cpp)
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_camera_handler_SHERPA.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_camera_handler_sherpa.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

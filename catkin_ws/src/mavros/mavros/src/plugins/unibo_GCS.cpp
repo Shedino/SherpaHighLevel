@@ -8,7 +8,7 @@
 #include <mms_msgs/Sys_status.h>
 #include <mavros/Global_position_int.h>
 #include <mavros/ArtvaRead.h>
-#include <camera_handler_SHERPA/Camera.h>
+#include <camera_handler_sherpa/Camera.h>
 #include <guidance_node_amsl/Position_nav.h>
 
 
@@ -31,7 +31,7 @@ public:
 		ack_sub = nodeHandle.subscribe("/ack_cmd", 10, &UniboGCSPlugin::ack_cmd_callback, this);
 		ack_mission_sub = nodeHandle.subscribe("/ack_mission", 10, &UniboGCSPlugin::ack_mission_callback, this);
 		command_pub = nodeHandle.advertise<mms_msgs::Cmd>("/sent_command", 10);     //before command check
-		camera_pub = nodeHandle.advertise<camera_handler_SHERPA::Camera>("/camera_trigger", 10);
+		camera_pub = nodeHandle.advertise<camera_handler_sherpa::Camera>("/camera_trigger", 10);
 		position_sub= nodeHandle.subscribe("/position_nav", 10, &UniboGCSPlugin::position_callback, this);
 		status_sub = nodeHandle.subscribe("/system_status", 10, &UniboGCSPlugin::status_callback, this);
 		ArtvaRead_sub = nodeHandle.subscribe("/artva_read",10,&UniboGCSPlugin::artva_callback,this);
@@ -117,7 +117,7 @@ private:
 		mavlink_mission_item_t mission_item;
 		mavlink_msg_mission_item_decode(msg, &mission_item);
 		auto mission_item_msg = boost::make_shared<mms_msgs::Cmd>();
-		auto camera_msg = boost::make_shared<camera_handler_SHERPA::Camera>();
+		auto camera_msg = boost::make_shared<camera_handler_sherpa::Camera>();
 
 		/*switch (mission_item.command){
 			case MAV_CMD_IMAGE_START_CAPTURE:   //MAV_CMD_IMAGE_START_CAPTURE:

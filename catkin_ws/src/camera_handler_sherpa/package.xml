@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>camera_handler_SHERPA</name>
+  <name>camera_handler_sherpa</name>
   <version>0.0.0</version>
-  <description>The camera_handler_SHERPA package</description>
+  <description>The camera_handler_sherpa package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->

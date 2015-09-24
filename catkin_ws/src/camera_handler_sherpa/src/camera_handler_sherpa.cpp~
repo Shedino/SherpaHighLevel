@@ -8,7 +8,7 @@
 #include <iostream>
 #include <fstream>
 
-#include "camera_handler_SHERPA/Camera.h"
+#include "camera_handler_sherpa/Camera.h"
 #include <mms_msgs/Cmd.h>
 #include <mms_msgs/Ack_mission.h>
 

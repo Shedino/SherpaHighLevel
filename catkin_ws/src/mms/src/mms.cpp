@@ -39,7 +39,7 @@ public:
 
 		//subscribers
 		subFromCmd_=n_.subscribe("/command", 10, &MmsNodeClass::readCmdMessage,this);
-        subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
+        	subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
 		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
 		subFromDistance_=n_.subscribe("/distance", 10, &MmsNodeClass::readDistanceMessage,this);
 		
