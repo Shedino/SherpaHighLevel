@@ -146,7 +146,7 @@ public:
 				break;
 
 			case PERFORMING_TAKEOFF:
-				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/100;   
+				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
@@ -159,9 +159,9 @@ public:
 				break;
 
 			case PERFORMING_GO_TO:
-				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/100;   
-				globPosInt_.lat += 100*(reference_.Latitude - inputPos_.Latitude);
-				globPosInt_.lon += 100*(reference_.Longitude - inputPos_.Longitude);
+				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
+				globPosInt_.lat += (reference_.Latitude - inputPos_.Latitude)/70;
+				globPosInt_.lon += (reference_.Longitude - inputPos_.Longitude)/70;
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
@@ -171,7 +171,7 @@ public:
 	
 
 			case PERFORMING_LANDING:
-				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/100;     
+				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;     
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 		}

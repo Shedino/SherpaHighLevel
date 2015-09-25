@@ -103,14 +103,16 @@ public:
 		End_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(outputRef_.Latitude/10000000.0f*PI/180.0f)*sin(outputRef_.Latitude/10000000.0f*PI/180.0f));
 		End_Point.X=(End_Point.Ne+alt)*cos(outputRef_.Latitude/10000000.0f*PI/180.0f)*cos(outputRef_.Longitude/10000000.0f*PI/180.0f);
 		End_Point.Y=(End_Point.Ne+alt)*cos(outputRef_.Latitude/10000000.0f*PI/180.0f)*sin(outputRef_.Longitude/10000000.0f*PI/180.0f);
-		End_Point.Z=(End_Point.Ne*(1.0f-0.08181919*0.08181919)+alt)*sin(outputRef_.Latitude*1e-7f*PI/180.0f);
+		//End_Point.Z=(End_Point.Ne*(1.0f-0.08181919f*0.08181919f)+alt)*sin(outputRef_.Latitude*1e-7f*PI/180.0f);
+		End_Point.Z = (double)outputRef_.AltitudeRelative;     //MICHELE BRUTAL!! buahahaha
         //ROS_INFO("ne, %f, endp_x, %f, endp_y, %f ,endp_z, %f", End_Point.Ne,End_Point.X, End_Point.Y,End_Point.Z);
 
-        alt = (double)inputPos_.Altitude/1000.0f;//AltitudeAMSL*1e-3;// AltitudeRelative + Home.AltitudeAMSL;
+        	alt = (double)inputPos_.Altitude/1000.0f;//AltitudeAMSL*1e-3;// AltitudeRelative + Home.AltitudeAMSL;
 		Starting_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f));
 		Starting_Point.X=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*cos(inputPos_.Longitude/10000000.0f*PI/180);
 		Starting_Point.Y=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Longitude/10000000.0f*PI/180);
-		Starting_Point.Z=(Starting_Point.Ne*(1.0f-0.08181919f*0.08181919f)+alt)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f);
+		//Starting_Point.Z=(Starting_Point.Ne*(1.0f-0.08181919f*0.08181919f)+alt)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f);
+		Starting_Point.Z = (double)inputPos_.Altitude;		//MIC brutal! buahaha
 		//ROS_INFO("ne, %f, sp_x, %f, sp_y, %f ,sp_z, %f, alt %d", Starting_Point.Ne,Starting_Point.X, Starting_Point.Y,Starting_Point.Z,inputPos_.Altitude);
 
 		error_x = End_Point.X - Starting_Point.X; //outputRef_.Latitude - inputPos_.Latitude;
@@ -121,7 +123,8 @@ public:
 		error_yaw = outputRef_.Yawangle - inputPos_.YawAngle;//*3.14/100/360;
 		error_to_t.error_pos = 1000.0f*sqrt(error_x*error_x + error_y*error_y);
 		error_to_t.error_ang = 180.0f/PI*sqrt(error_yaw*error_yaw);
-		error_to_t.error_alt = 1000.0f*sqrt(error_z*error_z);
+		//error_to_t.error_alt = 1000.0f*sqrt(error_z*error_z);
+		error_to_t.error_alt = sqrt(error_z*error_z);      //MIC brutal! buahaha
         //ROS_INFO("DISTANCE TO TARGET")
 
 		counter_print++;

@@ -652,6 +652,7 @@ case PERFORMING_GO_TO:
 	if (inputDist_.command == 16  && seq_number == inputDist_.seq)
 	{
 		ROS_INFO_ONCE("MMS: REACHING THE WAYPOINT TARGET");
+		//ROS_INFO("MMS: Distances: %.3f - %.3f - %.3f", inputDist_.error_pos, inputDist_.error_ang, inputDist_.error_alt);
 		if (inputDist_.error_pos < eps_WP and inputDist_.error_ang < eps_YAW and inputDist_.error_alt < eps_alt)
 		{
 			set_events_false();

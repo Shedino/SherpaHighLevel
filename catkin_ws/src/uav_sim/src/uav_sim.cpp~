@@ -160,8 +160,8 @@ public:
 
 			case PERFORMING_GO_TO:
 				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/100;   
-				globPosInt_.lat += 100*(reference_.Latitude - inputPos_.Latitude);
-				globPosInt_.lon += 100*(reference_.Longitude - inputPos_.Longitude);
+				globPosInt_.lat += (reference_.Latitude - inputPos_.Latitude)/100;
+				globPosInt_.lon += (reference_.Longitude - inputPos_.Longitude)/100;
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
