@@ -17,12 +17,12 @@
 #define ARMING 40
 #define DISARMING 45
 #define ON_GROUND_ARMED 50
-#define ON_GROUND_READY_TO_TAKEOFF 60
+//#define ON_GROUND_READY_TO_TAKEOFF 60
 #define PERFORMING_TAKEOFF 70
 #define IN_FLIGHT 80
-#define READY_TO_GO 90
+//#define READY_TO_GO 90
 #define PERFORMING_GO_TO 100
-#define READY_TO_LAND 110
+//#define READY_TO_LAND 110
 #define PERFORMING_LANDING 120
 
 double PI = 3.1416; // pi
@@ -599,8 +599,8 @@ public:
 							}
 						}
 			break;
-
-		case ON_GROUND_READY_TO_TAKEOFF:
+		// this state is useless if MISSION_START is not implemented
+		/*case ON_GROUND_READY_TO_TAKEOFF:
 			if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
 						{
 							if (new_frame == true)
@@ -652,7 +652,7 @@ public:
 								}
 							}
 						}
-			break;
+			break;*/
 
 		case PERFORMING_TAKEOFF:
 			if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
@@ -758,8 +758,8 @@ public:
 				}
 			}
 			break;
-
-		case READY_TO_GO:
+		// this state is useless if MISSION_START is not implemented
+		/*case READY_TO_GO:
 			if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
 			{
 				if (new_state == true)
@@ -768,10 +768,10 @@ public:
 					new_state = false;
 					// comment these lines to avoid the drone accumulates position and yaw errors
 					// comment these lines to make the published reference equal to the last valid one
-					/*get_current_position();
-					outputRef_.frame = actual_frame;
-					tempRef_ = outputRef_;
-					tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;*/
+					//get_current_position();
+					//outputRef_.frame = actual_frame;
+					//tempRef_ = outputRef_;
+					//tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
 					ROS_INFO("REF->NAV: REFERENCE = READY_TO_GO");
 				}
 
@@ -806,7 +806,7 @@ public:
 					}
 				}
 			}
-			break;
+			break;*/
 
 	case PERFORMING_GO_TO:
 		if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
@@ -883,8 +883,8 @@ public:
 			pubToDistance_.publish(outputDist_);
 		}
 		break;
-
-case READY_TO_LAND:
+// this state is useless if MISSION_START is not implemented
+/*case READY_TO_LAND:
 	if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
 	{
 		if (new_state == true)
@@ -893,10 +893,10 @@ case READY_TO_LAND:
 			new_state = false;
 			// comment these lines to avoid the drone accumulates position and yaw errors
 			// comment these lines to make the published reference equal to the last valid one
-			/*get_current_position();
-			outputRef_.frame = actual_frame;
-			tempRef_ = outputRef_;
-			tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;*/
+			//get_current_position();
+			//outputRef_.frame = actual_frame;
+			//tempRef_ = outputRef_;
+			//tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
 			ROS_INFO("REF->NAV: REFERENCE = READY_TO_LAND");
 		}
 
@@ -931,7 +931,7 @@ case READY_TO_LAND:
 			}
 		}
 	}
-	break;
+	break;*/
 
 case PERFORMING_LANDING:
 	if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
