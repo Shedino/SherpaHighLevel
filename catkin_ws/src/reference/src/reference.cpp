@@ -717,10 +717,12 @@ public:
 				{
 					ROS_INFO("REF: IN_FLIGHT");
 					new_state = false;
-					get_current_position();
+					// comment these lines to avoid the drone stops when the distance is inside the allowed error sphere
+					// comment these lines to make the published reference equal to the last valid one
+					/* get_current_position(); 
 					outputRef_.frame = actual_frame;
 					tempRef_ = outputRef_;
-					tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
+					tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;*/
 					ROS_INFO("REF->NAV: REFERENCE = IN_FLIGHT");
 				}
 
@@ -764,10 +766,12 @@ public:
 				{
 					ROS_INFO("REF: READY_TO_GO");
 					new_state = false;
-					get_current_position();
+					// comment these lines to avoid the drone accumulates position and yaw errors
+					// comment these lines to make the published reference equal to the last valid one
+					/*get_current_position();
 					outputRef_.frame = actual_frame;
 					tempRef_ = outputRef_;
-					tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
+					tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;*/
 					ROS_INFO("REF->NAV: REFERENCE = READY_TO_GO");
 				}
 
@@ -887,10 +891,12 @@ case READY_TO_LAND:
 		{
 			ROS_INFO("REF: READY_TO_LAND");
 			new_state = false;
-			get_current_position();
+			// comment these lines to avoid the drone accumulates position and yaw errors
+			// comment these lines to make the published reference equal to the last valid one
+			/*get_current_position();
 			outputRef_.frame = actual_frame;
 			tempRef_ = outputRef_;
-			tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
+			tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;*/
 			ROS_INFO("REF->NAV: REFERENCE = READY_TO_LAND");
 		}
 
