@@ -10,20 +10,7 @@
 #include "reference/Distance.h"
 
 
-// STATES DEFINITION
-#define ON_GROUND_NO_HOME 10
-#define SETTING_HOME 20
-#define ON_GROUND_DISARMED 30
-#define ARMING 40
-#define DISARMING 45
-#define ON_GROUND_ARMED 50
-//#define ON_GROUND_READY_TO_TAKEOFF 60
-#define PERFORMING_TAKEOFF 70
-#define IN_FLIGHT 80
-//#define READY_TO_GO 90
-#define PERFORMING_GO_TO 100
-//#define READY_TO_LAND 110
-#define PERFORMING_LANDING 120
+
 
 double PI = 3.1416; // pi
 
@@ -36,7 +23,7 @@ public:
 		//subscribers
 		subFromPosition_=n_.subscribe("/position_nav", 10, &ReferenceNodeClass::readPositionMessage,this);
 		subFromGlobPosInt_=n_.subscribe("/global_position_int", 10, &ReferenceNodeClass::readGlobalPosIntMessage,this);
-		subFromCmd_=n_.subscribe("/command", 10, &ReferenceNodeClass::readCmdMessage,this);
+		subFromCmd_=n_.subscribe("/sent_command", 10, &ReferenceNodeClass::readCmdMessage,this);     //excluding command verifier
         subFromSonar_ = n_.subscribe("/sonar", 10, &ReferenceNodeClass::readSonarMessage,this);
 		subFromMmsStatus_=n_.subscribe("/mms_status", 10, &ReferenceNodeClass::readMmsStatusMessage,this);
 		subFromFrame_=n_.subscribe("/ref_system", 10, &ReferenceNodeClass::readFrameMessage,this);
@@ -69,6 +56,21 @@ public:
 		inputHome_.alt = 0;
 		inputHome_.hdg = 0;
 		inputHome_.time_boot_ms = 0;
+		
+		// STATE INITIALIZATION
+		currentState = ON_GROUND_NO_HOME;
+		oldState = 0;//ON_GROUND_NO_HOME;
+		// int lastARMState = ON_GROUND_DISARMED;
+		target_frame = 6;
+		actual_frame = 6;
+		tempRelAlt = 0;
+
+		rate = 10;
+		new_state = true;
+		new_frame = true;
+		land = false;
+		counter_print = 0;
+		Dh_TO = 5000;
 	}
 
 	class e_to_tartget{
@@ -228,48 +230,49 @@ public:
 
 		switch(inputCmd_.command)
 		{
-		case 16:  // MAV_CMD_NAV_WAYPOINT
-		{
-			// ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT");
-			// ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %f - %f - %f - %f",inputCmd_.param5,inputCmd_.param6,inputCmd_.param7,inputCmd_.param4);
-			target_.Latitude = (int)(inputCmd_.param5*10000000.0f);
-			target_.Longitude = (int)(inputCmd_.param6*10000000.0f);
-			target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
-			target_.Yawangle = inputCmd_.param4;
-			target_.frame = inputCmd_.frame;
-			outputDist_.seq = inputCmd_.seq;
-			ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %d - %d",target_.Latitude,target_.Longitude,target_.AltitudeRelative,target_.Yawangle,target_.frame);
-			// target_.Mode = 0;
-		} break;
-		case 21:  // MAV_CMD_NAV_LAND
-		{
-			ROS_INFO("REF: MAV_CMD_DO_NAV_LAND");
-			outputRef_.frame = inputCmd_.frame;
-			outputDist_.seq = inputCmd_.seq;
-		}break;
-		case 22:  // MAV_CMD_NAV_TAKEOFF
-		{
-			ROS_INFO("REF: MAV_CMD_NAV_TAKEOFF");
-			outputRef_.Latitude = (int)(inputCmd_.param5*10000000.0f);
-			outputRef_.Longitude = (int)(inputCmd_.param6*10000000.0f);
-			outputRef_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
-			outputRef_.Yawangle = inputCmd_.param4;
-			outputRef_.frame = inputCmd_.frame;
-			outputDist_.seq = inputCmd_.seq;
-			Dh_TO = outputRef_.AltitudeRelative;
-		}break;
-		/*		case 115: // MAV_CMD_CONDITION_YAW
-		{
-			CONDITION_YAW = true;
-		}break;*/
-		case 179: // MAV_CMD_DO_SET_HOME
-		{
-			ROS_INFO("REF: MAV_CMD_DO_SET_HOME");
-		}break;
-		case 300: // MAV_CMD_MISSION_START
-		{
-			ROS_INFO("REF: MAV_CMD_MISSION_START");
-		}break;
+			case 16:  // MAV_CMD_NAV_WAYPOINT
+			{
+				// ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT");
+				// ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %f - %f - %f - %f",inputCmd_.param5,inputCmd_.param6,inputCmd_.param7,inputCmd_.param4);
+				target_.Latitude = (int)(inputCmd_.param5*10000000.0f);
+				target_.Longitude = (int)(inputCmd_.param6*10000000.0f);
+				target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
+				target_.Yawangle = inputCmd_.param4;
+				target_.frame = inputCmd_.frame;
+				outputDist_.seq = inputCmd_.seq;
+				ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",target_.Latitude,target_.Longitude,target_.AltitudeRelative,target_.Yawangle,target_.frame);
+				// target_.Mode = 0;
+			} break;
+			case 21:  // MAV_CMD_NAV_LAND
+			{
+				ROS_INFO("REF: MAV_CMD_DO_NAV_LAND");
+				outputRef_.frame = inputCmd_.frame;
+				outputDist_.seq = inputCmd_.seq;
+			}break;
+			case 22:  // MAV_CMD_NAV_TAKEOFF
+			{
+				ROS_INFO("REF: MAV_CMD_NAV_TAKEOFF");
+				outputRef_.Latitude = (int)(inputCmd_.param5*10000000.0f);
+				outputRef_.Longitude = (int)(inputCmd_.param6*10000000.0f);
+				outputRef_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
+				outputRef_.Yawangle = inputCmd_.param4;
+				outputRef_.frame = inputCmd_.frame;
+				outputDist_.seq = inputCmd_.seq;
+				Dh_TO = outputRef_.AltitudeRelative;
+				//ROS_INFO("Seqence 1: %d", outputDist_.seq);	//TODO remove
+			}break;
+			/*		case 115: // MAV_CMD_CONDITION_YAW
+			{
+				CONDITION_YAW = true;
+			}break;*/
+			case 179: // MAV_CMD_DO_SET_HOME
+			{
+				ROS_INFO("REF: MAV_CMD_DO_SET_HOME");
+			}break;
+			case 300: // MAV_CMD_MISSION_START
+			{
+				ROS_INFO("REF: MAV_CMD_MISSION_START");
+			}break;
 		}
 	}
 
@@ -808,80 +811,80 @@ public:
 			}
 			break;*/
 
-	case PERFORMING_GO_TO:
-		if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
-		{
-			if (new_state == true)
+		case PERFORMING_GO_TO:
+			if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
 			{
-				ROS_INFO("REF: PERFORMING_GO_TO");
-				new_state = false;
-
-				/*outputRef_.Latitude = 123; // ONLY FOR TEST
-				outputRef_.Longitude = 123;// ONLY FOR TEST
-				outputRef_.AltitudeRelative = 1230;// ONLY FOR TEST
-				outputRef_.Yawangle = 123;// ONLY FOR TEST
-				outputRef_.Mode = 123;// ONLY FOR TEST
-				outputRef_.frame = target_frame;// ONLY FOR TEST*/
-
-				// get_current_position();
-				tempRef_ = target_;
-				// tempRelAlt = inputGlobPosInt_.relative_alt;// - Home.relative_alt;
-				ROS_INFO("REF->NAV: REFERENCE = TARGET WAYPOINT");
-			}
-			if (new_frame == true)
-			{
-				new_frame = false;
-
-				if (actual_frame == 6 && target_frame == 6) // 6 = barometer
+				if (new_state == true)
 				{
-					outputRef_ = tempRef_;
-					outputRef_.frame = actual_frame;
-					// tempRef_.frame = actual_frame;
-					pubToReference_.publish(outputRef_);// as it is
-					ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %d - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
-					land = false;
-					ROS_INFO("REF->NAV: WAYPOINT BARO");
+					ROS_INFO("REF: PERFORMING_GO_TO");
+					new_state = false;
+
+					/*outputRef_.Latitude = 123; // ONLY FOR TEST
+					outputRef_.Longitude = 123;// ONLY FOR TEST
+					outputRef_.AltitudeRelative = 1230;// ONLY FOR TEST
+					outputRef_.Yawangle = 123;// ONLY FOR TEST
+					outputRef_.Mode = 123;// ONLY FOR TEST
+					outputRef_.frame = target_frame;// ONLY FOR TEST*/
+
+					// get_current_position();
+					tempRef_ = target_;
+					// tempRelAlt = inputGlobPosInt_.relative_alt;// - Home.relative_alt;
+					ROS_INFO("REF->NAV: REFERENCE = TARGET WAYPOINT");
 				}
-				if (actual_frame == 11 && target_frame == 11) // 11 = sonar
+				if (new_frame == true)
 				{
-					outputRef_ = tempRef_;
-					outputRef_.frame = actual_frame;
-					// tempRef_.frame = actual_frame;
-					pubToReference_.publish(outputRef_);// as it is
-					ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %d - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
-					land = false;
-					ROS_INFO("REF->NAV: WAYPOINT SONAR");
+					new_frame = false;
+
+					if (actual_frame == 6 && target_frame == 6) // 6 = barometer
+					{
+						outputRef_ = tempRef_;
+						outputRef_.frame = actual_frame;
+						// tempRef_.frame = actual_frame;
+						pubToReference_.publish(outputRef_);// as it is
+						ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
+						land = false;
+						ROS_INFO("REF->NAV: WAYPOINT BARO");
+					}
+					if (actual_frame == 11 && target_frame == 11) // 11 = sonar
+					{
+						outputRef_ = tempRef_;
+						outputRef_.frame = actual_frame;
+						// tempRef_.frame = actual_frame;
+						pubToReference_.publish(outputRef_);// as it is
+						ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
+						land = false;
+						ROS_INFO("REF->NAV: WAYPOINT SONAR");
+					}
+					if (actual_frame == 6 && target_frame == 11)
+					{
+						outputRef_ = tempRef_;
+						outputRef_.frame = actual_frame;
+						//tempRef_.frame = actual_frame;
+						outputRef_.AltitudeRelative = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
+						ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
+						pubToReference_.publish(outputRef_);
+						ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
+						land = true;
+					}
+					if (actual_frame == 11 && target_frame == 6)
+					{
+						ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
+						ROS_INFO("REF: NO REFERENCE PUBLISHED");
+						land = false;
+					}
 				}
-				if (actual_frame == 6 && target_frame == 11)
+				if (land == true)
 				{
-					outputRef_ = tempRef_;
-					outputRef_.frame = actual_frame;
-					//tempRef_.frame = actual_frame;
-					outputRef_.AltitudeRelative = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
-					ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
+					outputRef_.AltitudeRelative -= 80;
 					pubToReference_.publish(outputRef_);
-					ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %d - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
-					land = true;
 				}
-				if (actual_frame == 11 && target_frame == 6)
-				{
-					ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-					ROS_INFO("REF: NO REFERENCE PUBLISHED");
-					land = false;
-				}
+				distance();
+				outputDist_.error_pos = error_to_t.error_pos;
+				outputDist_.error_ang = error_to_t.error_ang;
+				outputDist_.error_alt = error_to_t.error_alt;
+				outputDist_.command = 16; // WAYPOINT
+				pubToDistance_.publish(outputDist_);
 			}
-			if (land == true)
-			{
-				outputRef_.AltitudeRelative -= 80;
-				pubToReference_.publish(outputRef_);
-			}
-			distance();
-			outputDist_.error_pos = error_to_t.error_pos;
-			outputDist_.error_ang = error_to_t.error_ang;
-			outputDist_.error_alt = error_to_t.error_alt;
-			outputDist_.command = 16; // WAYPOINT
-			pubToDistance_.publish(outputDist_);
-		}
 		break;
 // this state is useless if MISSION_START is not implemented
 /*case READY_TO_LAND:
@@ -933,56 +936,55 @@ public:
 	}
 	break;*/
 
-case PERFORMING_LANDING:
-	if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
-	{
-		if (new_state == true)
-		{
-			    ROS_INFO("REF: PERFORMING_LANDING");
-				new_state = false;
-				get_current_position();
-				outputRef_.frame = actual_frame;
-				tempRef_ = outputRef_;
-				tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
-				ROS_INFO("REF->NAV: REFERENCE = VERT. LAND SPEED");
-		}
-		if (new_frame == true)
-		{
-				new_frame = false;
+		case PERFORMING_LANDING:
+			if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
+			{
+				if (new_state == true)
+				{
+						ROS_INFO("REF: PERFORMING_LANDING");
+						new_state = false;
+						get_current_position();
+						outputRef_.frame = actual_frame;
+						tempRef_ = outputRef_;
+						tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
+						ROS_INFO("REF->NAV: REFERENCE = VERT. LAND SPEED");
+				}
+				if (new_frame == true)
+				{
+						new_frame = false;
 
-				if (actual_frame == 6 && target_frame == 6) // 6 = barometer
-				{
-					outputRef_.frame = actual_frame;// as it is
+						if (actual_frame == 6 && target_frame == 6) // 6 = barometer
+						{
+							outputRef_.frame = actual_frame;// as it is
+						}
+						if (actual_frame == 11 && target_frame == 11) // 11 = sonar
+						{
+							outputRef_.frame = actual_frame;// as it is
+						}
+						if (actual_frame == 6 && target_frame == 11)
+						{
+							outputRef_.frame = actual_frame;
+							outputRef_.AltitudeRelative = tempRelAlt;
+							ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
+						}
+						if (actual_frame == 11 && target_frame == 6)
+						{
+							ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
+							ROS_INFO("REF: NO REFERENCE PUBLISHED");
+						}
 				}
-				if (actual_frame == 11 && target_frame == 11) // 11 = sonar
-				{
-					outputRef_.frame = actual_frame;// as it is
-				}
-				if (actual_frame == 6 && target_frame == 11)
-				{
-					outputRef_.frame = actual_frame;
-					outputRef_.AltitudeRelative = tempRelAlt;
-					ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-				}
-				if (actual_frame == 11 && target_frame == 6)
-				{
-					ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-					ROS_INFO("REF: NO REFERENCE PUBLISHED");
-				}
+				outputRef_.AltitudeRelative -= 80; // 8 cm @ frequency --> with rate=10 it means 80cm/s
+				tempRelAlt -= 80;
+				pubToReference_.publish(outputRef_);
+				distance();
+				outputDist_.error_pos = error_to_t.error_pos;
+				outputDist_.error_ang = error_to_t.error_ang;
+				outputDist_.error_alt = error_to_t.error_alt;
+				outputDist_.command = 21; // LAND
+				pubToDistance_.publish(outputDist_);
+			}
+			break;
 		}
-		outputRef_.AltitudeRelative -= 80; // 5 cm @ frequencey
-		tempRelAlt -= 80;
-		pubToReference_.publish(outputRef_);
-		distance();
-		outputDist_.error_pos = error_to_t.error_pos;
-		outputDist_.error_ang = error_to_t.error_ang;
-		outputDist_.error_alt = error_to_t.error_alt;
-		outputDist_.command = 21; // LAND
-		pubToDistance_.publish(outputDist_);
-	}
-	break;
-}
-
 }
 
 void run() {
@@ -1048,31 +1050,39 @@ guidance_node_amsl::Reference waypointRef_;
 // mavros::Global_position_int Home;
 
 
+
+// STATES DEFINITION
+static const int ON_GROUND_NO_HOME = 10;
+static const int SETTING_HOME = 20;
+static const int  ON_GROUND_DISARMED = 30;
+static const int  ARMING = 40;
+static const int  DISARMING = 45;
+static const int  ON_GROUND_ARMED = 50;
+//static const int  ON_GROUND_READY_TO_TAKEOFF = 60;
+static const int  PERFORMING_TAKEOFF = 70;
+static const int  IN_FLIGHT = 80;
+//static const int  READY_TO_GO = 90;
+static const int  PERFORMING_GO_TO = 100;
+//static const int  READY_TO_LAND = 110;
+static const int  PERFORMING_LANDING = 120;
+
 // STATE INITIALIZATION
-int currentState = ON_GROUND_NO_HOME;
-int oldState = 0;//ON_GROUND_NO_HOME;
+int currentState;
+int oldState;
 // int lastARMState = ON_GROUND_DISARMED;
-int target_frame = 6;
-int actual_frame = 6;
-int tempRelAlt = 0;
+int target_frame;
+int actual_frame;
+int tempRelAlt;
 
-// ERRORS DEFINITION
-// float err; // current distance to the target position in millimeters
-/*int eps_LAND = 100; // target distance to the LAND position in millimeter
-	int eps_WP = 100; // target distance to the WAYPOINT position in millimeters
-	int eps_TO = 100; // target distance to the TAKEOFF position in millimeters*/
-
-int rate = 10;
-bool new_state = true;
-// bool new_pos = false;
-bool new_frame = true;
-bool land = false;
-
-uint16_t counter_print = 0;
+int rate;
+bool new_state;
+bool new_frame;
+bool land;
+uint16_t counter_print;
 
 private:
 
-int Dh_TO = 5000;
+int Dh_TO;
 };
 
 int main(int argc, char **argv)
