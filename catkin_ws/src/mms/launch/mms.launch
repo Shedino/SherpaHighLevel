@@ -3,8 +3,6 @@
 	<node pkg="mms" type="mms" name="mms" output="screen">
 	</node>
 	
-	<include file="$(find cmd_verifier)/launch/node.launch">
-	</include>
 	<include file="$(find frame)/launch/node.launch">
 	</include>
 	<include file="$(find pos_mixer)/launch/node.launch">
