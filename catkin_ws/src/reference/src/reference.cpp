@@ -272,14 +272,17 @@ public:
 					if (i == 0){
 						vertex_grid[received_vertexes_grid][0] = inputCmd_.param1;       //LAT
 						vertex_grid[received_vertexes_grid][1] = inputCmd_.param2;		 //LON
+						ROS_INFO("REF: Vertex Received: %f - %f", inputCmd_.param1, inputCmd_.param2);
 						received_vertexes_grid++;
 					} else if (i == 1){
 						vertex_grid[received_vertexes_grid][0] = inputCmd_.param3;
 						vertex_grid[received_vertexes_grid][1] = inputCmd_.param4;
+						ROS_INFO("REF: Vertex Received: %f - %f", inputCmd_.param3, inputCmd_.param4);
 						received_vertexes_grid++;
 					} else if (i == 2){
 						vertex_grid[received_vertexes_grid][0] = inputCmd_.param5;
 						vertex_grid[received_vertexes_grid][1] = inputCmd_.param6;          //MAX 3 vertex per command
+						ROS_INFO("REF: Vertex Received: %f - %f", inputCmd_.param5, inputCmd_.param6);
 						received_vertexes_grid++;
 					}
 					if (received_vertexes_grid == vertex_grid_n){
@@ -857,37 +860,44 @@ public:
 			break;*/
 
 		case GRID:
+			{
 				//-------TEST GRID-------   TODO change position
-				/*real_T data_arr[8] = {0, 6, 6, 0, 0, 0, 4, 4};  //COLOUMN MAJOR!!!-->(0,0)-(6,0)-(6,4)-(0,4)
-				real_T *data = data_arr;
-				emxArray_real_T* vertex = emxCreateWrapper_real_T(data, 4, 2);
-				initial_pos_grid[0] = 0;
-				initial_pos_grid[1] = 5;
-				d_grid = 0.5;
-				WP_grid(vertex, initial_pos_grid, d_grid, max_wp_grid, WP_out_grid, &success_grid, &number_WP_grid);
-				ROS_INFO("GRID! Success: %d - N. WP: %d", success_grid, number_WP_grid);
-				for (int i = 0; i < number_WP_grid; i++){
-					ROS_INFO("GRID! WP %d: %.2f - %.2f", i, WP_out_grid->data[i], WP_out_grid->data[100+i]);
-				}*/
+				if (received_grid_cmd && !waiting_for_vertex_grid){
+					real_T data_arr[8] = {0, 6, 6, 0, 0, 0, 4, 4};  //COLOUMN MAJOR!!!-->(0,0)-(6,0)-(6,4)-(0,4)
+					real_T *data = data_arr;
+					emxArray_real_T* vertex_test = emxCreateWrapper_real_T(data, 4, 2);
+					initial_pos_grid[0] = 5;
+					initial_pos_grid[1] = 5;
+					d_grid = 0.5;
+					WP_grid(vertex_test, initial_pos_grid, d_grid, max_wp_grid, WP_out_grid, &success_grid, &number_WP_grid);
+					ROS_INFO("GRID! Success: %d - N. WP: %d", success_grid, number_WP_grid);
+					for (int i = 0; i < number_WP_grid; i++){
+						ROS_INFO("GRID! WP %d: %.2f - %.2f", i, WP_out_grid->data[i], WP_out_grid->data[max_wp_grid+i]);
+					}
+				}
 				//-------TEST GRID------------------------------------
-				if (received_grid_cmd && !waiting_for_vertex_grid){   //have received all vertexes
+				/*if (received_grid_cmd && !waiting_for_vertex_grid){   //have received all vertexes
+					ROS_INFO("REF: GRID. Starting GRID alg. N. vertex: %d - Distance: %f", vertex_grid_n, d_grid);
 					real_T *data_arr = new real_T[vertex_grid_n*2]; //COLOUMN MAJOR!!!
 					for (int i = 0; i < vertex_grid_n; i++){
+						ROS_INFO("REF: GRID. Vertex %d: %f - %f", i+1, vertex_grid [i][0], vertex_grid [i][1]);
 						data_arr [i] = vertex_grid [i][0];			//COLOUMN MAJOR!!		//TODO add conversion WGS84-->NED
 						data_arr [i+vertex_grid_n] = vertex_grid [i][1];					//TODO add conversion WGS84-->NED
 					}
+					ROS_INFO("REF: GRID. Vertex: %f %f %f %f %f %f %f %f", data_arr [0], data_arr [1], data_arr [2], data_arr [3], data_arr [4], data_arr [5], data_arr [6], data_arr [7]);
 					emxArray_real_T* vertex = emxCreateWrapper_real_T(data_arr, vertex_grid_n, 2);
 					initial_pos_grid[0] = outputRef_.Latitude;    //latest reference as initial point    //TODO add conversion WGS84-->NED
 					initial_pos_grid[1] = outputRef_.Longitude;	//latest reference as initial point		 //TODO add conversion WGS84-->NED
 					WP_grid(vertex, initial_pos_grid, d_grid, max_wp_grid, WP_out_grid, &success_grid, &number_WP_grid);
-					ROS_INFO("REF: GRID! Success: %d - N. WP: %d", success_grid, number_WP_grid);
+					ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f", success_grid, number_WP_grid, speed_grid, height_grid);
 					for (int i = 0; i < number_WP_grid; i++){
-						ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP_out_grid->data[i], WP_out_grid->data[100+i]);
+						ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP_out_grid->data[i], WP_out_grid->data[max_wp_grid+i]);
 					}
-				}
+				}*/
 				received_grid_cmd = false;     //WP calculated. Now they need to be sent as reference
 				//TODO send WP as reference
 				//TODO add conversion NED-->WGS84
+			}
 		break;
 
 		case PERFORMING_GO_TO:
