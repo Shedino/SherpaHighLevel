@@ -3,7 +3,7 @@
  *
  * Code generation for function 'WP_grid'
  *
- * C source code generated on: Thu Oct 01 17:04:44 2015
+ * C source code generated on: Fri Oct 02 11:45:22 2015
  *
  */
 
@@ -28,7 +28,7 @@
 /* Variable Definitions */
 
 /* Function Declarations */
-extern void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2], real_T d, real_T WP[200], boolean_T *success, real_T *number_WP);
+extern void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2], real_T d, int16_T max_wp, emxArray_real_T *WP, int16_T *success, int16_T *number_WP);
 extern void WP_grid_initialize(void);
 extern void WP_grid_terminate(void);
 extern void convexify_polygon(const emxArray_real_T *vertex, const emxArray_real_T *zcrossproduct, boolean_T *convex, emxArray_real_T *convex_vertex, emxArray_real_T *zcrossproduct_out);

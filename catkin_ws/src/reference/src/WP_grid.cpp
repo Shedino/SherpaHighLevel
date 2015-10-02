@@ -3,7 +3,7 @@
  *
  * Code generation for function 'WP_grid'
  *
- * C source code generated on: Thu Oct 01 17:04:44 2015
+ * C source code generated on: Fri Oct 02 11:45:21 2015
  *
  */
 
@@ -379,16 +379,18 @@ static real_T rt_roundd_snf(real_T u)
 }
 
 void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2],
-             real_T d, real_T WP[200], boolean_T *success, real_T *number_WP)
+             real_T d, int16_T max_wp, emxArray_real_T *WP, int16_T *success,
+             int16_T *number_WP)
 {
-  real_T temp_WP[4];
   int32_T i4;
+  int32_T vlen;
+  real_T temp_WP[4];
   emxArray_real_T *vertex_out;
   real_T index_temp_WP;
   boolean_T break_flag;
-  int32_T vlen;
+  boolean_T positive_intersection;
   emxArray_int32_T *r12;
-  int32_T index_WP;
+  int32_T k;
   emxArray_real_T *b_vertex;
   emxArray_real_T *x1;
   emxArray_int32_T *r13;
@@ -406,12 +408,12 @@ void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2],
   emxArray_boolean_T *x;
   real_T t1;
   real_T t2;
-  boolean_T positive_intersection;
   emxArray_real_T *b_vertex_out;
   emxArray_real_T *b_zcrossproduct;
   real_T closest_point[2];
   emxArray_real_T *extended_vertex;
   real_T second_edge[2];
+  int16_T index_WP;
   real_T q_inc;
   boolean_T exitg3;
   real_T b_extended_vertex[2];
@@ -427,19 +429,26 @@ void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2],
   /*  */
   /*  initial_position --> position of UAV [x y]. Vector 1x2 */
   /*  d --> scalar distance between parallel lines */
-  memset(&WP[0], 0, 200U * sizeof(real_T));
+  i4 = WP->size[0] * WP->size[1];
+  WP->size[0] = max_wp;
+  WP->size[1] = 2;
+  emxEnsureCapacity((emxArray__common *)WP, i4, (int32_T)sizeof(real_T));
+  vlen = (max_wp << 1) - 1;
+  for (i4 = 0; i4 <= vlen; i4++) {
+    WP->data[i4] = 0.0;
+  }
 
   /* to initialize */
-  /* %coder.varsize('WP', [MAX_WP 2], [1 0]);     %%max dimension MAX_WP x 2 */
+  /* %coder.varsize('WP', [max_wp 2], [1 0]);     %%max dimension max_wp x 2 */
   for (i4 = 0; i4 < 4; i4++) {
     temp_WP[i4] = 0.0;
   }
 
   emxInit_real_T(&vertex_out, 2);
   index_temp_WP = 1.0;
-  *success = FALSE;
+  *success = 0;
   break_flag = FALSE;
-  *number_WP = 0.0;
+  *number_WP = 0;
 
   /* vertex = [ x1 y1 */
   /*            x2 y2 */
@@ -458,12 +467,13 @@ void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2],
 
   if (vertex->size[0] < 3) {
     /* %not a polygon */
+    positive_intersection = FALSE;
   } else {
     emxInit_int32_T(&r12, 1);
     i4 = vertex->size[0];
-    index_WP = r12->size[0];
+    k = r12->size[0];
     r12->size[0] = i4;
-    emxEnsureCapacity((emxArray__common *)r12, index_WP, (int32_T)sizeof(int32_T));
+    emxEnsureCapacity((emxArray__common *)r12, k, (int32_T)sizeof(int32_T));
     vlen = i4 - 1;
     for (i4 = 0; i4 <= vlen; i4++) {
       r12->data[i4] = 1 + i4;
@@ -471,32 +481,32 @@ void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2],
 
     b_emxInit_real_T(&b_vertex, 1);
     i4 = r12->size[0];
-    index_WP = vertex->size[0];
+    k = vertex->size[0];
     vlen = b_vertex->size[0];
-    b_vertex->size[0] = index_WP;
+    b_vertex->size[0] = k;
     emxEnsureCapacity((emxArray__common *)b_vertex, vlen, (int32_T)sizeof(real_T));
     emxFree_int32_T(&r12);
-    vlen = index_WP - 1;
-    for (index_WP = 0; index_WP <= vlen; index_WP++) {
-      b_vertex->data[index_WP] = vertex->data[index_WP];
+    vlen = k - 1;
+    for (k = 0; k <= vlen; k++) {
+      b_vertex->data[k] = vertex->data[k];
     }
 
     b_emxInit_real_T(&x1, 1);
-    index_WP = x1->size[0];
+    k = x1->size[0];
     x1->size[0] = i4;
-    emxEnsureCapacity((emxArray__common *)x1, index_WP, (int32_T)sizeof(real_T));
+    emxEnsureCapacity((emxArray__common *)x1, k, (int32_T)sizeof(real_T));
     vlen = i4 - 2;
-    for (index_WP = 0; index_WP <= vlen; index_WP++) {
-      x1->data[index_WP] = b_vertex->data[1 + index_WP];
+    for (k = 0; k <= vlen; k++) {
+      x1->data[k] = b_vertex->data[1 + k];
     }
 
     emxFree_real_T(&b_vertex);
     emxInit_int32_T(&r13, 1);
     x1->data[i4 - 1] = vertex->data[0];
     i4 = vertex->size[0];
-    index_WP = r13->size[0];
+    k = r13->size[0];
     r13->size[0] = i4;
-    emxEnsureCapacity((emxArray__common *)r13, index_WP, (int32_T)sizeof(int32_T));
+    emxEnsureCapacity((emxArray__common *)r13, k, (int32_T)sizeof(int32_T));
     vlen = i4 - 1;
     for (i4 = 0; i4 <= vlen; i4++) {
       r13->data[i4] = 1 + i4;
@@ -504,46 +514,46 @@ void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2],
 
     b_emxInit_real_T(&c_vertex, 1);
     i4 = r13->size[0];
-    index_WP = vertex->size[0];
+    k = vertex->size[0];
     vlen = c_vertex->size[0];
-    c_vertex->size[0] = index_WP;
+    c_vertex->size[0] = k;
     emxEnsureCapacity((emxArray__common *)c_vertex, vlen, (int32_T)sizeof(real_T));
     emxFree_int32_T(&r13);
-    vlen = index_WP - 1;
-    for (index_WP = 0; index_WP <= vlen; index_WP++) {
-      c_vertex->data[index_WP] = vertex->data[index_WP];
+    vlen = k - 1;
+    for (k = 0; k <= vlen; k++) {
+      c_vertex->data[k] = vertex->data[k];
     }
 
     b_emxInit_real_T(&d_vertex, 1);
-    index_WP = vertex->size[0];
+    k = vertex->size[0];
     vlen = d_vertex->size[0];
-    d_vertex->size[0] = index_WP;
+    d_vertex->size[0] = k;
     emxEnsureCapacity((emxArray__common *)d_vertex, vlen, (int32_T)sizeof(real_T));
-    vlen = index_WP - 1;
-    for (index_WP = 0; index_WP <= vlen; index_WP++) {
-      d_vertex->data[index_WP] = vertex->data[index_WP];
+    vlen = k - 1;
+    for (k = 0; k <= vlen; k++) {
+      d_vertex->data[k] = vertex->data[k];
     }
 
     b_emxInit_real_T(&x2, 1);
-    index_WP = x2->size[0];
+    k = x2->size[0];
     x2->size[0] = i4;
-    emxEnsureCapacity((emxArray__common *)x2, index_WP, (int32_T)sizeof(real_T));
+    emxEnsureCapacity((emxArray__common *)x2, k, (int32_T)sizeof(real_T));
     vlen = i4 - 3;
-    for (index_WP = 0; index_WP <= vlen; index_WP++) {
-      x2->data[index_WP] = c_vertex->data[2 + index_WP];
+    for (k = 0; k <= vlen; k++) {
+      x2->data[k] = c_vertex->data[2 + k];
     }
 
     emxFree_real_T(&c_vertex);
-    for (index_WP = 0; index_WP < 2; index_WP++) {
-      x2->data[(index_WP + i4) - 2] = d_vertex->data[index_WP];
+    for (k = 0; k < 2; k++) {
+      x2->data[(k + i4) - 2] = d_vertex->data[k];
     }
 
     emxFree_real_T(&d_vertex);
     emxInit_int32_T(&r14, 1);
     i4 = vertex->size[0];
-    index_WP = r14->size[0];
+    k = r14->size[0];
     r14->size[0] = i4;
-    emxEnsureCapacity((emxArray__common *)r14, index_WP, (int32_T)sizeof(int32_T));
+    emxEnsureCapacity((emxArray__common *)r14, k, (int32_T)sizeof(int32_T));
     vlen = i4 - 1;
     for (i4 = 0; i4 <= vlen; i4++) {
       r14->data[i4] = 1 + i4;
@@ -551,32 +561,32 @@ void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2],
 
     b_emxInit_real_T(&e_vertex, 1);
     i4 = r14->size[0];
-    index_WP = vertex->size[0];
+    k = vertex->size[0];
     vlen = e_vertex->size[0];
-    e_vertex->size[0] = index_WP;
+    e_vertex->size[0] = k;
     emxEnsureCapacity((emxArray__common *)e_vertex, vlen, (int32_T)sizeof(real_T));
     emxFree_int32_T(&r14);
-    vlen = index_WP - 1;
-    for (index_WP = 0; index_WP <= vlen; index_WP++) {
-      e_vertex->data[index_WP] = vertex->data[index_WP + vertex->size[0]];
+    vlen = k - 1;
+    for (k = 0; k <= vlen; k++) {
+      e_vertex->data[k] = vertex->data[k + vertex->size[0]];
     }
 
     b_emxInit_real_T(&b_y1, 1);
-    index_WP = b_y1->size[0];
+    k = b_y1->size[0];
     b_y1->size[0] = i4;
-    emxEnsureCapacity((emxArray__common *)b_y1, index_WP, (int32_T)sizeof(real_T));
+    emxEnsureCapacity((emxArray__common *)b_y1, k, (int32_T)sizeof(real_T));
     vlen = i4 - 2;
-    for (index_WP = 0; index_WP <= vlen; index_WP++) {
-      b_y1->data[index_WP] = e_vertex->data[1 + index_WP];
+    for (k = 0; k <= vlen; k++) {
+      b_y1->data[k] = e_vertex->data[1 + k];
     }
 
     emxFree_real_T(&e_vertex);
     emxInit_int32_T(&r15, 1);
     b_y1->data[i4 - 1] = vertex->data[vertex->size[0]];
     i4 = vertex->size[0];
-    index_WP = r15->size[0];
+    k = r15->size[0];
     r15->size[0] = i4;
-    emxEnsureCapacity((emxArray__common *)r15, index_WP, (int32_T)sizeof(int32_T));
+    emxEnsureCapacity((emxArray__common *)r15, k, (int32_T)sizeof(int32_T));
     vlen = i4 - 1;
     for (i4 = 0; i4 <= vlen; i4++) {
       r15->data[i4] = 1 + i4;
@@ -584,38 +594,38 @@ void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2],
 
     b_emxInit_real_T(&f_vertex, 1);
     i4 = r15->size[0];
-    index_WP = vertex->size[0];
+    k = vertex->size[0];
     vlen = f_vertex->size[0];
-    f_vertex->size[0] = index_WP;
+    f_vertex->size[0] = k;
     emxEnsureCapacity((emxArray__common *)f_vertex, vlen, (int32_T)sizeof(real_T));
     emxFree_int32_T(&r15);
-    vlen = index_WP - 1;
-    for (index_WP = 0; index_WP <= vlen; index_WP++) {
-      f_vertex->data[index_WP] = vertex->data[index_WP + vertex->size[0]];
+    vlen = k - 1;
+    for (k = 0; k <= vlen; k++) {
+      f_vertex->data[k] = vertex->data[k + vertex->size[0]];
     }
 
     b_emxInit_real_T(&g_vertex, 1);
-    index_WP = vertex->size[0];
+    k = vertex->size[0];
     vlen = g_vertex->size[0];
-    g_vertex->size[0] = index_WP;
+    g_vertex->size[0] = k;
     emxEnsureCapacity((emxArray__common *)g_vertex, vlen, (int32_T)sizeof(real_T));
-    vlen = index_WP - 1;
-    for (index_WP = 0; index_WP <= vlen; index_WP++) {
-      g_vertex->data[index_WP] = vertex->data[index_WP + vertex->size[0]];
+    vlen = k - 1;
+    for (k = 0; k <= vlen; k++) {
+      g_vertex->data[k] = vertex->data[k + vertex->size[0]];
     }
 
     b_emxInit_real_T(&y2, 1);
-    index_WP = y2->size[0];
+    k = y2->size[0];
     y2->size[0] = i4;
-    emxEnsureCapacity((emxArray__common *)y2, index_WP, (int32_T)sizeof(real_T));
+    emxEnsureCapacity((emxArray__common *)y2, k, (int32_T)sizeof(real_T));
     vlen = i4 - 3;
-    for (index_WP = 0; index_WP <= vlen; index_WP++) {
-      y2->data[index_WP] = f_vertex->data[2 + index_WP];
+    for (k = 0; k <= vlen; k++) {
+      y2->data[k] = f_vertex->data[2 + k];
     }
 
     emxFree_real_T(&f_vertex);
-    for (index_WP = 0; index_WP < 2; index_WP++) {
-      y2->data[(index_WP + i4) - 2] = g_vertex->data[index_WP];
+    for (k = 0; k < 2; k++) {
+      y2->data[(k + i4) - 2] = g_vertex->data[k];
     }
 
     emxFree_real_T(&g_vertex);
@@ -648,8 +658,8 @@ void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2],
 
     vlen = x->size[0];
     t1 = (real_T)x->data[0];
-    for (index_WP = 2; index_WP <= vlen; index_WP++) {
-      t1 += (real_T)x->data[index_WP - 1];
+    for (k = 2; k <= vlen; k++) {
+      t1 += (real_T)x->data[k - 1];
     }
 
     i4 = x->size[0];
@@ -662,8 +672,8 @@ void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2],
 
     vlen = x->size[0];
     t2 = (real_T)x->data[0];
-    for (index_WP = 2; index_WP <= vlen; index_WP++) {
-      t2 += (real_T)x->data[index_WP - 1];
+    for (k = 2; k <= vlen; k++) {
+      t2 += (real_T)x->data[k - 1];
     }
 
     emxFree_boolean_T(&x);
@@ -736,129 +746,88 @@ void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2],
   /*          end */
   /*      end */
   /* %finding if convex and convexifying inf not */
-  find_closest_2D(vertex_out, initial_position, closest_point, &t1);
-  for (i4 = 0; i4 < 2; i4++) {
-    WP[100 * i4] = closest_point[i4];
-  }
-
-  emxInit_real_T(&extended_vertex, 2);
-  i4 = extended_vertex->size[0] * extended_vertex->size[1];
-  extended_vertex->size[0] = vertex_out->size[0] + 1;
-  extended_vertex->size[1] = 2;
-  emxEnsureCapacity((emxArray__common *)extended_vertex, i4, (int32_T)sizeof
-                    (real_T));
-  for (i4 = 0; i4 < 2; i4++) {
-    vlen = vertex_out->size[0] - 1;
-    for (index_WP = 0; index_WP <= vlen; index_WP++) {
-      extended_vertex->data[index_WP + extended_vertex->size[0] * i4] =
-        vertex_out->data[index_WP + vertex_out->size[0] * i4];
-    }
-  }
-
-  for (i4 = 0; i4 < 2; i4++) {
-    extended_vertex->data[vertex_out->size[0] + extended_vertex->size[0] * i4] =
-      vertex_out->data[vertex_out->size[0] * i4];
-  }
-
-  /*  circular so that last vertex is the first */
-  if (t1 == (real_T)vertex_out->size[0]) {
-    for (i4 = 0; i4 < 2; i4++) {
-      second_edge[i4] = vertex_out->data[vertex_out->size[0] * i4];
-    }
+  if (!positive_intersection) {
   } else {
+    find_closest_2D(vertex_out, initial_position, closest_point, &t1);
     for (i4 = 0; i4 < 2; i4++) {
-      second_edge[i4] = vertex_out->data[((int32_T)(t1 + 1.0) + vertex_out->
-        size[0] * i4) - 1];
+      WP->data[WP->size[0] * i4] = closest_point[i4];
     }
 
-    /* second edge is used to build the parallel lines to the line passing for closest_point and second_edge */
-  }
-
-  for (i4 = 0; i4 < 2; i4++) {
-    WP[1 + 100 * i4] = second_edge[i4];
-  }
-
-  index_WP = 1;
-
-  /* ---------------------- JUST DEBUG PLOT TO REMOVE */
-  /*  figure; */
-  /*  hold on; */
-  /*  N = size(new_vertex,1); */
-  /*  for i=1:N */
-  /*      if (i~=N) */
-  /*          line([new_vertex(i,1),new_vertex(i+1,1)],[new_vertex(i,2),new_vertex(i+1,2)]); */
-  /*      else */
-  /*          line([new_vertex(i,1),new_vertex(1,1)],[new_vertex(i,2),new_vertex(1,2)]); */
-  /*      end */
-  /*  end */
-  /*  axis equal */
-  /*  plot(closest_point(1),closest_point(2),'bx'); */
-  /*  plot(initial_position(1),initial_position(2),'gx'); */
-  /* ---------------------------- */
-  if (closest_point[0] != second_edge[0]) {
-    t1 = (closest_point[1] - second_edge[1]) / (closest_point[0] - second_edge[0]);
-
-    /* line slope */
-    t2 = closest_point[1] - t1 * closest_point[0];
-
-    /* line coefficient */
-    q_inc = d / sin(1.5707963267948966 - atan(t1));
-
-    /* increments of q for the lines bundle to reflect the distance d */
-  } else {
-    t1 = rtInf;
-    t2 = closest_point[0];
-    q_inc = d;
-  }
-
-  positive_intersection = FALSE;
-  vlen = 0;
-  exitg3 = FALSE;
-  while ((exitg3 == 0U) && (vlen <= vertex_out->size[0] - 1)) {
+    emxInit_real_T(&extended_vertex, 2);
+    i4 = extended_vertex->size[0] * extended_vertex->size[1];
+    extended_vertex->size[0] = vertex_out->size[0] + 1;
+    extended_vertex->size[1] = 2;
+    emxEnsureCapacity((emxArray__common *)extended_vertex, i4, (int32_T)sizeof
+                      (real_T));
     for (i4 = 0; i4 < 2; i4++) {
-      second_edge[i4] = extended_vertex->data[vlen + extended_vertex->size[0] *
-        i4];
+      vlen = vertex_out->size[0] - 1;
+      for (k = 0; k <= vlen; k++) {
+        extended_vertex->data[k + extended_vertex->size[0] * i4] =
+          vertex_out->data[k + vertex_out->size[0] * i4];
+      }
     }
 
     for (i4 = 0; i4 < 2; i4++) {
-      b_extended_vertex[i4] = extended_vertex->data[(vlen +
-        extended_vertex->size[0] * i4) + 1];
+      extended_vertex->data[vertex_out->size[0] + extended_vertex->size[0] * i4]
+        = vertex_out->data[vertex_out->size[0] * i4];
     }
 
-    intersection_line_segment(second_edge, b_extended_vertex, t1, t2 + q_inc,
-      &is_intersecting, closest_point);
-    if (is_intersecting != 0) {
-      positive_intersection = TRUE;
-
-      /*  the polygon is at the "right" of the first line, left otherwise */
-      exitg3 = TRUE;
+    /*  circular so that last vertex is the first */
+    if (t1 == (real_T)vertex_out->size[0]) {
+      for (i4 = 0; i4 < 2; i4++) {
+        second_edge[i4] = vertex_out->data[vertex_out->size[0] * i4];
+      }
     } else {
-      vlen++;
+      for (i4 = 0; i4 < 2; i4++) {
+        second_edge[i4] = vertex_out->data[((int32_T)(t1 + 1.0) +
+          vertex_out->size[0] * i4) - 1];
+      }
+
+      /* second edge is used to build the parallel lines to the line passing for closest_point and second_edge */
     }
-  }
 
-  collision = TRUE;
-  exitg1 = FALSE;
-  while ((exitg1 == 0U) && collision) {
-    collision = FALSE;
-    if (positive_intersection) {
-      /* USE POSITIVE INCREMENTS */
-      t2 += q_inc;
+    for (i4 = 0; i4 < 2; i4++) {
+      WP->data[1 + WP->size[0] * i4] = second_edge[i4];
+    }
 
-      /* display('Found Positive inc') */
+    index_WP = 3;
+
+    /* ---------------------- JUST DEBUG PLOT TO REMOVE */
+    /*  figure; */
+    /*  hold on; */
+    /*  N = size(new_vertex,1); */
+    /*  for i=1:N */
+    /*      if (i~=N) */
+    /*          line([new_vertex(i,1),new_vertex(i+1,1)],[new_vertex(i,2),new_vertex(i+1,2)]); */
+    /*      else */
+    /*          line([new_vertex(i,1),new_vertex(1,1)],[new_vertex(i,2),new_vertex(1,2)]); */
+    /*      end */
+    /*  end */
+    /*  axis equal */
+    /*  plot(closest_point(1),closest_point(2),'bx'); */
+    /*  plot(initial_position(1),initial_position(2),'gx'); */
+    /* ---------------------------- */
+    if (closest_point[0] != second_edge[0]) {
+      t1 = (closest_point[1] - second_edge[1]) / (closest_point[0] -
+        second_edge[0]);
+
+      /* line slope */
+      t2 = closest_point[1] - t1 * closest_point[0];
+
+      /* line coefficient */
+      q_inc = d / sin(1.5707963267948966 - atan(t1));
+
+      /* increments of q for the lines bundle to reflect the distance d */
     } else {
-      /* %USE NEGATIVE INCREMENTS */
-      t2 -= q_inc;
-
-      /* display('Negative inc') */
+      t1 = rtInf;
+      t2 = closest_point[0];
+      q_inc = d;
     }
 
-    /*      x = -4:0.1:4; */
-    /*      y = m*x+q; */
-    /*      plot(x,y,'r-'); */
+    positive_intersection = FALSE;
     vlen = 0;
-    exitg2 = FALSE;
-    while ((exitg2 == 0U) && (vlen <= vertex_out->size[0] - 1)) {
+    exitg3 = FALSE;
+    while ((exitg3 == 0U) && (vlen <= vertex_out->size[0] - 1)) {
       for (i4 = 0; i4 < 2; i4++) {
         second_edge[i4] = extended_vertex->data[vlen + extended_vertex->size[0] *
           i4];
@@ -869,114 +838,182 @@ void WP_grid(const emxArray_real_T *vertex, const real_T initial_position[2],
           extended_vertex->size[0] * i4) + 1];
       }
 
-      intersection_line_segment(second_edge, b_extended_vertex, t1, t2,
+      intersection_line_segment(second_edge, b_extended_vertex, t1, t2 + q_inc,
         &is_intersecting, closest_point);
-      guard1 = FALSE;
-      if (is_intersecting == 1) {
-        /* one intersection */
-        if (index_WP + 2 > 100) {
-          break_flag = TRUE;
-          exitg2 = TRUE;
-        } else {
-          collision = TRUE;
+      if (is_intersecting != 0) {
+        positive_intersection = TRUE;
 
-          /* display('Found intersection') */
-          for (i4 = 0; i4 < 2; i4++) {
-            temp_WP[((int32_T)index_temp_WP + (i4 << 1)) - 1] = closest_point[i4];
-          }
-
-          index_temp_WP++;
-          guard1 = TRUE;
-        }
-      } else if (is_intersecting == 2) {
-        /* collinear */
-        if (index_WP + 2 > 100) {
-          break_flag = TRUE;
-          exitg2 = TRUE;
-        } else {
-          collision = TRUE;
-
-          /* display('Found collinear') */
-          for (i4 = 0; i4 < 2; i4++) {
-            temp_WP[((int32_T)index_temp_WP + (i4 << 1)) - 1] =
-              extended_vertex->data[vlen + extended_vertex->size[0] * i4];
-          }
-
-          /* if collinear the 2 waypoints are given by the edges of the segment */
-          for (i4 = 0; i4 < 2; i4++) {
-            temp_WP[1 + (i4 << 1)] = extended_vertex->data[(vlen +
-              extended_vertex->size[0] * i4) + 1];
-          }
-
-          index_temp_WP = 3.0;
-          guard1 = TRUE;
-        }
+        /*  the polygon is at the "right" of the first line, left otherwise */
+        exitg3 = TRUE;
       } else {
-        /* display('No intersections this segment') */
-        guard1 = TRUE;
+        vlen++;
+      }
+    }
+
+    collision = TRUE;
+    exitg1 = FALSE;
+    while ((exitg1 == 0U) && collision) {
+      collision = FALSE;
+      if (positive_intersection) {
+        /* USE POSITIVE INCREMENTS */
+        t2 += q_inc;
+
+        /* display('Found Positive inc') */
+      } else {
+        /* %USE NEGATIVE INCREMENTS */
+        t2 -= q_inc;
+
+        /* display('Negative inc') */
       }
 
-      if (guard1 == TRUE) {
-        if (index_temp_WP == 3.0) {
-          /* found 2 WP. For convex polygon it is the maximum */
-          index_temp_WP = 1.0;
-          vlen = 1;
+      /*      x = -4:0.1:4; */
+      /*      y = m*x+q; */
+      /*      plot(x,y,'r-'); */
+      vlen = 0;
+      exitg2 = FALSE;
+      while ((exitg2 == 0U) && (vlen <= vertex_out->size[0] - 1)) {
+        for (i4 = 0; i4 < 2; i4++) {
+          second_edge[i4] = extended_vertex->data[vlen + extended_vertex->size[0]
+            * i4];
+        }
 
-          /* to initialize */
-          /* to initialize */
-          for (i4 = 0; i4 < 2; i4++) {
-            closest_point[i4] = temp_WP[i4 << 1];
-          }
+        for (i4 = 0; i4 < 2; i4++) {
+          b_extended_vertex[i4] = extended_vertex->data[(vlen +
+            extended_vertex->size[0] * i4) + 1];
+        }
 
-          /* to initialize */
-          /* starting from second point in the list */
-          if (sqrt(rt_powd_snf(temp_WP[1] - WP[index_WP], 2.0) + rt_powd_snf
-                   (temp_WP[3] - WP[100 + index_WP], 2.0)) < sqrt(rt_powd_snf
-               (temp_WP[0] - WP[index_WP], 2.0) + rt_powd_snf(temp_WP[2] - WP
-                [100 + index_WP], 2.0))) {
-            vlen = 2;
-            for (i4 = 0; i4 < 2; i4++) {
-              closest_point[i4] = temp_WP[1 + (i4 << 1)];
-            }
-          }
-
-          /* the closest temp_WP to the last WP is the next going into WP */
-          for (i4 = 0; i4 < 2; i4++) {
-            WP[(index_WP + 100 * i4) + 1] = closest_point[i4];
-          }
-
-          index_WP += 2;
-          if (vlen == 1) {
-            for (i4 = 0; i4 < 2; i4++) {
-              WP[index_WP + 100 * i4] = temp_WP[1 + (i4 << 1)];
-            }
+        intersection_line_segment(second_edge, b_extended_vertex, t1, t2,
+          &is_intersecting, closest_point);
+        guard1 = FALSE;
+        if (is_intersecting == 1) {
+          /* one intersection */
+          if (index_WP > max_wp) {
+            break_flag = TRUE;
+            exitg2 = TRUE;
           } else {
-            for (i4 = 0; i4 < 2; i4++) {
-              WP[index_WP + 100 * i4] = temp_WP[i4 << 1];
-            }
-          }
+            collision = TRUE;
 
-          exitg2 = TRUE;
+            /* display('Found intersection') */
+            for (i4 = 0; i4 < 2; i4++) {
+              temp_WP[((int32_T)index_temp_WP + (i4 << 1)) - 1] =
+                closest_point[i4];
+            }
+
+            index_temp_WP++;
+            guard1 = TRUE;
+          }
+        } else if (is_intersecting == 2) {
+          /* collinear */
+          if (index_WP > max_wp) {
+            break_flag = TRUE;
+            exitg2 = TRUE;
+          } else {
+            collision = TRUE;
+
+            /* display('Found collinear') */
+            for (i4 = 0; i4 < 2; i4++) {
+              temp_WP[((int32_T)index_temp_WP + (i4 << 1)) - 1] =
+                extended_vertex->data[vlen + extended_vertex->size[0] * i4];
+            }
+
+            /* if collinear the 2 waypoints are given by the edges of the segment */
+            for (i4 = 0; i4 < 2; i4++) {
+              temp_WP[1 + (i4 << 1)] = extended_vertex->data[(vlen +
+                extended_vertex->size[0] * i4) + 1];
+            }
+
+            index_temp_WP = 3.0;
+            guard1 = TRUE;
+          }
         } else {
-          vlen++;
+          /* display('No intersections this segment') */
+          guard1 = TRUE;
+        }
+
+        if (guard1 == TRUE) {
+          if (index_temp_WP == 3.0) {
+            /* found 2 WP. For convex polygon it is the maximum */
+            index_temp_WP = 1.0;
+            vlen = 1;
+
+            /* to initialize */
+            /* to initialize */
+            for (i4 = 0; i4 < 2; i4++) {
+              closest_point[i4] = temp_WP[i4 << 1];
+            }
+
+            /* to initialize */
+            /* starting from second point in the list */
+            if (sqrt(rt_powd_snf(temp_WP[1] - WP->data[index_WP - 2], 2.0) +
+                     rt_powd_snf(temp_WP[3] - WP->data[(index_WP + WP->size[0])
+                                 - 2], 2.0)) < sqrt(rt_powd_snf(temp_WP[0] -
+                  WP->data[index_WP - 2], 2.0) + rt_powd_snf(temp_WP[2] -
+                  WP->data[(index_WP + WP->size[0]) - 2], 2.0))) {
+              vlen = 2;
+              for (i4 = 0; i4 < 2; i4++) {
+                closest_point[i4] = temp_WP[1 + (i4 << 1)];
+              }
+            }
+
+            /* the closest temp_WP to the last WP is the next going into WP */
+            for (i4 = 0; i4 < 2; i4++) {
+              WP->data[(index_WP + WP->size[0] * i4) - 1] = closest_point[i4];
+            }
+
+            i4 = index_WP + 1;
+            if (i4 > 32767) {
+              i4 = 32767;
+            }
+
+            index_WP = (int16_T)i4;
+            if (vlen == 1) {
+              for (i4 = 0; i4 < 2; i4++) {
+                WP->data[(index_WP + WP->size[0] * i4) - 1] = temp_WP[1 + (i4 <<
+                  1)];
+              }
+
+              i4 = index_WP + 1;
+              if (i4 > 32767) {
+                i4 = 32767;
+              }
+
+              index_WP = (int16_T)i4;
+            } else {
+              for (i4 = 0; i4 < 2; i4++) {
+                WP->data[(index_WP + WP->size[0] * i4) - 1] = temp_WP[i4 << 1];
+              }
+
+              i4 = index_WP + 1;
+              if (i4 > 32767) {
+                i4 = 32767;
+              }
+
+              index_WP = (int16_T)i4;
+            }
+
+            exitg2 = TRUE;
+          } else {
+            vlen++;
+          }
+        }
+      }
+
+      if ((!collision) && (!break_flag)) {
+        *success = 1;
+        *number_WP = (int16_T)(index_WP - 1);
+        exitg1 = TRUE;
+      } else {
+        if (break_flag) {
+          *number_WP = max_wp;
+          exitg1 = TRUE;
         }
       }
     }
 
-    if ((!collision) && (!break_flag)) {
-      *success = TRUE;
-      *number_WP = (real_T)(index_WP + 2) - 1.0;
-      exitg1 = TRUE;
-    } else {
-      if (break_flag) {
-        *number_WP = 100.0;
-        exitg1 = TRUE;
-      }
-    }
+    emxFree_real_T(&extended_vertex);
   }
 
   emxFree_real_T(&vertex_out);
-  emxFree_real_T(&extended_vertex);
 
   /* ----------------REMOVE ABOVE, JUST PLOTS */
   /*  for i=1:size(WP,1) */

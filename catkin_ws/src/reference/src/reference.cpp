@@ -73,8 +73,17 @@ public:
 		Dh_TO = 5000;
 		
 		//GRID
-		success = new boolean_T [6];
-		number_WP = new real_T;
+		d_grid = 0;
+		max_wp_grid = 150;
+		//WP_data_grid = new real_T[max_wp_grid*2];
+		success_grid = 0;
+		WP_out_grid = emxCreate_real_T(max_wp_grid, 2);
+		received_grid_cmd = false;
+		waiting_for_vertex_grid = false;
+		vertex_grid_n = 0;
+		received_vertexes_grid = 0;
+		speed_grid = 0;
+		height_grid = 0;
 	}
 
 	class e_to_tartget{
@@ -247,6 +256,38 @@ public:
 				ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",target_.Latitude,target_.Longitude,target_.AltitudeRelative,target_.Yawangle,target_.frame);
 				// target_.Mode = 0;
 			} break;
+			case 160:    //GRID_START
+			{
+				received_grid_cmd = true;
+				waiting_for_vertex_grid = true;
+				speed_grid = inputCmd_.param1;
+				d_grid = inputCmd_.param2;
+				height_grid = inputCmd_.param3;
+				vertex_grid_n = inputCmd_.param4;
+				//TODO add sanity checks (max vertexes, min vertexes, positive speed and height, ...)
+			}break;
+			case 161:    //GRID_VERTEX
+			{
+				for (int i = 0; i<3; i++){
+					if (i == 0){
+						vertex_grid[received_vertexes_grid][0] = inputCmd_.param1;       //LAT
+						vertex_grid[received_vertexes_grid][1] = inputCmd_.param2;		 //LON
+						received_vertexes_grid++;
+					} else if (i == 1){
+						vertex_grid[received_vertexes_grid][0] = inputCmd_.param3;
+						vertex_grid[received_vertexes_grid][1] = inputCmd_.param4;
+						received_vertexes_grid++;
+					} else if (i == 2){
+						vertex_grid[received_vertexes_grid][0] = inputCmd_.param5;
+						vertex_grid[received_vertexes_grid][1] = inputCmd_.param6;          //MAX 3 vertex per command
+						received_vertexes_grid++;
+					}
+					if (received_vertexes_grid == vertex_grid_n){
+						waiting_for_vertex_grid = false;       //received all the vertexes
+						break;                      //exit for cycle, we have all vertexes
+					}
+				}
+			}break;
 			case 21:  // MAV_CMD_NAV_LAND
 			{
 				ROS_INFO("REF: MAV_CMD_DO_NAV_LAND");
@@ -363,20 +404,6 @@ public:
 			{
 				new_state = false;
 				
-				//-------TEST GRID-------   TODO change position
-				real_T data_arr[8] = {0, 6, 6, 0, 0, 0, 4, 4};  //COLOUMN MAJOR!!!-->(0,0)-(6,0)-(6,4)-(0,4)
-				real_T *data = data_arr;
-				emxArray_real_T* vertex = emxCreateWrapper_real_T(data, 4, 2);
-				initial_pos[0] = 0;
-				initial_pos[1] = 5;
-				d = 0.5;
-				WP_grid(vertex, initial_pos, d, WP_data, success, number_WP);
-				ROS_INFO("GRID! Success: %c - N. WP: %.2f", *success, *number_WP);
-				for (int i = 0; i < *number_WP; i++){
-					ROS_INFO("GRID! WP %d: %.2f - %.2f", i, WP_data[i], WP_data[100+i]);
-				}
-				
-				//-------TEST GRID------------------------------------
 				/*ROS_INFO("REF: SETTING_HOME");
 
 				Home.lat = inputGlobPosInt_.lat;
@@ -829,6 +856,40 @@ public:
 			}
 			break;*/
 
+		case GRID:
+				//-------TEST GRID-------   TODO change position
+				/*real_T data_arr[8] = {0, 6, 6, 0, 0, 0, 4, 4};  //COLOUMN MAJOR!!!-->(0,0)-(6,0)-(6,4)-(0,4)
+				real_T *data = data_arr;
+				emxArray_real_T* vertex = emxCreateWrapper_real_T(data, 4, 2);
+				initial_pos_grid[0] = 0;
+				initial_pos_grid[1] = 5;
+				d_grid = 0.5;
+				WP_grid(vertex, initial_pos_grid, d_grid, max_wp_grid, WP_out_grid, &success_grid, &number_WP_grid);
+				ROS_INFO("GRID! Success: %d - N. WP: %d", success_grid, number_WP_grid);
+				for (int i = 0; i < number_WP_grid; i++){
+					ROS_INFO("GRID! WP %d: %.2f - %.2f", i, WP_out_grid->data[i], WP_out_grid->data[100+i]);
+				}*/
+				//-------TEST GRID------------------------------------
+				if (received_grid_cmd && !waiting_for_vertex_grid){   //have received all vertexes
+					real_T *data_arr = new real_T[vertex_grid_n*2]; //COLOUMN MAJOR!!!
+					for (int i = 0; i < vertex_grid_n; i++){
+						data_arr [i] = vertex_grid [i][0];			//COLOUMN MAJOR!!		//TODO add conversion WGS84-->NED
+						data_arr [i+vertex_grid_n] = vertex_grid [i][1];					//TODO add conversion WGS84-->NED
+					}
+					emxArray_real_T* vertex = emxCreateWrapper_real_T(data_arr, vertex_grid_n, 2);
+					initial_pos_grid[0] = outputRef_.Latitude;    //latest reference as initial point    //TODO add conversion WGS84-->NED
+					initial_pos_grid[1] = outputRef_.Longitude;	//latest reference as initial point		 //TODO add conversion WGS84-->NED
+					WP_grid(vertex, initial_pos_grid, d_grid, max_wp_grid, WP_out_grid, &success_grid, &number_WP_grid);
+					ROS_INFO("REF: GRID! Success: %d - N. WP: %d", success_grid, number_WP_grid);
+					for (int i = 0; i < number_WP_grid; i++){
+						ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP_out_grid->data[i], WP_out_grid->data[100+i]);
+					}
+				}
+				received_grid_cmd = false;     //WP calculated. Now they need to be sent as reference
+				//TODO send WP as reference
+				//TODO add conversion NED-->WGS84
+		break;
+
 		case PERFORMING_GO_TO:
 			if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
 			{
@@ -1049,8 +1110,8 @@ frame::Ref_system oldFrame_;
 //ros::Publisher pubToAckCmd_;
 //ros::Publisher pubToArm_;
 ros::Publisher pubToReference_;
-guidance_node_amsl::Reference outputRef_;
-guidance_node_amsl::Reference target_;
+guidance_node_amsl::Reference outputRef_;     
+guidance_node_amsl::Reference target_;    
 
 // ros::Publisher pubToSysStatus_;
 ros::Publisher pubToDistance_;
@@ -1079,11 +1140,13 @@ static const int  ON_GROUND_ARMED = 50;
 //static const int  ON_GROUND_READY_TO_TAKEOFF = 60;
 static const int  PERFORMING_TAKEOFF = 70;
 static const int  IN_FLIGHT = 80;
+static const int  GRID = 90;
 //static const int  READY_TO_GO = 90;
 static const int  PERFORMING_GO_TO = 100;
 //static const int  READY_TO_LAND = 110;
 static const int  PERFORMING_LANDING = 120;
 
+static const int  MAX_VERTEX_GRID = 10;
 // STATE INITIALIZATION
 int currentState;
 int oldState;
@@ -1098,11 +1161,20 @@ bool new_frame;
 bool land;
 uint16_t counter_print;
 
-real_T initial_pos[2];
-real_T d;
-real_T WP_data[200];
-boolean_T *success;
-real_T *number_WP;
+//GRID RELATED
+real_T initial_pos_grid[2];
+real_T d_grid;
+emxArray_real_T *WP_out_grid;
+int16_T success_grid;
+int16_T max_wp_grid;
+int16_T number_WP_grid;
+bool received_grid_cmd;
+bool waiting_for_vertex_grid;
+uint16_t vertex_grid_n; 
+uint16_t received_vertexes_grid;
+float speed_grid;
+float height_grid;
+real_T vertex_grid [MAX_VERTEX_GRID][2];
 
 private:
 
