@@ -570,7 +570,7 @@ public:
 				break;
 			}
 			
-			ROS_INFO("MMS DEBUG: Command: %d - Seq: %d - Seq_req: %d", inputDist_.command, inputDist_.seq, seq_number);
+			//ROS_INFO("MMS DEBUG: Command: %d - Seq: %d - Seq_req: %d", inputDist_.command, inputDist_.seq, seq_number);
 			if (inputDist_.command == 22 && seq_number == inputDist_.seq)
 			{
 				ROS_INFO_ONCE("MMS: REACHING THE TAKEOFF TARGET");

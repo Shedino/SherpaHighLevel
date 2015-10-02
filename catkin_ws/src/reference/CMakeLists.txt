@@ -93,7 +93,10 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
+  include/grid
   ${catkin_INCLUDE_DIRS} ~/catkin_ws/src/${PROJECT_NAME}/include/${PROJECT_NAME}
+  ~/Matlab/extern/include ~/Matlab/simulink/include
+  /opt/MATLAB/R2015a/extern/include /opt/MATLAB/R2015a/simulink/include
 )
 
 ## Declare a cpp library
@@ -102,7 +105,7 @@ include_directories(
 # )
 
 ## Declare a cpp executable
- add_executable(reference src/reference.cpp)
+ add_executable(reference src/reference.cpp src/WP_grid.cpp include/grid/rtGetInf.cpp include/grid/rtGetNaN.cpp include/grid/rt_nonfinite.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes

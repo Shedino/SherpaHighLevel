@@ -8,7 +8,7 @@
 #include <mavros/Sonar.h>
 #include <frame/Ref_system.h>
 #include "reference/Distance.h"
-
+#include "WP_grid.h"         //GRID
 
 
 
@@ -71,6 +71,10 @@ public:
 		land = false;
 		counter_print = 0;
 		Dh_TO = 5000;
+		
+		//GRID
+		success = new boolean_T [6];
+		number_WP = new real_T;
 	}
 
 	class e_to_tartget{
@@ -358,7 +362,21 @@ public:
 			if (new_state == true)
 			{
 				new_state = false;
-
+				
+				//-------TEST GRID-------   TODO change position
+				real_T data_arr[8] = {0, 6, 6, 0, 0, 0, 4, 4};  //COLOUMN MAJOR!!!-->(0,0)-(6,0)-(6,4)-(0,4)
+				real_T *data = data_arr;
+				emxArray_real_T* vertex = emxCreateWrapper_real_T(data, 4, 2);
+				initial_pos[0] = 0;
+				initial_pos[1] = 5;
+				d = 0.5;
+				WP_grid(vertex, initial_pos, d, WP_data, success, number_WP);
+				ROS_INFO("GRID! Success: %c - N. WP: %.2f", *success, *number_WP);
+				for (int i = 0; i < *number_WP; i++){
+					ROS_INFO("GRID! WP %d: %.2f - %.2f", i, WP_data[i], WP_data[100+i]);
+				}
+				
+				//-------TEST GRID------------------------------------
 				/*ROS_INFO("REF: SETTING_HOME");
 
 				Home.lat = inputGlobPosInt_.lat;
@@ -1079,6 +1097,12 @@ bool new_state;
 bool new_frame;
 bool land;
 uint16_t counter_print;
+
+real_T initial_pos[2];
+real_T d;
+real_T WP_data[200];
+boolean_T *success;
+real_T *number_WP;
 
 private:
 
