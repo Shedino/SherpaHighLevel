@@ -74,16 +74,51 @@ public:
 		
 		//GRID
 		d_grid = 0;
-		max_wp_grid = 150;
+		//max_wp_grid = 150;
 		//WP_data_grid = new real_T[max_wp_grid*2];
-		success_grid = 0;
-		WP_out_grid = emxCreate_real_T(max_wp_grid, 2);
+		//success_grid = 0;
+		//WP_out_grid = emxCreate_real_T(max_wp_grid, 2);
+		//WP_out_grid = new real_T [max_wp_grid*2];
 		received_grid_cmd = false;
 		waiting_for_vertex_grid = false;
 		vertex_grid_n = 0;
 		received_vertexes_grid = 0;
 		speed_grid = 0;
 		height_grid = 0;
+		//int_point [0] = 0;
+		//int_point [1] = 0;
+		//point1 [0] = 0;
+		//point1 [1] = 0;
+		//point2 [0] = 4;
+		//point2 [1] = 4;
+		//inters = 0;
+		N_vertex = 8;
+		points = new float *[N_vertex];           
+		for(int i = 0; i <N_vertex; i++){
+	    	points[i] = new float[2];
+		}
+		/*for(int i = 0; i <5; i++){
+			convex_vertex[i] = new float[2];
+		}*/
+		points [0][0] = 5;
+		points [0][1] = 0;
+		points [1][0] = 3;
+		points [1][1] = 4;
+		points [2][0] = 2;
+		points [2][1] = 2;
+		points [3][0] = 1;
+		points [3][1] = 5;
+		points [4][0] = -3;
+		points [4][1] = 3;
+		points [5][0] = -1;
+		points [5][1] = 2;
+		points [6][0] = 0;
+		points [6][1] = 2;
+		points [7][0] = -2;
+		points [7][1] = -2;
+
+		convex = false;
+		
 	}
 
 	class e_to_tartget{
@@ -863,16 +898,27 @@ public:
 			{
 				//-------TEST GRID-------   TODO change position
 				if (received_grid_cmd && !waiting_for_vertex_grid){
-					real_T data_arr[8] = {0, 6, 6, 0, 0, 0, 4, 4};  //COLOUMN MAJOR!!!-->(0,0)-(6,0)-(6,4)-(0,4)
+					/*real_T data_arr[8] = {0, 6, 6, 0, 0, 0, 4, 4};  //COLOUMN MAJOR!!!-->(0,0)-(6,0)-(6,4)-(0,4)
 					real_T *data = data_arr;
 					emxArray_real_T* vertex_test = emxCreateWrapper_real_T(data, 4, 2);
-					initial_pos_grid[0] = 5;
-					initial_pos_grid[1] = 5;
-					d_grid = 0.5;
-					WP_grid(vertex_test, initial_pos_grid, d_grid, max_wp_grid, WP_out_grid, &success_grid, &number_WP_grid);
+					initial_pos_grid[0] = 0;
+					initial_pos_grid[1] = 0;
+					d_grid = 1;
+					//WP_grid(vertex_test, initial_pos_grid, d_grid, max_wp_grid, WP_out_grid, &success_grid, &number_WP_grid);
+					WP_grid(vertex_test, initial_pos_grid, d_grid, WP_out_grid, &success_grid, &number_WP_grid);
 					ROS_INFO("GRID! Success: %d - N. WP: %d", success_grid, number_WP_grid);
 					for (int i = 0; i < number_WP_grid; i++){
-						ROS_INFO("GRID! WP %d: %.2f - %.2f", i, WP_out_grid->data[i], WP_out_grid->data[max_wp_grid+i]);
+						//ROS_INFO("GRID! WP %d: %.2f - %.2f", i, WP_out_grid->data[i], WP_out_grid->data[max_wp_grid+i]);    //with emxArray
+						ROS_INFO("GRID! WP %d: %.2f - %.2f", i, WP_out_grid[i], WP_out_grid[max_wp_grid+i]);	//with array
+					}*/
+					//intersection_line_segment(point1, point2, 0, 0, &inters, int_point);	
+					//ROS_INFO("GRID! Intersection: %d - Point x: %f - Point y: %f", inters, int_point[0], int_point[1]);
+					//find_closest_2D(points, point1, closest_point, &index, int(5));
+					//ROS_INFO("GRID! Closest point: %f - %f - INDEX: %d", closest_point[0], closest_point[1], index);
+					is_convex(points, true, &convex, &N_vertex);
+					ROS_INFO("GRID! Convex: %s - N_vertex: %d", convex ? "true" : "false", N_vertex);
+					for (int i = 0 ; i<N_vertex; i++){
+						ROS_INFO("GRID! Vertex %d: %f - %f", i+1, points[i][0], points[i][1]);
 					}
 				}
 				//-------TEST GRID------------------------------------
@@ -1172,19 +1218,30 @@ bool land;
 uint16_t counter_print;
 
 //GRID RELATED
-real_T initial_pos_grid[2];
-real_T d_grid;
-emxArray_real_T *WP_out_grid;
-int16_T success_grid;
-int16_T max_wp_grid;
-int16_T number_WP_grid;
+//real_T initial_pos_grid[2];
+float d_grid;
+//emxArray_real_T *WP_out_grid;
+//real_T *WP_out_grid;
+//int16_T success_grid;
+//int16_T max_wp_grid;
+//int16_T number_WP_grid;
+//float int_point [2];
+//int inters;
+//float point1 [2];
+//float point2 [2];
+float **points;
+//int index;
+bool convex;
+float **convex_vertex;
+int N_vertex;
+
 bool received_grid_cmd;
 bool waiting_for_vertex_grid;
 uint16_t vertex_grid_n; 
 uint16_t received_vertexes_grid;
 float speed_grid;
 float height_grid;
-real_T vertex_grid [MAX_VERTEX_GRID][2];
+float vertex_grid [MAX_VERTEX_GRID][2];
 
 private:
 

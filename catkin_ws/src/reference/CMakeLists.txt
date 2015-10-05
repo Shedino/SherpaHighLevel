@@ -105,7 +105,7 @@ include_directories(
 # )
 
 ## Declare a cpp executable
- add_executable(reference src/reference.cpp src/WP_grid.cpp include/grid/rtGetInf.cpp include/grid/rtGetNaN.cpp include/grid/rt_nonfinite.cpp)
+ add_executable(reference src/reference.cpp src/WP_grid.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
