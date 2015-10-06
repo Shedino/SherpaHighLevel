@@ -28,6 +28,7 @@ public:
 		subFromMmsStatus_=n_.subscribe("/mms_status", 10, &ReferenceNodeClass::readMmsStatusMessage,this);
 		subFromFrame_=n_.subscribe("/ref_system", 10, &ReferenceNodeClass::readFrameMessage,this);
 		subFromHome_=n_.subscribe("/home", 10, &ReferenceNodeClass::readHomeMessage,this);
+		subFromGlobPosInt_ID1=n_.subscribe("/global_position_int_ID1", 10, &ReferenceNodeClass::readGlobalPosIntMessage_ID1,this);
 		
 		// publishers
 		pubToReference_=n_.advertise<guidance_node_amsl::Reference>("/reference",10);
@@ -136,6 +137,16 @@ public:
 		}
 	}
 
+	void readGlobalPosIntMessage_ID1(const mavros::Global_position_int::ConstPtr& msg)
+	{
+		inputGlobPosInt_ID1.lat = msg->lat;
+		inputGlobPosInt_ID1.lon = msg->lon;
+		inputGlobPosInt_ID1.alt = msg->alt;
+		inputGlobPosInt_ID1.relative_alt = msg->relative_alt;
+		inputGlobPosInt_ID1.hdg = msg->hdg;
+		inputGlobPosInt_ID1.time_boot_ms = msg->time_boot_ms;
+	}
+	
 	void readHomeMessage(const mavros::Global_position_int::ConstPtr& msg)
 	{
 		// ROS_INFO("POSMIXER: POSITION_RECEIVED");
@@ -264,7 +275,7 @@ public:
 			}break;
 			case 25: // MAV_CMD_NAV_FOLLOW
 			{
-				ROS_INFO("MMS: MAV_CMD_NAV_FOLLOW");			
+				ROS_INFO("REF: MAV_CMD_NAV_FOLLOW");			
 				// Mission Param #1 Following Logic: 1(baro) = H_target + h; 2(baro) = h; 3(sonar) = h;
 				// Mission Param #2 Target ID
 				// Mission Param #3 cylindrical coordinate: Radius from the target, in meters
@@ -272,13 +283,44 @@ public:
 				// Mission Param #5	RESERVED
 				// Mission Param #6	RESERVED
 				// Mission Param #7	cylindrical coordinate: Altitude h in meters
-			    meridionalCurvatureRadius=earthEquatorialRadius*(1-earthFlattening*earthFlattening)/pow(1-pow(earthFlattening*sin(inputCmd_.param5*10000000.0f),2),3/2);
-			    primeVerticalCurvatureRadius=earthEquatorialRadius/sqrt(1-pow(earthFlattening*sin(inputCmd_.param6*10000000.0f),2));
-				target_.Latitude = (int)(inputCmd_.param5*10000000.0f)+(int)((float)inputCmd_.param3*cos(inputCmd_.param1)/meridionalCurvatureRadius*1E7);;
-				target_.Longitude = (int)(inputCmd_.param6*10000000.0f)+(int)((float)inputCmd_.param3*sin(inputCmd_.param1)/primeVerticalCurvatureRadius*cos(inputOperator_.Latitude)*1E7);;
-				target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f) + (int)(inputCmd_.param2*1000.0f);
-				target_.Yawangle = inputCmd_.param4;
-				target_.frame = inputCmd_.frame;
+
+				// SECOND: Check the target
+				switch(inputCmd_.param2)
+				{
+					case 1:
+					{
+						followed_ = inputGlobPosInt_ID1;
+					}break;
+				}
+				
+/*				inputGlobPosInt_ID1_.lat = msg->lat;
+				inputGlobPosInt_ID1_.lon = msg->lon;
+				inputGlobPosInt_ID1_.alt = msg->alt;
+				inputGlobPosInt_ID1_.relative_alt = msg->relative_alt;
+				inputGlobPosInt_ID1_.hdg = msg->hdg;
+				inputGlobPosInt_ID1_.time_boot_ms = msg->time_boot_ms;*/
+				
+			    meridionalCurvatureRadius=earthEquatorialRadius*(1-earthFlattening*earthFlattening)/pow(1-pow(earthFlattening*sin(followed_.lat*10000000.0f),2),3/2);
+			    primeVerticalCurvatureRadius=earthEquatorialRadius/sqrt(1-pow(earthFlattening*sin(followed_.lon*10000000.0f),2));
+				target_.Latitude = (int)(followed_.lat*10000000.0f)+(int)((float)inputCmd_.param3*cos(inputCmd_.param3)/meridionalCurvatureRadius*1E7);
+				target_.Longitude = (int)(followed_.lon*10000000.0f)+(int)((float)inputCmd_.param3*sin(inputCmd_.param3)/primeVerticalCurvatureRadius*cos(followed_.lat)*1E7);
+				target_.AltitudeRelative = (int)(followed_.alt*1000.0f) + (int)(inputCmd_.param7*1000.0f);
+				target_.Yawangle = followed_hdg;
+				if (inputCmd_.param1 == 1)
+					{
+					target_.AltitudeRelative = (int)(followed_.alt*1000.0f) + (int)(inputCmd_.param7*1000.0f);
+					target_.frame = 6;
+					}
+				else if (inputCmd_.param1 == 2)
+					{
+					target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
+					target_.frame = 6;
+					}
+				else if (inputCmd_.param1 == 3)
+					{
+					target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
+					target_.frame = 11;
+					}
 				ROS_INFO("REF: MAV_CMD_DO_NAV_FOLLOW. Params: %d - %d - %d - %f - %d",target_.Latitude,target_.Longitude,target_.AltitudeRelative,target_.Yawangle,target_.frame);				
 				//new_state = true; // this boolean enables the execution of successive nav_follow commands
 			}
@@ -964,7 +1006,8 @@ public:
 				{
 					ROS_INFO("REF: FOLLOWING_THE_TARGET");
 					new_state = false;
-
+					land = false;
+					
 					/*outputRef_.Latitude = 123; // ONLY FOR TEST
 					outputRef_.Longitude = 123;// ONLY FOR TEST
 					outputRef_.AltitudeRelative = 1230;// ONLY FOR TEST
@@ -980,52 +1023,53 @@ public:
 /*				if (new_frame == true)
 				{
 					new_frame = false;*/
-
-					if (actual_frame == 6 && target_frame == 6) // 6 = barometer
-					{
-						outputRef_ = tempRef_;
-						outputRef_.frame = actual_frame;
-						// tempRef_.frame = actual_frame;
-						pubToReference_.publish(outputRef_);// as it is
-						ROS_INFO("REF: MAV_CMD_DO_NAV_FOLLOW. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
-						land = false;
-						ROS_INFO("REF->NAV: WAYPOINT BARO");
-					}
-					if (actual_frame == 11 && target_frame == 11) // 11 = sonar
-					{
-						outputRef_ = tempRef_;
-						outputRef_.frame = actual_frame;
-						// tempRef_.frame = actual_frame;
-						pubToReference_.publish(outputRef_);// as it is
-						ROS_INFO("REF: MAV_CMD_DO_NAV_FOLLOW. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
-						land = false;
-						ROS_INFO("REF->NAV: WAYPOINT SONAR");
-					}
-					if (actual_frame == 6 && target_frame == 11)
-					{
-						outputRef_ = tempRef_;
-						outputRef_.frame = actual_frame;
-						//tempRef_.frame = actual_frame;
-						outputRef_.AltitudeRelative = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
-						temp_AltitudeRelative = outputRef_.AltitudeRelative;
-						ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-						pubToReference_.publish(outputRef_);
-						ROS_INFO("REF: MAV_CMD_DO_NAV_FOLLOW. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
-						land = true;
-					}
-					if (actual_frame == 11 && target_frame == 6)
-					{
-						ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-						ROS_INFO("REF: NO REFERENCE PUBLISHED");
-						land = false;
-					}
-				//}
+				
+				if (actual_frame == 6 && target_frame == 6) // 6 = barometer
+				{
+					outputRef_ = tempRef_;
+					outputRef_.frame = actual_frame;
+					// tempRef_.frame = actual_frame;
+					pubToReference_.publish(outputRef_);// as it is
+					ROS_INFO("REF: MAV_CMD_DO_NAV_FOLLOW. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
+					land = false;
+					ROS_INFO("REF->NAV: WAYPOINT BARO");
+				}
+				if (actual_frame == 11 && target_frame == 11) // 11 = sonar
+				{
+					outputRef_ = tempRef_;
+					outputRef_.frame = actual_frame;
+					// tempRef_.frame = actual_frame;
+					pubToReference_.publish(outputRef_);// as it is
+					ROS_INFO("REF: MAV_CMD_DO_NAV_FOLLOW. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
+					land = false;
+					ROS_INFO("REF->NAV: WAYPOINT SONAR");
+				}
+				if (actual_frame == 6 && target_frame == 11)
+				{
+					outputRef_ = tempRef_;
+					outputRef_.frame = actual_frame;
+					//tempRef_.frame = actual_frame;
+					outputRef_.AltitudeRelative = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
+					temp_AltitudeRelative = outputRef_.AltitudeRelative;
+					ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
+					pubToReference_.publish(outputRef_);
+					ROS_INFO("REF: MAV_CMD_DO_NAV_FOLLOW. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
+					land = true;
+				}
+				if (actual_frame == 11 && target_frame == 6)
+				{
+					ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
+					ROS_INFO("REF: NO REFERENCE PUBLISHED");
+					land = false;
+				}
 				if (land == true)
 				{
-					
-					outputRef_.AltitudeRelative -= 80;
+					// outputRef_.AltitudeRelative -= 80;
+					outputRef_.AltitudeRelative = inputGlobPosInt_.relative_alt - inputHome_.relative_alt - 1000;
 					pubToReference_.publish(outputRef_);
 				}
+					
+				//}
 			}
 			break;
 			
@@ -1113,6 +1157,10 @@ guidance_node_amsl::Position_nav inputPos_;
 
 ros::Subscriber subFromGlobPosInt_;
 mavros::Global_position_int inputGlobPosInt_;
+
+ros::Subscriber subFromGlobPosInt_ID1;
+mavros::Global_position_int inputGlobPosInt_ID1;
+mavros::Global_position_int followed_;
 
 mavros::Sonar inputSonar_;
 mms_msgs::Cmd inputCmd_;

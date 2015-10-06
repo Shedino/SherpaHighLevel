@@ -242,18 +242,20 @@ public:
 			{
 				case 1:
 				{
-					target_ = inputGlobPosInt_ID1;
+					followed_ = inputGlobPosInt_ID1;
 				}break;
 			}
 			
-			if target_.
-			is_target_valid = true;
-			else
-			is_target_valid = false;
+			// TODO ADD SOME INETEGRITY CHECK BEFORE ACCEPTING THE TARGET POSITION
+			//if followed_.
+			is_followed_valid = true;
+			//else
+			//is_target_valid = false;
 			
-			if (is_frame_valid && is_target_valid)
+			
+			if (is_frame_valid && is_followed_valid)
 			{
-				target_frame = inputCmd_.frame;
+				followed_frame = inputCmd_.frame;
 				seq_number = inputCmd_.seq;
 				FOLLOW_THE_TARGET = true;
 			}
@@ -1080,6 +1082,10 @@ mms_msgs::Arm outputArm_;
 ros::Publisher pubToMmsStatus_;
 mms_msgs::MMS_status outputMmsStatus_;
 
+ros::Subscriber subFromGlobPosInt_ID1;
+mavros::Global_position_int inputGlobPosInt_ID1;
+mavros::Global_position_int followed_;
+
 // INPUTS GCS -> MMS
 bool SET_HOME;
 bool TAKEOFF;
@@ -1094,7 +1100,6 @@ bool FOLLOW_THE_TARGET;
 // bool MAV_RESULT  = false;
 // bool New_MAV_RESULT= false;
 
-
 // OUTPUTS MMS -> GCS
 // bool MISSION_ITEM_REACHED = false;
 // bool MAV_MISSION_ACCEPTED = false;
@@ -1106,7 +1111,7 @@ bool FOLLOW_THE_TARGET;
 // STATE INITIALIZATION
 int currentState;
 // int lastARMState = ON_GROUND_DISARMED;
-int target_frame;
+int followed_frame;
 
 // ERRORS DEFINITION
 // float err; // current distance to the target position in millimeters
@@ -1126,6 +1131,7 @@ uint16_t counter_print;
 uint16_t seq_number;
 int Dh_TO;
 bool is_frame_valid;
+bool is_followed_valid;
 };
 
 int main(int argc, char **argv)
