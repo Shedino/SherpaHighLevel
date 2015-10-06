@@ -74,51 +74,22 @@ public:
 		
 		//GRID
 		d_grid = 0;
-		//max_wp_grid = 150;
-		//WP_data_grid = new real_T[max_wp_grid*2];
-		//success_grid = 0;
-		//WP_out_grid = emxCreate_real_T(max_wp_grid, 2);
-		//WP_out_grid = new real_T [max_wp_grid*2];
 		received_grid_cmd = false;
 		waiting_for_vertex_grid = false;
 		vertex_grid_n = 0;
 		received_vertexes_grid = 0;
 		speed_grid = 0;
 		height_grid = 0;
-		//int_point [0] = 0;
-		//int_point [1] = 0;
-		//point1 [0] = 0;
-		//point1 [1] = 0;
-		//point2 [0] = 4;
-		//point2 [1] = 4;
-		//inters = 0;
-		N_vertex = 8;
-		points = new float *[N_vertex];           
-		for(int i = 0; i <N_vertex; i++){
-	    	points[i] = new float[2];
+		vertex_grid = new float *[MAX_VERTEX_GRID];
+		for(int i = 0; i<MAX_VERTEX_GRID; i++){
+	    	vertex_grid[i] = new float[2];
 		}
-		/*for(int i = 0; i <5; i++){
-			convex_vertex[i] = new float[2];
-		}*/
-		points [0][0] = 5;
-		points [0][1] = 0;
-		points [1][0] = 3;
-		points [1][1] = 4;
-		points [2][0] = 2;
-		points [2][1] = 2;
-		points [3][0] = 1;
-		points [3][1] = 5;
-		points [4][0] = -3;
-		points [4][1] = 3;
-		points [5][0] = -1;
-		points [5][1] = 2;
-		points [6][0] = 0;
-		points [6][1] = 2;
-		points [7][0] = -2;
-		points [7][1] = -2;
-
-		convex = false;
-		
+		success_grid = false;   //OUTPUT
+		WP = new float *[150];        //OUTPUT    //TODO check hardcoded 150
+		for(int i = 0; i<150; i++){
+	    	WP[i] = new float[2];
+		}
+		N_WP = 0;      //OUTPUT
 	}
 
 	class e_to_tartget{
@@ -897,8 +868,8 @@ public:
 		case GRID:
 			{
 				//-------TEST GRID-------   TODO change position
-				if (received_grid_cmd && !waiting_for_vertex_grid){
-					/*real_T data_arr[8] = {0, 6, 6, 0, 0, 0, 4, 4};  //COLOUMN MAJOR!!!-->(0,0)-(6,0)-(6,4)-(0,4)
+				/*if (received_grid_cmd && !waiting_for_vertex_grid){
+					real_T data_arr[8] = {0, 6, 6, 0, 0, 0, 4, 4};  //COLOUMN MAJOR!!!-->(0,0)-(6,0)-(6,4)-(0,4)
 					real_T *data = data_arr;
 					emxArray_real_T* vertex_test = emxCreateWrapper_real_T(data, 4, 2);
 					initial_pos_grid[0] = 0;
@@ -910,7 +881,7 @@ public:
 					for (int i = 0; i < number_WP_grid; i++){
 						//ROS_INFO("GRID! WP %d: %.2f - %.2f", i, WP_out_grid->data[i], WP_out_grid->data[max_wp_grid+i]);    //with emxArray
 						ROS_INFO("GRID! WP %d: %.2f - %.2f", i, WP_out_grid[i], WP_out_grid[max_wp_grid+i]);	//with array
-					}*/
+					}
 					//intersection_line_segment(point1, point2, 0, 0, &inters, int_point);	
 					//ROS_INFO("GRID! Intersection: %d - Point x: %f - Point y: %f", inters, int_point[0], int_point[1]);
 					//find_closest_2D(points, point1, closest_point, &index, int(5));
@@ -920,26 +891,24 @@ public:
 					for (int i = 0 ; i<N_vertex; i++){
 						ROS_INFO("GRID! Vertex %d: %f - %f", i+1, points[i][0], points[i][1]);
 					}
-				}
+				}*/
 				//-------TEST GRID------------------------------------
-				/*if (received_grid_cmd && !waiting_for_vertex_grid){   //have received all vertexes
+				if (received_grid_cmd && !waiting_for_vertex_grid){   //have received all vertexes
 					ROS_INFO("REF: GRID. Starting GRID alg. N. vertex: %d - Distance: %f", vertex_grid_n, d_grid);
-					real_T *data_arr = new real_T[vertex_grid_n*2]; //COLOUMN MAJOR!!!
 					for (int i = 0; i < vertex_grid_n; i++){
 						ROS_INFO("REF: GRID. Vertex %d: %f - %f", i+1, vertex_grid [i][0], vertex_grid [i][1]);
-						data_arr [i] = vertex_grid [i][0];			//COLOUMN MAJOR!!		//TODO add conversion WGS84-->NED
-						data_arr [i+vertex_grid_n] = vertex_grid [i][1];					//TODO add conversion WGS84-->NED
+								//TODO add conversion WGS84-->NED
 					}
-					ROS_INFO("REF: GRID. Vertex: %f %f %f %f %f %f %f %f", data_arr [0], data_arr [1], data_arr [2], data_arr [3], data_arr [4], data_arr [5], data_arr [6], data_arr [7]);
-					emxArray_real_T* vertex = emxCreateWrapper_real_T(data_arr, vertex_grid_n, 2);
-					initial_pos_grid[0] = outputRef_.Latitude;    //latest reference as initial point    //TODO add conversion WGS84-->NED
-					initial_pos_grid[1] = outputRef_.Longitude;	//latest reference as initial point		 //TODO add conversion WGS84-->NED
-					WP_grid(vertex, initial_pos_grid, d_grid, max_wp_grid, WP_out_grid, &success_grid, &number_WP_grid);
-					ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f", success_grid, number_WP_grid, speed_grid, height_grid);
-					for (int i = 0; i < number_WP_grid; i++){
-						ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP_out_grid->data[i], WP_out_grid->data[max_wp_grid+i]);
-					}
-				}*/
+					//initial_pos_grid[0] = outputRef_.Latitude;    //latest reference as initial point    //TODO add conversion WGS84-->NED and put this back in
+					//initial_pos_grid[1] = outputRef_.Longitude;	//latest reference as initial point		 //TODO add conversion WGS84-->NED
+					WP_grid(vertex_grid, &vertex_grid_n, initial_pos_grid, d_grid, WP, &success_grid, &N_WP);
+					
+					/*ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f", success_grid, N_WP, speed_grid, height_grid);
+					ROS_INFO("REF: GRID! New vertex: %d", vertex_grid_n);
+					for (int i = 0; i < N_WP; i++){
+						ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP[i][0], WP[i][1]);
+					}*/
+				}
 				received_grid_cmd = false;     //WP calculated. Now they need to be sent as reference
 				//TODO send WP as reference
 				//TODO add conversion NED-->WGS84
@@ -1187,7 +1156,7 @@ guidance_node_amsl::Reference waypointRef_;
 
 
 // STATES DEFINITION
-static const int ON_GROUND_NO_HOME = 10;
+static const int ON_GROUND_NO_HOME = 10;         //TODO make a .h to include in both reference and mms
 static const int SETTING_HOME = 20;
 static const int  ON_GROUND_DISARMED = 30;
 static const int  ARMING = 40;
@@ -1203,6 +1172,7 @@ static const int  PERFORMING_GO_TO = 100;
 static const int  PERFORMING_LANDING = 120;
 
 static const int  MAX_VERTEX_GRID = 10;
+
 // STATE INITIALIZATION
 int currentState;
 int oldState;
@@ -1218,30 +1188,18 @@ bool land;
 uint16_t counter_print;
 
 //GRID RELATED
-//real_T initial_pos_grid[2];
 float d_grid;
-//emxArray_real_T *WP_out_grid;
-//real_T *WP_out_grid;
-//int16_T success_grid;
-//int16_T max_wp_grid;
-//int16_T number_WP_grid;
-//float int_point [2];
-//int inters;
-//float point1 [2];
-//float point2 [2];
-float **points;
-//int index;
-bool convex;
-float **convex_vertex;
-int N_vertex;
-
 bool received_grid_cmd;
 bool waiting_for_vertex_grid;
-uint16_t vertex_grid_n; 
-uint16_t received_vertexes_grid;
+int vertex_grid_n; 
+int received_vertexes_grid;
 float speed_grid;
 float height_grid;
-float vertex_grid [MAX_VERTEX_GRID][2];
+float **vertex_grid;
+float initial_pos_grid [2];
+bool success_grid;   //OUTPUT
+float **WP;        //OUTPUT
+int N_WP;      //OUTPUT
 
 private:
 
