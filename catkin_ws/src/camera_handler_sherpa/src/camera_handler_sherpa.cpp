@@ -14,10 +14,13 @@
 
 //#include <exiv2/exiv2.hpp>
 
-static const std::string OPENCV_WINDOW = "Image window";
+//static const std::string OPENCV_WINDOW = "Image window";
 static bool take_video = false;
+static bool taking_photos = false;
 static char dest_video[50];
 static int video_count = 0; 
+static int photo_taken_counter = 0;
+static int FPS = 20;         //TODO not hardcoded  
 cv::VideoWriter video;
 ros::Publisher camera_pub;
 //ros::Publisher ack_pub;
@@ -33,42 +36,51 @@ uint16_t seq_video;
 
 class CameraHandler
 {
-  ros::NodeHandle nh_;
-  image_transport::ImageTransport it_;
-  image_transport::Subscriber image_sub_;
-  image_transport::Publisher image_pub_;
+	ros::NodeHandle nh_;
+	image_transport::ImageTransport it_;
+	image_transport::Subscriber image_sub_;
+	//image_transport::Publisher image_pub_;
   
-  public:
-  CameraHandler()
-    : it_(nh_)
-  {
-    // Subscribe to input video feed and publish output video feed
-    image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, 
-      &CameraHandler::imageCb, this);
-	//camera_sub = nh_.subscribe("/camera_trigger", 10, &CameraHandler::trigger_image_video, this);    //TODO not used anymore, remove
-	command_sub = nh_.subscribe("/command", 10, &CameraHandler::command_handler, this);
+	public:
+	CameraHandler(): it_(nh_){
+		// Subscribe to input video feed and commands
+		image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &CameraHandler::imageCb, this);
+		command_sub = nh_.subscribe("/command_sent", 10, &CameraHandler::command_handler, this);
 
-    image_pub_ = it_.advertise("/camera_handler/output_video", 1);
-	camera_pub = nh_.advertise<camera_handler_sherpa::Camera>("/camera_trigger", 20);
-	//ack_pub = nh_.advertise<mms_msgs::Ack_cmd>("/ack_cmd", 10);
-	mission_pub = nh_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
+		//image_pub_ = it_.advertise("/camera_handler/output_video", 1);      //only if we have to modify images and publish again
+		camera_pub = nh_.advertise<camera_handler_sherpa::Camera>("/camera_trigger", 20);
+		//ack_pub = nh_.advertise<mms_msgs::Ack_cmd>("/ack_cmd", 10);
+		mission_pub = nh_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
 
-    //cv::namedWindow(OPENCV_WINDOW);
-  }
+		//cv::namedWindow(OPENCV_WINDOW);
+		_delay_seconds = 0;            
+		_N_photo = 0;					
+		_counter_frames = 0;              
+	}
   
 	void command_handler(const mms_msgs::Cmd::ConstPtr& msg){
 		if (msg->command == 2000){      //MAV_CMD_IMAGE_START_CAPTURE = 2000
 			camera_topic.take_pic = true;
-			seq_photo = msg->seq;
-			//misison ack
-			outputAckMission_.seq = seq_photo;
-			outputAckMission_.mav_mission_accepted = true;
-			outputAckMission_.mission_item_reached = false;
-			mission_pub.publish(outputAckMission_);
-			//cmd ack (will be made on mission loader node)
-			/*outputAckCmd_.command = msg->command;
-			outputAckCmd_.mav_command_accepted = true;
-			ack_pub.publish(outputAckCmd_);*/
+			if (!taking_photos){                                
+				seq_photo = msg->seq;
+				taking_photos = true;
+				photo_taken_counter = 0;
+				_delay_seconds = msg->param1;
+				_N_photo = msg->param2;      //if this is 0 unlimited photos
+				_compare_frames = (int)(_delay_seconds / FPS);       //how many frames to wait to have the desired delay
+				ROS_INFO("CAMERA HANDLER: compare_frames: %d", _compare_frames);
+				//misison ack
+				outputAckMission_.seq = seq_photo;
+				outputAckMission_.mav_mission_accepted = true;
+				outputAckMission_.mission_item_reached = false;
+				mission_pub.publish(outputAckMission_);
+			} else {                        //mission not accepted because already taking photos
+				//misison ack
+				outputAckMission_.seq = seq_photo;
+				outputAckMission_.mav_mission_accepted = false;
+				outputAckMission_.mission_item_reached = false;
+				mission_pub.publish(outputAckMission_);
+			}
 		} else if (msg->command == 2500){	//MAV_CMD_VIDEO_START_CAPTURE = 2500
 			camera_topic.take_vid = true;
 			seq_video = msg->seq;
@@ -79,10 +91,6 @@ class CameraHandler
 				outputAckMission_.mav_mission_accepted = true;
 				outputAckMission_.mission_item_reached = false;
 				mission_pub.publish(outputAckMission_);
-				//cmd ack
-				/*outputAckCmd_.command = msg->command;
-				outputAckCmd_.mav_command_accepted = true;
-				ack_pub.publish(outputAckCmd_);*/
 				startVideo();
 			} else {
 				outputAckMission_.seq = seq_video;
@@ -90,13 +98,12 @@ class CameraHandler
 				outputAckMission_.mission_item_reached = false;
 				mission_pub.publish(outputAckMission_);
 			}
+		} else if (msg->command == 2001){		//MAV_CMD_IMAGE_STOP_CAPTURE = 2001         
+			//TODO maybe ,ake something for unlimited photos
 		} else if (msg->command == 2501){		//MAV_CMD_VIDEO_STOP_CAPTURE = 2501
 			camera_topic.take_vid = false;
 			seq_video = msg->seq;
 			if (take_video){
-				/*outputAckCmd_.command = msg->command;
-				outputAckCmd_.mav_command_accepted = true;
-				ack_pub.publish(outputAckCmd_);*/
 				//mission ack
 				outputAckMission_.seq = seq_video;
 				outputAckMission_.mav_mission_accepted = true;
@@ -162,47 +169,46 @@ class CameraHandler
 		//ack_pub.publish(outputAckCmd_);
 	}
 
-  ~CameraHandler()
-  {
-    //cv::destroyWindow(OPENCV_WINDOW);
-  }
+	~CameraHandler()
+	{
+		//cv::destroyWindow(OPENCV_WINDOW);
+	}
 
-  void imageCb(const sensor_msgs::ImageConstPtr& msg)
-  {
+	void imageCb(const sensor_msgs::ImageConstPtr& msg){
 		//ROS_INFO("Received image");
-    cv_bridge::CvImagePtr cv_ptr;
-    try
-    {
-      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
-
+		cv_bridge::CvImagePtr cv_ptr;
+		try
+		{
+			cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+		}
+		catch (cv_bridge::Exception& e)
+		{
+			ROS_ERROR("cv_bridge exception: %s", e.what());
+			return;
+		}
+		_counter_frames++;
 		
-		if (camera_topic.take_pic){
-			ROS_INFO("CAMERA HANDLER: taking picture!");
+		if (taking_photos && _counter_frames>=_compare_frames){           //we are taking pictures and we passed the delay (rounded)
+			_counter_frames = 0;
+			ROS_INFO("CAMERA HANDLER: taking picture %d", photo_taken_counter+1);
 			// Save Image
 			static int image_count = 0;
 			static char dest_img[50];                        
 			sprintf(dest_img,"/home/odroid/Photo_Mission/image_%d.jpg",image_count);
 			ROS_ASSERT( cv::imwrite(dest_img,  cv_ptr->image));
 			image_count++;
-			camera_topic.take_pic = false;
-			camera_pub.publish(camera_topic);
-			
-			//mission ack
-			outputAckMission_.seq = seq_photo;
-			outputAckMission_.mission_item_reached = true; //item reached: take picture
-			outputAckMission_.mav_mission_accepted = false;   //need to send only item reached
-			mission_pub.publish(outputAckMission_);
-			
-			//outputAckCmd_.mission_item_reached = true;
-			//outputAckCmd_.mav_mission_accepted = false;
-			//outputAckCmd_.mav_cmd_id = 2000;         //MAV_CMD_IMAGE_START_CAPTURE
-			//ack_pub.publish(outputAckCmd_);
+			photo_taken_counter++;
+			//camera_topic.take_pic = false;
+			//camera_pub.publish(camera_topic);
+		
+			if (photo_taken_counter == _N_photo){   //in case _N_photo = 0 this will never enter so unlimited photos
+				//mission ack because photo mission is finished
+				taking_photos = false;
+				outputAckMission_.seq = seq_photo;
+				outputAckMission_.mission_item_reached = true; //item reached: take picture
+				outputAckMission_.mav_mission_accepted = false;   //need to send only item reached
+				mission_pub.publish(outputAckMission_);
+			}
 
 			//Metadata
 			//exifData["Exif.DarioScemo"] = "True";                     // Ascii
@@ -213,13 +219,18 @@ class CameraHandler
 		}
 
 		if (take_video) video << cv_ptr->image;
-  }
+	}
+	private:                     
+	float _delay_seconds;
+	int _N_photo;
+	int _counter_frames;           
+	int _compare_frames;            
 };
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "camera_handler_sherpa");
-  CameraHandler ic;
-  ros::spin();
-  return 0;
+	ros::init(argc, argv, "camera_handler_sherpa");
+	CameraHandler ic;
+	ros::spin();
+	return 0;
 }

@@ -5,6 +5,7 @@
 #include "mms_msgs/Arm.h"// output
 #include "mms_msgs/Ack_arm.h" // input
 #include "mms_msgs/Sys_status.h"// input
+#include "mms_msgs/Grid_ack.h"  //input
 #include <mavros/Sonar.h> // input
 #include "mms_msgs/MMS_status.h"// output
 #include <reference/Distance.h>// input
@@ -39,9 +40,10 @@ public:
 
 		//subscribers
 		subFromCmd_=n_.subscribe("/sent_command", 10, &MmsNodeClass::readCmdMessage,this); //subscribe to "sent_command" to exclude the "cmd_verifier" node
-        	subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
+		subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
 		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
 		subFromDistance_=n_.subscribe("/distance", 10, &MmsNodeClass::readDistanceMessage,this);
+		subFromGridAck_ = n_.subscribe("/grid_ack", 10, &MmsNodeClass::readGridAckMessage,this);
 		
 		// publishers
 		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
@@ -68,6 +70,7 @@ public:
 		MISSION_START = false;
 		WAYPOINT = false;
 		ARMED = false;
+		GRID_ENDED = false;
 
 		//Init something
 		currentState = ON_GROUND_NO_HOME;
@@ -103,6 +106,13 @@ public:
 			ARMED = false;
                 //ROS_INFO("DISARMED");
 		}
+	}
+
+	void readGridAckMessage(const mms_msgs::Grid_ack::ConstPtr& msg){
+		Grid_ack_.grid_completed = msg->grid_completed;
+		Grid_ack_.completion_type = msg->completion_type;
+		if (Grid_ack_.grid_completed) GRID_ENDED = true;
+		else GRID_ENDED = false;
 	}
 
 	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
@@ -251,6 +261,7 @@ public:
 		MISSION_START = false;
 		WAYPOINT = false;
 		GRID_EVENT = false;
+		GRID_ENDED = false;
 	}
 
 	void MMS_Handle()
@@ -755,9 +766,58 @@ public:
 			break;*/
 
 		case GRID:
+			
+			if (LAND){
+				set_events_false();
+				LAND = true;
 
-			//TODO add stuff here
-			//TODO add exit events (LAND-->LAND, WAYPOINT-->WAYPOINT, MISSION_FINISHED-->IN_FLIGHT)
+				outputAckMission_.mission_item_reached = false;
+				outputAckMission_.seq = inputCmd_.seq;
+				outputAckMission_.mav_mission_accepted = true;
+				pubToAckMission_.publish(outputAckMission_);
+				ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+				currentState = PERFORMING_LANDING; // READY_TO_LAND;
+				outputMmsStatus_.mms_state = currentState;
+				outputMmsStatus_.target_ref_frame = target_frame;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_LANDING");//READY_TO_LAND");
+
+				break;
+			}
+			if (WAYPOINT){
+				set_events_false();
+
+				outputAckMission_.mission_item_reached = false;
+				outputAckMission_.seq = inputCmd_.seq;
+				outputAckMission_.mav_mission_accepted = true;
+				pubToAckMission_.publish(outputAckMission_);
+				ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+				currentState = PERFORMING_GO_TO;//READY_TO_GO;
+				outputMmsStatus_.mms_state = currentState;
+				outputMmsStatus_.target_ref_frame = target_frame;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_GO_TO");//READY_TO_GO");
+
+				break;
+			}
+			if (GRID_ENDED){
+				set_events_false();
+				if (Grid_ack_.completion_type == 1){       //success
+					outputAckMission_.mission_item_reached = true;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: GRID FINISHED SUCCESFULLY");
+				} else {                               //failure
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: GRID FINISHED SUCCESFULLY");
+				}
+			}
 			break;
 
 		case PERFORMING_GO_TO:
@@ -922,6 +982,9 @@ mms_msgs::Cmd inputCmd_;
 ros::Subscriber subFromAckArm_;
 mms_msgs::Ack_arm inputAckArm_;
 
+ros::Subscriber subFromGridAck_;
+mms_msgs::Grid_ack Grid_ack_;
+
 ros::Subscriber subFromSysStatus_;
 mms_msgs::Sys_status inputSysStatus_;
 
@@ -956,6 +1019,7 @@ bool MISSION_START;
 bool WAYPOINT;
 bool GRID_EVENT;
 bool ARMED;
+bool GRID_ENDED;
 // static bool CONDITION_YAW = false;
 
 // INPUTS APM -> MMS

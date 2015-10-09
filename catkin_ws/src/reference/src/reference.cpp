@@ -4,13 +4,16 @@
 #include "guidance_node_amsl/Reference.h"
 #include "guidance_node_amsl/Position_nav.h"
 #include "mms_msgs/Cmd.h"
+#include "mms_msgs/Grid_ack.h"
 #include "mms_msgs/MMS_status.h"
 #include <mavros/Sonar.h>
 #include <frame/Ref_system.h>
 #include "reference/Distance.h"
 #include "WP_grid.h"         //GRID
 
-
+double eps_WP = 1500.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here
+double eps_alt = 500.0; // distance to the target altitude in millimeters
+double eps_YAW = 20.0; // distance to the target YAW position in deg
 
 double PI = 3.1416; // pi
 
@@ -30,8 +33,9 @@ public:
 		subFromHome_=n_.subscribe("/home", 10, &ReferenceNodeClass::readHomeMessage,this);
 		
 		// publishers
-		pubToReference_=n_.advertise<guidance_node_amsl::Reference>("/reference",10);
-		pubToDistance_=n_.advertise<reference::Distance>("/distance",10);
+		pubToReference_ = n_.advertise<guidance_node_amsl::Reference>("/reference",10);
+		pubToDistance_ = n_.advertise<reference::Distance>("/distance",10);
+		pubGridAck_ = n_.advertise<mms_msgs::Grid_ack>("/grid_ack",10);
 
 		//Initializing outputRef_
 		outputRef_.Latitude = 0;
@@ -90,6 +94,8 @@ public:
 	    	WP[i] = new float[2];
 		}
 		N_WP = 0;      //OUTPUT
+		WP_completed_grid = 0;
+		waiting_for_WP_execution_grid = false;
 	}
 
 	class e_to_tartget{
@@ -867,32 +873,6 @@ public:
 
 		case GRID:
 			{
-				//-------TEST GRID-------   TODO change position
-				/*if (received_grid_cmd && !waiting_for_vertex_grid){
-					real_T data_arr[8] = {0, 6, 6, 0, 0, 0, 4, 4};  //COLOUMN MAJOR!!!-->(0,0)-(6,0)-(6,4)-(0,4)
-					real_T *data = data_arr;
-					emxArray_real_T* vertex_test = emxCreateWrapper_real_T(data, 4, 2);
-					initial_pos_grid[0] = 0;
-					initial_pos_grid[1] = 0;
-					d_grid = 1;
-					//WP_grid(vertex_test, initial_pos_grid, d_grid, max_wp_grid, WP_out_grid, &success_grid, &number_WP_grid);
-					WP_grid(vertex_test, initial_pos_grid, d_grid, WP_out_grid, &success_grid, &number_WP_grid);
-					ROS_INFO("GRID! Success: %d - N. WP: %d", success_grid, number_WP_grid);
-					for (int i = 0; i < number_WP_grid; i++){
-						//ROS_INFO("GRID! WP %d: %.2f - %.2f", i, WP_out_grid->data[i], WP_out_grid->data[max_wp_grid+i]);    //with emxArray
-						ROS_INFO("GRID! WP %d: %.2f - %.2f", i, WP_out_grid[i], WP_out_grid[max_wp_grid+i]);	//with array
-					}
-					//intersection_line_segment(point1, point2, 0, 0, &inters, int_point);	
-					//ROS_INFO("GRID! Intersection: %d - Point x: %f - Point y: %f", inters, int_point[0], int_point[1]);
-					//find_closest_2D(points, point1, closest_point, &index, int(5));
-					//ROS_INFO("GRID! Closest point: %f - %f - INDEX: %d", closest_point[0], closest_point[1], index);
-					is_convex(points, true, &convex, &N_vertex);
-					ROS_INFO("GRID! Convex: %s - N_vertex: %d", convex ? "true" : "false", N_vertex);
-					for (int i = 0 ; i<N_vertex; i++){
-						ROS_INFO("GRID! Vertex %d: %f - %f", i+1, points[i][0], points[i][1]);
-					}
-				}*/
-				//-------TEST GRID------------------------------------
 				if (received_grid_cmd && !waiting_for_vertex_grid){   //have received all vertexes
 					ROS_INFO("REF: GRID. Starting GRID alg. N. vertex: %d - Distance: %f", vertex_grid_n, d_grid);
 					for (int i = 0; i < vertex_grid_n; i++){
@@ -908,10 +888,41 @@ public:
 					for (int i = 0; i < N_WP; i++){
 						ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP[i][0], WP[i][1]);
 					}*/
+					received_grid_cmd = false;     //WP calculated. Now they need to be sent as reference
 				}
-				received_grid_cmd = false;     //WP calculated. Now they need to be sent as reference
-				//TODO send WP as reference
 				//TODO add conversion NED-->WGS84
+				if (WP_completed_grid<N_WP && !waiting_for_WP_execution_grid && success_grid){           
+					waiting_for_WP_execution_grid = true;
+					outputRef_.Latitude = WP[WP_completed_grid][0];
+					outputRef_.Longitude = WP[WP_completed_grid][1];
+					outputRef_.AltitudeRelative = height_grid;           //TODO add yaw (maybe taken from last reference)
+					outputRef_.frame = actual_frame;                 //TODO check this with Nicola
+					ROS_INFO("REF->GRID: Sent a WP");
+					pubToReference_.publish(outputRef_);
+				} else if (waiting_for_WP_execution_grid && success_grid){
+					//Waiting for the execution of the WP
+					distance();
+					outputDist_.error_pos = error_to_t.error_pos;
+					outputDist_.error_ang = error_to_t.error_ang;
+					outputDist_.error_alt = error_to_t.error_alt;
+					outputDist_.command = 160; // GRID
+					pubToDistance_.publish(outputDist_);
+					if (outputDist_.error_pos < eps_WP && outputDist_.error_ang < eps_YAW && outputDist_.error_alt < eps_alt){
+						//WP reached
+						waiting_for_WP_execution_grid = false;
+						WP_completed_grid++;
+					}
+				} else if (WP_completed_grid==N_WP && success_grid){
+					//GRID execution ended. Return EVENT to MMS
+					grid_ack_.grid_completed = true;
+					grid_ack_.completion_type = 1;      //success
+					pubGridAck_.publish(grid_ack_);
+				} else if (!success_grid){
+					//FAIL
+					grid_ack_.grid_completed = true;
+					grid_ack_.completion_type = 0;      //generic failure
+					pubGridAck_.publish(grid_ack_);
+				}
 			}
 		break;
 
@@ -1138,6 +1149,8 @@ ros::Publisher pubToReference_;
 guidance_node_amsl::Reference outputRef_;     
 guidance_node_amsl::Reference target_;    
 
+ros::Publisher pubGridAck_;
+
 // ros::Publisher pubToSysStatus_;
 ros::Publisher pubToDistance_;
 reference::Distance outputDist_;
@@ -1200,6 +1213,9 @@ float initial_pos_grid [2];
 bool success_grid;   //OUTPUT
 float **WP;        //OUTPUT
 int N_WP;      //OUTPUT
+int WP_completed_grid;
+bool waiting_for_WP_execution_grid;
+mms_msgs::Grid_ack grid_ack_;
 
 private:
 
