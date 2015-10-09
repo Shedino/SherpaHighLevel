@@ -108,7 +108,6 @@ void is_convex(float **vertex, bool convexify, bool *convex, int *N_vertex){    
 	int sum_clock = 0;
 	int index_removed = 0;
 	bool clockwise = false;
-	ROS_INFO("CONVEX: 1");
 	/*ROS_INFO("N: %d", *N_vertex);
 	for (int i=0 ; i< *N_vertex; i++){
 		ROS_INFO("Vertex %d: %f - %f", i+1, vertex[i][0], vertex[i][1]);
@@ -118,7 +117,6 @@ void is_convex(float **vertex, bool convexify, bool *convex, int *N_vertex){    
 		*convex = false;
 		return;
 	}
-	ROS_INFO("CONVEX: 2");
 	for (int i=0; i< *N_vertex; i++){
 		x0[i] = vertex[i][0];
 		y0[i] = vertex[i][1];
@@ -146,17 +144,14 @@ void is_convex(float **vertex, bool convexify, bool *convex, int *N_vertex){    
 		if (zcrossproduct[i] >= 0) t1++;
 		if (zcrossproduct[i] < 0) t2++;
 	}
-	ROS_INFO("CONVEX: 3");
 	*convex = ((t1 == *N_vertex) || (t2 == *N_vertex));
 	//ROS_INFO("t1: %d - t2: %d", t1, t2);
 	//ROS_INFO("CONVEX? %s", *convex ? "true" : "false");
 
-	ROS_INFO("CONVEX: 4");
 	if (*convex){
 		//ROS_INFO("CONVEX. returning");
 		return;
 	} else if (convexify){
-		ROS_INFO("CONVEX: 5");
 		//ROS_INFO("Not convex. CONVEXIFYING");
 		for (int i=0; i< *N_vertex; i++){
 			if (i < *N_vertex-1){

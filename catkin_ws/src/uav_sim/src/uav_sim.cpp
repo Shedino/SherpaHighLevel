@@ -106,10 +106,10 @@ public:
 				sys_status_.voltage_battery = 15000;  //15 V
 				sys_status_.valid_ref_frame = 11;     //baro
 				globPosInt_.time_boot_ms = 0;
-				globPosInt_.lat = 0;
-				globPosInt_.lon = 0;
+				globPosInt_.lat = 584943710;     //TERRA LAB
+				globPosInt_.lon = 151015000;	//TERRA LAB
 				globPosInt_.alt = 0;
-				globPosInt_.relative_alt = 0;
+				globPosInt_.relative_alt = 108000; //TERRA LAB
 				globPosInt_.vx = 0;
 				globPosInt_.vy = 0;
 				globPosInt_.vz = 0;

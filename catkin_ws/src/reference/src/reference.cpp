@@ -319,7 +319,6 @@ public:
 				outputRef_.frame = inputCmd_.frame;
 				outputDist_.seq = inputCmd_.seq;
 				Dh_TO = outputRef_.AltitudeRelative;
-				//ROS_INFO("Seqence 1: %d", outputDist_.seq);	//TODO remove
 			}break;
 			/*		case 115: // MAV_CMD_CONDITION_YAW
 			{
@@ -895,7 +894,7 @@ public:
 					waiting_for_WP_execution_grid = true;
 					outputRef_.Latitude = WP[WP_completed_grid][0];
 					outputRef_.Longitude = WP[WP_completed_grid][1];
-					outputRef_.AltitudeRelative = height_grid;           //TODO add yaw (maybe taken from last reference)
+					outputRef_.AltitudeRelative = height_grid;           //yaw shoul be already the last target  //TODO maybe we can set is from parameters
 					outputRef_.frame = actual_frame;                 //TODO check this with Nicola
 					ROS_INFO("REF->GRID: Sent a WP");
 					pubToReference_.publish(outputRef_);
