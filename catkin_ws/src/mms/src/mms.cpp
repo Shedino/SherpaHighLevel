@@ -804,6 +804,12 @@ public:
 			}
 			if (GRID_ENDED){
 				set_events_false();
+				currentState = IN_FLIGHT;
+				outputMmsStatus_.mms_state = currentState;
+				outputMmsStatus_.target_ref_frame = target_frame;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO("MMS->REF: CURRENT_STATE = IN_FLIGHT");
+
 				if (Grid_ack_.completion_type == 1){       //success
 					outputAckMission_.mission_item_reached = true;
 					outputAckMission_.seq = inputCmd_.seq;
@@ -815,7 +821,7 @@ public:
 					outputAckMission_.seq = inputCmd_.seq;
 					outputAckMission_.mav_mission_accepted = false;
 					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: GRID FINISHED SUCCESFULLY");
+					ROS_INFO("MMS->GCS: GRID FINISHED NOT SUCCESFULLY");
 				}
 			}
 			break;
