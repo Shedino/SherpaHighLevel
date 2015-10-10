@@ -329,7 +329,7 @@ gradi decimali */
 				// ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT");
 				// ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %f - %f - %f - %f",inputCmd_.param5,inputCmd_.param6,inputCmd_.param7,inputCmd_.param4);
 				target_Speed =  inputCmd_.param1; // in m/s float
-				target_.Latitude = (int)(inputCmd_.paraminputCmd_.param55*10000000.0f);
+				target_.Latitude = (int)(inputCmd_.param5*10000000.0f);
 				target_.Longitude = (int)(inputCmd_.param6*10000000.0f);
 				target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
 				target_.Yawangle = inputCmd_.param4;
