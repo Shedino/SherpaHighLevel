@@ -44,7 +44,7 @@ public:
         subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
 		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
 		subFromDistance_=n_.subscribe("/distance", 10, &MmsNodeClass::readDistanceMessage,this);
-		subFromGlobPosInt_ID1_=n_.subscribe("/global_position_int_ID1", 10, &MmsNodeClass::readGlobalPosIntMessage_ID1,this);
+		subFromGlobPosInt_ID1=n_.subscribe("/global_position_int_ID1", 10, &MmsNodeClass::readGlobalPosIntMessage_ID1,this);
 		
 		// publishers
 		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
@@ -84,12 +84,12 @@ public:
 
 	void readGlobalPosIntMessage_ID1(const mavros::Global_position_int::ConstPtr& msg)
 	{
-		inputGlobPosInt_ID1_.lat = msg->lat;
-		inputGlobPosInt_ID1_.lon = msg->lon;
-		inputGlobPosInt_ID1_.alt = msg->alt;
-		inputGlobPosInt_ID1_.relative_alt = msg->relative_alt;
-		inputGlobPosInt_ID1_.hdg = msg->hdg;
-		inputGlobPosInt_ID1_.time_boot_ms = msg->time_boot_ms;
+		inputGlobPosInt_ID1.lat = msg->lat;
+		inputGlobPosInt_ID1.lon = msg->lon;
+		inputGlobPosInt_ID1.alt = msg->alt;
+		inputGlobPosInt_ID1.relative_alt = msg->relative_alt;
+		inputGlobPosInt_ID1.hdg = msg->hdg;
+		inputGlobPosInt_ID1.time_boot_ms = msg->time_boot_ms;
 	}
 	
 	void readDistanceMessage(const reference::Distance::ConstPtr& msg)

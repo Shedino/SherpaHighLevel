@@ -9,9 +9,6 @@
 #include <frame/Ref_system.h>
 #include "reference/Distance.h"
 
-
-
-
 double PI = 3.1416; // pi
 
 class ReferenceNodeClass {
@@ -84,7 +81,7 @@ public:
 
 	class ECEF{
 	public:
-		double Ne;
+		double Ne; // the prime vertical radius of curvature or the great normal
 		double X;
 		double Y;
 		double Z;
@@ -92,6 +89,92 @@ public:
 
 	ECEF End_Point;
 	ECEF Starting_Point;
+
+/*	guidance_node_amsl::Reference ECEFtoWGS84(position_ECEF)
+	{
+		ECEF position_ECEF;
+		guidance_node_amsl::Reference position_WGS84;
+		// TODO: write the conversion from ECEF to WGS84
+		position_WGS84 = somethig;
+		return position_WGS84;
+	};*/
+
+/* Questa funzione calcola la distanza tra due punti
+sulla superficie terrestre, date le coordinate in
+latitudine e longitudine espresse in
+gradi decimali */
+/*double disgeod (double latA, double lonA,
+                double latB, double lonB)
+{
+       Definisce le costanti e le variabili
+      const double R = 6371;
+      const double pigreco = 3.1415927;
+      double lat_alfa, lat_beta;
+      double lon_alfa, lon_beta;
+      double fi;
+      double p, d;
+       Converte i gradi in radianti
+      lat_alfa = pigreco * latA / 180;
+      lat_beta = pigreco * latB / 180;
+      lon_alfa = pigreco * lonA / 180;
+      lon_beta = pigreco * lonB / 180;
+       Calcola l'angolo compreso fi
+      fi = fabs(lon_alfa - lon_beta);
+       Calcola il terzo lato del triangolo sferico
+	  p = acos(sin(lat_beta) * sin(lat_alfa) + cos(lat_beta) * cos(lat_alfa) * cos(fi));
+       Calcola la distanza sulla superficie
+      terrestre R = ~6371 km
+      d = p * R;
+      return(d);
+};*/
+
+/*	ECEF WGS84toECEF(Latitude, Longitude, Altitude_E)
+	{
+		ECEF position_ECEF;
+		double Altitude_E; // this is the altitude relative to the Ellipsoid [meters]
+		double Latitude; // WGS84 coordinate expressed as int*10^7
+		double Longitude; // WGS84 coordinate expressed as int*10^7
+		double temp1;
+
+		temp1 = 0.08181919f*sin(Latitude/10000000.0f*PI/180.0f);
+		position_ECEF.Ne=6378137.0f/sqrt(1-temp1*temp1);
+		position_ECEF.X=(position_ECEF.Ne+Altitude_E)*cos(Latitude/10000000.0f*PI/180.0f)*cos(Longitude/10000000.0f*PI/180.0f);
+		position_ECEF.Y=(position_ECEF.Ne+Altitude_E)*cos(Latitude/10000000.0f*PI/180.0f)*sin(Longitude/10000000.0f*PI/180.0f);
+		position_ECEF.Z=(position_ECEF.Ne*(1.0f-0.08181919f*0.08181919f)+Altitude_E)*sin(Latitude/10000000.0f*PI/180.0f);
+		// position_ECEF.Z = (double)outputRef_.AltitudeRelative;     //MICHELE BRUTAL!! buahahaha
+		return position_ECEF;
+	};*/
+
+/*	ECEF ECEF_position_error(Starting_point_ECEF,Ending_point_ECEF)
+	{
+		ECEF error;
+		ECEF Starting_point_ECEF;
+		ECEF Ending_point_ECEF;
+
+		error.X = Ending_point_ECEF.X - Starting_point_ECEF.X; //outputRef_.Latitude - inputPos_.Latitude;
+		error.Y = Ending_point_ECEF.Y - Starting_point_ECEF.Y; //outputRef_.Longitude - inputPos_.Longitude;
+		error.Z = Ending_point_ECEF.Z - Starting_point_ECEF.Z; //outputRef_.AltitudeRelative - (inputPos_.Altitude-Home.AltitudeAMSL);
+
+		return error;
+	};*/
+
+/*	void distance()
+	{
+		ECEF error;
+		ECEF Starting_point_ECEF;
+		ECEF Ending_point_ECEF;
+		static double error_yaw;
+
+		Starting_point_ECEF= WGS84toECEF(inputPos_);
+		Ending_point_ECEF= WGS84toECEF(outputRef_);
+
+		error = ECEF_position_error(Starting_point_ECEF,Ending_point_ECEF);
+		error_yaw = outputRef_.Yawangle - inputPos_.YawAngle;//*3.14/100/360;
+		error_to_t.error_pos = 1000.0f*sqrt(error_x*error_x + error_y*error_y);
+		error_to_t.error_ang = 180.0f/PI*sqrt(error_yaw*error_yaw);
+		//error_to_t.error_alt = 1000.0f*sqrt(error_z*error_z);
+		error_to_t.error_alt = sqrt(error_z*error_z);      //MIC brutal! buahaha
+	}*/
 
 	void distance() // e_to_tartget &error_to_t, // guidance_node_amsl::Reference Target_Position, guidance_node_amsl::Position Current_Position
 	{
@@ -245,7 +328,8 @@ public:
 			{
 				// ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT");
 				// ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %f - %f - %f - %f",inputCmd_.param5,inputCmd_.param6,inputCmd_.param7,inputCmd_.param4);
-				target_.Latitude = (int)(inputCmd_.param5*10000000.0f);
+				target_Speed =  inputCmd_.param1; // in m/s float
+				target_.Latitude = (int)(inputCmd_.paraminputCmd_.param55*10000000.0f);
 				target_.Longitude = (int)(inputCmd_.param6*10000000.0f);
 				target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
 				target_.Yawangle = inputCmd_.param4;
@@ -895,6 +979,9 @@ public:
 					// tempRelAlt = inputGlobPosInt_.relative_alt;// - Home.relative_alt;
 					ROS_INFO("REF->NAV: REFERENCE = WAYPOINT");
 				}
+
+				// TODO tempRef_ = target_Speed*sign(target_);
+
 				if (new_frame == true)
 				{
 					new_frame = false;
@@ -1226,6 +1313,7 @@ const static float earthEquatorialRadius=6378137;
 const static float earthFlattening=1/298.257223563;
 float meridionalCurvatureRadius;
 float primeVerticalCurvatureRadius;
+float target_Speed;
 
 private:
 
