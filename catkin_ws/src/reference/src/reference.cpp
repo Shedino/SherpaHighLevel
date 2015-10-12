@@ -10,6 +10,7 @@
 #include <frame/Ref_system.h>
 #include "reference/Distance.h"
 #include "WP_grid.h"         //GRID
+#include <wgs84_ned_lib/wgs84_ned_lib.h>       
 
 double eps_WP = 1500.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here
 double eps_alt = 500.0; // distance to the target altitude in millimeters
@@ -875,6 +876,11 @@ public:
 				if (received_grid_cmd && !waiting_for_vertex_grid){   //have received all vertexes
 					ROS_INFO("REF: GRID. Starting GRID alg. N. vertex: %d - Distance: %f", vertex_grid_n, d_grid);
 					for (int i = 0; i < vertex_grid_n; i++){
+						double temp_x = 0;
+						double temp_y = 0;
+						get_pos_NED_from_WGS84 (&temp_x, &temp_y, vertex_grid [i][0], vertex_grid [i][1], 58.4943710, 15.1015000);
+						vertex_grid [i][0] = temp_x;
+						vertex_grid [i][1] = temp_y;
 						ROS_INFO("REF: GRID. Vertex %d: %f - %f", i+1, vertex_grid [i][0], vertex_grid [i][1]);
 								//TODO add conversion WGS84-->NED
 					}

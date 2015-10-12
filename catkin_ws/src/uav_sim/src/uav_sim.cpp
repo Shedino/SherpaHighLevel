@@ -109,7 +109,7 @@ public:
 				globPosInt_.lat = 584943710;     //TERRA LAB
 				globPosInt_.lon = 151015000;	//TERRA LAB
 				globPosInt_.alt = 0;
-				globPosInt_.relative_alt = 108000; //TERRA LAB
+				globPosInt_.relative_alt = 100800; //TERRA LAB
 				globPosInt_.vx = 0;
 				globPosInt_.vy = 0;
 				globPosInt_.vz = 0;
