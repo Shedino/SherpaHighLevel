@@ -878,14 +878,16 @@ public:
 					for (int i = 0; i < vertex_grid_n; i++){
 						double temp_x = 0;
 						double temp_y = 0;
-						get_pos_NED_from_WGS84 (&temp_x, &temp_y, vertex_grid [i][0], vertex_grid [i][1], 58.4943710, 15.1015000);
+						get_pos_NED_from_WGS84 (&temp_x, &temp_y, vertex_grid [i][0], vertex_grid [i][1], 58.4943710, 15.1015000);         //TODO take home from topic
 						vertex_grid [i][0] = temp_x;
 						vertex_grid [i][1] = temp_y;
 						ROS_INFO("REF: GRID. Vertex %d: %f - %f", i+1, vertex_grid [i][0], vertex_grid [i][1]);
-								//TODO add conversion WGS84-->NED
 					}
-					//initial_pos_grid[0] = outputRef_.Latitude;    //latest reference as initial point    //TODO add conversion WGS84-->NED and put this back in
-					//initial_pos_grid[1] = outputRef_.Longitude;	//latest reference as initial point		 //TODO add conversion WGS84-->NED
+					double temp_x_init = 0;
+					double temp_y_init = 0;
+					get_pos_NED_from_WGS84 (&temp_x_init, &temp_y_init, outputRef_.Latitude, outputRef_.Longitude, 58.4943710, 15.1015000); //latest reference as initial point //TODO take home from topic
+					initial_pos_grid[0] = temp_x_init;
+					initial_pos_grid[1] = temp_y_init;
 					WP_grid(vertex_grid, &vertex_grid_n, initial_pos_grid, d_grid, WP, &success_grid, &N_WP);
 					
 					/*ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f", success_grid, N_WP, speed_grid, height_grid);
@@ -895,12 +897,14 @@ public:
 					}*/
 					received_grid_cmd = false;     //WP calculated. Now they need to be sent as reference
 				}
-				//TODO add conversion NED-->WGS84
 				if (WP_completed_grid<N_WP && !waiting_for_WP_execution_grid && success_grid){           
 					waiting_for_WP_execution_grid = true;
-					outputRef_.Latitude = WP[WP_completed_grid][0];
-					outputRef_.Longitude = WP[WP_completed_grid][1];
-					outputRef_.AltitudeRelative = height_grid;           //yaw shoul be already the last target  //TODO maybe we can set is from parameters
+					double temp_ref_latitude;
+					double temp_ref_longitude;
+					get_pos_WGS84_from_NED (&temp_ref_latitude, &temp_ref_longitude, WP[WP_completed_grid][0], WP[WP_completed_grid][1], 58.4943710, 15.1015000);  //TODO take home from topic
+					outputRef_.Latitude = (int)temp_ref_latitude * 10000000;
+					outputRef_.Longitude = (int)temp_ref_longitude * 10000000;
+					outputRef_.AltitudeRelative = height_grid;    //yaw should be already the last target  //TODO maybe we can set yaw from mission, for example pointing in the direciton of flight
 					outputRef_.frame = actual_frame;                 //TODO check this with Nicola
 					ROS_INFO("REF->GRID: Sent a WP");
 					pubToReference_.publish(outputRef_);
