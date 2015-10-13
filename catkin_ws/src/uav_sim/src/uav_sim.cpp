@@ -143,6 +143,10 @@ public:
 				break;
 
 			case PERFORMING_TAKEOFF:
+				if (counter_print >= 10){
+					counter_print = 0;
+					ROS_INFO_ONCE("SIM: PERFORMING TAKEOFF");
+				}
 				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;

@@ -904,7 +904,7 @@ public:
 					get_pos_WGS84_from_NED (&temp_ref_latitude, &temp_ref_longitude, WP[WP_completed_grid][0], WP[WP_completed_grid][1], 58.4943710, 15.1015000);  //TODO take home from topic
 					outputRef_.Latitude = (int)(temp_ref_latitude * 10000000.0f);
 					outputRef_.Longitude = (int)(temp_ref_longitude * 10000000.0f);
-					outputRef_.AltitudeRelative = height_grid;    //yaw should be already the last target  //TODO maybe we can set yaw from mission, for example pointing in the direciton of flight
+					outputRef_.AltitudeRelative = height_grid * 1000.0f;  //yaw should be already the last target  //TODO maybe we can set yaw from mission, for example pointing in the direciton of flight
 					outputRef_.frame = actual_frame;                 //TODO check this with Nicola
 					ROS_INFO("REF->GRID: Sent a WP");
 					pubToReference_.publish(outputRef_);

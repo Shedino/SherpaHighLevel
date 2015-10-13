@@ -134,7 +134,7 @@ public:
         	inputCmd_.frame  = msg -> frame;
         	inputCmd_.seq  = msg -> seq;
 
-        ROS_INFO("MMS: CMD_RECEIVED %d", inputCmd_.command);
+        ROS_INFO("MMS: CMD_RECEIVED %d. Sequence: %d", inputCmd_.command, inputCmd_.seq);
 
 		switch(inputCmd_.command)
 		{
@@ -812,7 +812,7 @@ public:
 
 				if (Grid_ack_.completion_type == 1){       //success
 					outputAckMission_.mission_item_reached = true;
-					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.seq = seq_number;
 					outputAckMission_.mav_mission_accepted = false;
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: GRID FINISHED SUCCESFULLY");
