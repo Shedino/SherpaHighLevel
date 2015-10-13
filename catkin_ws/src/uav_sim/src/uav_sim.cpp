@@ -17,12 +17,10 @@
 #define ARMING 40
 #define DISARMING 45
 #define ON_GROUND_ARMED 50
-#define ON_GROUND_READY_TO_TAKEOFF 60
 #define PERFORMING_TAKEOFF 70
 #define IN_FLIGHT 80
-#define READY_TO_GO 90
+#define GRID 90
 #define PERFORMING_GO_TO 100
-#define READY_TO_LAND 110
 #define PERFORMING_LANDING 120
 
 double PI = 3.1416; // pi
@@ -45,6 +43,8 @@ public:
 		pubToGlobPosInt_=n_.advertise<mavros::Global_position_int>("/global_position_int",10);
 		pubToSonar_=n_.advertise<mavros::Sonar>("/sonar",10);
 	
+		rate = 10;
+		counter_print = 0;
 	}
 
 	
@@ -93,6 +93,7 @@ public:
 
 	void loop_handle()
 	{
+		counter_print++;
 		pubToSafety_.publish(safety_);
 		pubToSystStatus_.publish(sys_status_);
 		pubToSonar_.publish(sonar_);
@@ -141,10 +142,6 @@ public:
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
-			case ON_GROUND_READY_TO_TAKEOFF:
-				pubToGlobPosInt_.publish(globPosInt_);
-				break;
-
 			case PERFORMING_TAKEOFF:
 				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
 				pubToGlobPosInt_.publish(globPosInt_);
@@ -154,23 +151,33 @@ public:
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
-			case READY_TO_GO:
-				pubToGlobPosInt_.publish(globPosInt_);
-				break;
-
 			case PERFORMING_GO_TO:
+				if (counter_print >= 10){
+					counter_print = 0;
+					ROS_INFO_ONCE("SIM: PERFORMING GO TO");
+				}
 				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
 				globPosInt_.lat += (reference_.Latitude - inputPos_.Latitude)/70;
 				globPosInt_.lon += (reference_.Longitude - inputPos_.Longitude)/70;
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
-			case READY_TO_LAND:
+			case GRID:	
+				if (counter_print >= 10){
+					counter_print = 0;
+					ROS_INFO_ONCE("SIM: PERFORMING GRID");
+				}
+				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
+				globPosInt_.lat += (reference_.Latitude - inputPos_.Latitude)/70;
+				globPosInt_.lon += (reference_.Longitude - inputPos_.Longitude)/70;
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
-	
 
 			case PERFORMING_LANDING:
+				if (counter_print >= 10){
+					counter_print = 0;
+					ROS_INFO_ONCE("SIM: PERFORMING LANDING");
+				}
 				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;     
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
@@ -186,7 +193,7 @@ void run() {
 
 	while (ros::ok())
 	{
-		ROS_INFO_ONCE("REF: RUNNING");
+		ROS_INFO_ONCE("SIM: RUNNING");
 
 		loop_handle();
 		ros::spinOnce();
@@ -221,9 +228,9 @@ mms_msgs::Sys_status sys_status_;
 
 
 
-int rate = 10;
+int rate;
 
-uint16_t counter_print = 0;
+uint16_t counter_print;
 
 private:
 
