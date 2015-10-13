@@ -68,7 +68,7 @@ class CameraHandler
 				_delay_seconds = msg->param1;
 				_N_photo = msg->param2;      //if this is 0 unlimited photos
 				_compare_frames = (int)(_delay_seconds / FPS);       //how many frames to wait to have the desired delay
-				ROS_INFO("CAMERA HANDLER: compare_frames: %d", _compare_frames);
+				//ROS_INFO("CAMERA HANDLER: compare_frames: %d", _compare_frames);
 				//misison ack
 				outputAckMission_.seq = seq_photo;
 				outputAckMission_.mav_mission_accepted = true;
@@ -99,7 +99,16 @@ class CameraHandler
 				mission_pub.publish(outputAckMission_);
 			}
 		} else if (msg->command == 2001){		//MAV_CMD_IMAGE_STOP_CAPTURE = 2001         
-			//TODO maybe ,ake something for unlimited photos
+			if (taking_photos){
+				//mission ack because photo mission is finished
+				taking_photos = false;
+				outputAckMission_.seq = seq_photo;
+				outputAckMission_.mission_item_reached = true; //item reached: take picture
+				outputAckMission_.mav_mission_accepted = false;   //need to send only item reached
+				mission_pub.publish(outputAckMission_);
+			} else {
+				//ACK?
+			}
 		} else if (msg->command == 2501){		//MAV_CMD_VIDEO_STOP_CAPTURE = 2501
 			camera_topic.take_vid = false;
 			seq_video = msg->seq;
@@ -213,9 +222,9 @@ class CameraHandler
 			//Metadata
 			//exifData["Exif.DarioScemo"] = "True";                     // Ascii
 			//Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(dest_img);
-		  //assert(image.get() != 0);
-		  //image->setExifData(exifData);
-		  //image->writeMetadata();
+			//assert(image.get() != 0);
+			//image->setExifData(exifData);
+			//image->writeMetadata();
 		}
 
 		if (take_video) video << cv_ptr->image;

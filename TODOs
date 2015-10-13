@@ -6,7 +6,7 @@ LIST OF TODOS FOR HIGH-LEVEL-SHERPA
 4) N photo and Delay (Michele)  ----------------------------------------  DONE  ----  TO BE TESTED
 5) Video/Photo dynamic FPS + dimension (Michele)  ----------------------  NOT FEASIBLE
 6) Better Landing (???)    ---------------------------------------------  ADDED HIGHRES_IMU TOPIC  ----  NOT SUPPORTED BY APM :(  ---- TODO USE DIFFERENT MESSAGE
-7) Ref in WGS84 + AMSL (Nicola)
+7) Ref in WGS84 + AMSL (Michele)        --------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED IN FLIGHT
 8) Librery WGS84<-->NED (Michele)       --------------------------------  DONE  ----  TESTED SOFTWARE  ----  IT WORKS!!
 9) QoS sensors (Marco)
 10) Integration Delegation (Michele)    --------------------------------  70% DONE  ---- TESTED SOFTWARE  ----  TO BE TESTED IN FLIGHT
