@@ -233,7 +233,7 @@ public:
 		Target_Position_.AltitudeRelative = inputCmd_.param7;
 		Target_Position_.Yawangle = inputCmd_.param4;*/
 
-		//6 = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT
+		//6 = MAV_FRAME_GLOBAL_ALT_INT
 		//11 = MAV_FRAME_GLOBAL_TERRAIN_ALT_INT
 
 		switch(inputCmd_.command)
@@ -351,7 +351,7 @@ public:
 						get_current_position();
 						outputRef_.frame = actual_frame;
 						tempRef_ = outputRef_;
-						tempRelAlt = inputGlobPosInt_.relative_alt;
+						tempRelAlt = inputGlobPosInt_.alt;
 						//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
 						//pubToReference_.publish(outputRef_);
 						ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
@@ -435,7 +435,7 @@ public:
 						get_current_position();
 						outputRef_.frame = actual_frame;
 						tempRef_ = outputRef_;
-						tempRelAlt = inputGlobPosInt_.relative_alt;
+						tempRelAlt = inputGlobPosInt_.alt;
 						//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
 						//pubToReference_.publish(outputRef_);
 						ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
@@ -497,7 +497,7 @@ public:
 									get_current_position();
 									outputRef_.frame = actual_frame;
 									tempRef_ = outputRef_;
-									tempRelAlt = inputGlobPosInt_.relative_alt;  // 
+									tempRelAlt = inputGlobPosInt_.alt;  // 
 									//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
 									//pubToReference_.publish(outputRef_);
 									ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
@@ -553,7 +553,7 @@ public:
 									get_current_position();
 									outputRef_.frame = actual_frame;
 									tempRef_ = outputRef_;
-									tempRelAlt = inputGlobPosInt_.relative_alt;//
+									tempRelAlt = inputGlobPosInt_.alt;//
 									//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
 									//pubToReference_.publish(outputRef_);
 									ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
@@ -604,7 +604,7 @@ public:
 									get_current_position();
 									outputRef_.frame = actual_frame;
 									tempRef_ = outputRef_;
-									tempRelAlt = inputGlobPosInt_.relative_alt;
+									tempRelAlt = inputGlobPosInt_.alt;
 									//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
 									//pubToReference_.publish(outputRef_);
 									ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
@@ -658,7 +658,7 @@ public:
 									get_current_position();
 									outputRef_.frame = actual_frame;
 									tempRef_ = outputRef_;
-									tempRelAlt = inputGlobPosInt_.relative_alt;
+									tempRelAlt = inputGlobPosInt_.alt;
 									//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
 									//pubToReference_.publish(outputRef_);
 									ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
@@ -709,7 +709,7 @@ public:
 					get_current_position();
 					outputRef_.frame = actual_frame;
 					tempRef_ = outputRef_;
-					tempRelAlt = inputGlobPosInt_.relative_alt;
+					tempRelAlt = inputGlobPosInt_.alt;
 					ROS_INFO("REF->NAV: REFERENCE = TAKEOFF");
 				}
 				if (new_frame == true)
@@ -767,7 +767,7 @@ public:
 					/* get_current_position(); 
 					outputRef_.frame = actual_frame;
 					tempRef_ = outputRef_;
-					tempRelAlt = inputGlobPosInt_.relative_alt;*/
+					tempRelAlt = inputGlobPosInt_.alt;*/
 					ROS_INFO("REF->NAV: REFERENCE = IN_FLIGHT");
 				}
 
@@ -816,7 +816,7 @@ public:
 					//get_current_position();
 					//outputRef_.frame = actual_frame;
 					//tempRef_ = outputRef_;
-					//tempRelAlt = inputGlobPosInt_.relative_alt;
+					//tempRelAlt = inputGlobPosInt_.alt;
 					ROS_INFO("REF->NAV: REFERENCE = READY_TO_GO");
 				}
 
@@ -934,7 +934,7 @@ public:
 
 					// get_current_position();
 					tempRef_ = target_;
-					// tempRelAlt = inputGlobPosInt_.relative_alt;//
+					// tempRelAlt = inputGlobPosInt_.alt;//
 					ROS_INFO("REF->NAV: REFERENCE = TARGET WAYPOINT");
 				}
 				if (new_frame == true)
@@ -966,7 +966,7 @@ public:
 						outputRef_ = tempRef_;
 						outputRef_.frame = actual_frame;
 						//tempRef_.frame = actual_frame;
-						outputRef_.AltitudeRelative = inputGlobPosInt_.relative_alt;
+						outputRef_.AltitudeRelative = inputGlobPosInt_.alt;
 						ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
 						pubToReference_.publish(outputRef_);
 						ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
@@ -1005,7 +1005,7 @@ public:
 			//get_current_position();
 			//outputRef_.frame = actual_frame;
 			//tempRef_ = outputRef_;
-			//tempRelAlt = inputGlobPosInt_.relative_alt;
+			//tempRelAlt = inputGlobPosInt_.alt;
 			ROS_INFO("REF->NAV: REFERENCE = READY_TO_LAND");
 		}
 
@@ -1049,10 +1049,10 @@ public:
 				{
 						ROS_INFO("REF: PERFORMING_LANDING");
 						new_state = false;
-						get_current_position();
+						get_current_position();                      //this is needed because I can send the land command before last WP or target is reached
 						outputRef_.frame = actual_frame;
 						tempRef_ = outputRef_;
-						tempRelAlt = inputGlobPosInt_.relative_alt;
+						tempRelAlt = inputGlobPosInt_.alt;
 						ROS_INFO("REF->NAV: REFERENCE = VERT. LAND SPEED");
 				}
 				if (new_frame == true)

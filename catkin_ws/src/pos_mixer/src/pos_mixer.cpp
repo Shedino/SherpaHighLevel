@@ -9,11 +9,8 @@ class PosmixerNodeClass
 {
 
 public:
-	bool new_frame = false;
-	int old_frame = 0;
-
 	PosmixerNodeClass(ros::NodeHandle& node)
-{
+	{
 
 		n_=node;
 
@@ -27,8 +24,10 @@ public:
 
 		// initialization
 		inputRefSystem_.actual_ref_frame = 6;
+		new_frame = false;
+		old_frame = 0;
+	}
 
-}
 	void readPositionMessage(const mavros::Global_position_int::ConstPtr& msg)
 	{
 		// ROS_INFO("POSMIXER: POSITION_RECEIVED");
@@ -40,6 +39,7 @@ public:
 		inputPos_.time_boot_ms = msg->time_boot_ms;
 		Posmixer_Handle();
 	}
+
 	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
 	{
 		// ROS_INFO("POSMIXER: SONAR_RECEIVED");
@@ -72,7 +72,8 @@ public:
 		{
 			outputPosNav_.Latitude =inputPos_.lat ;
 			outputPosNav_.Longitude =inputPos_.lon ;
-			outputPosNav_.Altitude =inputPos_.relative_alt;  
+			//outputPosNav_.Altitude =inputPos_.relative_alt;
+			outputPosNav_.Altitude =inputPos_.alt;               //changed to use absolute alt  
 			outputPosNav_.Timestamp =inputPos_.time_boot_ms;
 			outputPosNav_.YawAngle = inputPos_.hdg*3.14/180/100;
 			outputPosNav_.frame = inputRefSystem_.actual_ref_frame;
@@ -134,8 +135,8 @@ protected:
 	guidance_node_amsl::Position_nav outputPosNav_;
 
 //	int rate = 10;
-
-	// private:
+	bool new_frame;
+	int old_frame;
 };
 
 int main(int argc, char **argv)

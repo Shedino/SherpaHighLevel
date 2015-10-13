@@ -109,8 +109,8 @@ public:
 				globPosInt_.time_boot_ms = 0;
 				globPosInt_.lat = 584943710;     //TERRA LAB
 				globPosInt_.lon = 151015000;	//TERRA LAB
-				globPosInt_.alt = 0;
-				globPosInt_.relative_alt = 100800; //TERRA LAB
+				globPosInt_.alt = 100800;		//TERRA LAB
+				globPosInt_.relative_alt = 0; //starting from 0
 				globPosInt_.vx = 0;
 				globPosInt_.vy = 0;
 				globPosInt_.vz = 0;
@@ -143,11 +143,13 @@ public:
 				break;
 
 			case PERFORMING_TAKEOFF:
-				if (counter_print >= 10){
+				if (counter_print >= 30){
 					counter_print = 0;
-					ROS_INFO_ONCE("SIM: PERFORMING TAKEOFF");
+					ROS_INFO("SIM: PERFORMING TAKEOFF");
+					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
+				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;
+				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
@@ -156,33 +158,39 @@ public:
 				break;
 
 			case PERFORMING_GO_TO:
-				if (counter_print >= 10){
+				if (counter_print >= 30){
 					counter_print = 0;
-					ROS_INFO_ONCE("SIM: PERFORMING GO TO");
+					ROS_INFO("SIM: PERFORMING GO TO");
+					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
+				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;
+				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
 				globPosInt_.lat += (reference_.Latitude - inputPos_.Latitude)/70;
 				globPosInt_.lon += (reference_.Longitude - inputPos_.Longitude)/70;
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
 			case GRID:	
-				if (counter_print >= 10){
+				if (counter_print >= 30){
 					counter_print = 0;
-					ROS_INFO_ONCE("SIM: PERFORMING GRID");
+					ROS_INFO("SIM: PERFORMING GRID");
+					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
+				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;
+				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;  
 				globPosInt_.lat += (reference_.Latitude - inputPos_.Latitude)/70;
 				globPosInt_.lon += (reference_.Longitude - inputPos_.Longitude)/70;
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
 			case PERFORMING_LANDING:
-				if (counter_print >= 10){
+				if (counter_print >= 30){
 					counter_print = 0;
-					ROS_INFO_ONCE("SIM: PERFORMING LANDING");
+					ROS_INFO("SIM: PERFORMING LANDING");
+					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;     
+				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;
+				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;    
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 		}
