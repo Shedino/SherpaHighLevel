@@ -885,7 +885,7 @@ public:
 					}
 					double temp_x_init = 0;
 					double temp_y_init = 0;
-					get_pos_NED_from_WGS84 (&temp_x_init, &temp_y_init, outputRef_.Latitude, outputRef_.Longitude, 58.4943710, 15.1015000); //latest reference as initial point //TODO take home from topic
+					get_pos_NED_from_WGS84 (&temp_x_init, &temp_y_init, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, 58.4943710, 15.1015000); //latest reference as initial point //TODO take home from topic
 					initial_pos_grid[0] = temp_x_init;
 					initial_pos_grid[1] = temp_y_init;
 					WP_grid(vertex_grid, &vertex_grid_n, initial_pos_grid, d_grid, WP, &success_grid, &N_WP);
@@ -902,8 +902,8 @@ public:
 					double temp_ref_latitude;
 					double temp_ref_longitude;
 					get_pos_WGS84_from_NED (&temp_ref_latitude, &temp_ref_longitude, WP[WP_completed_grid][0], WP[WP_completed_grid][1], 58.4943710, 15.1015000);  //TODO take home from topic
-					outputRef_.Latitude = (int)temp_ref_latitude * 10000000;
-					outputRef_.Longitude = (int)temp_ref_longitude * 10000000;
+					outputRef_.Latitude = (int)(temp_ref_latitude * 10000000.0f);
+					outputRef_.Longitude = (int)(temp_ref_longitude * 10000000.0f);
 					outputRef_.AltitudeRelative = height_grid;    //yaw should be already the last target  //TODO maybe we can set yaw from mission, for example pointing in the direciton of flight
 					outputRef_.frame = actual_frame;                 //TODO check this with Nicola
 					ROS_INFO("REF->GRID: Sent a WP");
