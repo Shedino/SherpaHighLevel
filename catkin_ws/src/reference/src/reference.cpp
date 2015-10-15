@@ -9,6 +9,7 @@
 #include <mavros/Sonar.h>
 #include <frame/Ref_system.h>
 #include "reference/Distance.h"
+#include "reference/Grid_info.h"
 #include "WP_grid.h"         //GRID
 #include <wgs84_ned_lib/wgs84_ned_lib.h>       
 
@@ -37,6 +38,7 @@ public:
 		pubToDistance_ = n_.advertise<reference::Distance>("/distance",10);
 		pubGridAck_ = n_.advertise<mms_msgs::Grid_ack>("/grid_ack",10);
 		pubHome_ = n_.advertise<mavros::Global_position_int>("/home",5);
+		pubGridInfo_ = n_.advertise<reference::Grid_info>("/grid_info",2);
 
 		//Initializing outputRef_
 		outputRef_.Latitude = 0;
@@ -870,9 +872,20 @@ public:
 					get_pos_NED_from_WGS84 (&temp_x_init, &temp_y_init, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f); //latest reference as initial point
 					initial_pos_grid[0] = temp_x_init;
 					initial_pos_grid[1] = temp_y_init;
-					WP_grid(vertex_grid, &vertex_grid_n, initial_pos_grid, d_grid, WP, &success_grid, &N_WP);
+					WP_grid(vertex_grid, &vertex_grid_n, initial_pos_grid, d_grid, WP, &success_grid, &N_WP);      //CORE ALGORITHM
 					
-					/*ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f", success_grid, N_WP, speed_grid, height_grid);
+					double tot_distance = 0;
+					tot_distance += sqrt(pow(initial_pos_grid[0]-WP[1][0],2)+pow(initial_pos_grid[1]-WP[1][1],2));  //distance from intitial position to first WP
+					for (int i = 0; i<N_WP-1; i++){
+						tot_distance += sqrt(pow(WP[i][0]-WP[i+1][0],2)+pow(WP[i][1]-WP[i+1][1],2));     //sum of all distances between WPs
+					}
+					double grid_exec_time = tot_distance / speed_grid;                   //TODO send this time to executor!!
+					reference::Grid_info gridInfo;
+					gridInfo.success = success_grid;
+					gridInfo.N_WP = N_WP;
+					gridInfo.exec_time = grid_exec_time;
+					pubGridInfo_.publish(gridInfo);
+					/*ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f - Exec time: %f", success_grid, N_WP, speed_grid, height_grid, grid_exec_time);
 					ROS_INFO("REF: GRID! New vertex: %d", vertex_grid_n);
 					for (int i = 0; i < N_WP; i++){
 						ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP[i][0], WP[i][1]);
@@ -1122,6 +1135,7 @@ ros::Publisher pubToReference_;
 ros::Publisher pubGridAck_;
 ros::Publisher pubToDistance_;
 ros::Publisher pubHome_;
+ros::Publisher pubGridInfo_;
 
 guidance_node_amsl::Position_nav inputPos_;
 mavros::Global_position_int inputGlobPosInt_;

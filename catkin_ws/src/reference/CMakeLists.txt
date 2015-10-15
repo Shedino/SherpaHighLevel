@@ -48,6 +48,7 @@ find_package(catkin REQUIRED COMPONENTS
  add_message_files(
    FILES
    Distance.msg
+   Grid_info.msg
  )
 
 ## Generate services in the 'srv' folder
