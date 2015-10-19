@@ -865,7 +865,7 @@ public:
 						get_pos_NED_from_WGS84 (&temp_x, &temp_y, vertex_grid [i][0], vertex_grid [i][1], Home_.lat/10000000.0f, Home_.lon/10000000.0f);
 						vertex_grid [i][0] = temp_x;
 						vertex_grid [i][1] = temp_y;
-						ROS_INFO("REF: GRID. Vertex %d: %f - %f", i+1, vertex_grid [i][0], vertex_grid [i][1]);
+						//ROS_INFO("REF: GRID. Vertex %d: %f - %f", i+1, vertex_grid [i][0], vertex_grid [i][1]);
 					}
 					double temp_x_init = 0;
 					double temp_y_init = 0;
@@ -885,8 +885,8 @@ public:
 					gridInfo.N_WP = N_WP;
 					gridInfo.exec_time = grid_exec_time;
 					pubGridInfo_.publish(gridInfo);
-					/*ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f - Exec time: %f", success_grid, N_WP, speed_grid, height_grid, grid_exec_time);
-					ROS_INFO("REF: GRID! New vertex: %d", vertex_grid_n);
+					ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f - Exec time: %f - Distance: %f", success_grid, N_WP, speed_grid, height_grid, grid_exec_time, tot_distance);
+					/*ROS_INFO("REF: GRID! New vertex: %d", vertex_grid_n);
 					for (int i = 0; i < N_WP; i++){
 						ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP[i][0], WP[i][1]);
 					}*/

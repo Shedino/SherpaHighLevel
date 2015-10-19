@@ -21,7 +21,7 @@ void get_pos_NED_from_WGS84 (double *x, double *y, double lat, double lon, doubl
 	double radius = A/sqrt(1-pow(e,2)*pow(sin(lat_home_rad),2));
 	*x = (lat_rad-lat_home_rad)*radius;
 	*y = (lon_rad-lon_home_rad)*radius*cos(lat_home_rad);
-	ROS_INFO("lat: %f - lon: %f - x: %f - y: %f", lat, lon, *x, *y);
+	//ROS_INFO("lat: %f - lon: %f - x: %f - y: %f", lat, lon, *x, *y);
 }
 
 void get_pos_WGS84_from_NED (double *lat, double *lon, double x, double y, double lat_home, double lon_home){
@@ -34,5 +34,5 @@ void get_pos_WGS84_from_NED (double *lat, double *lon, double x, double y, doubl
 	double radius = A/sqrt(1-pow(e,2)*pow(sin(lat_home_rad),2));
 	*lat = x/radius*180.0f/M_PI + lat_home;
 	*lon = y/radius*180.0f/M_PI/cos(lat_home_rad) + lon_home;
-	ROS_INFO("GET WGS: lat: %f - lon: %f - x: %f - y: %f", *lat, *lon, x, y);
+	//ROS_INFO("GET WGS: lat: %f - lon: %f - x: %f - y: %f", *lat, *lon, x, y);
 }
