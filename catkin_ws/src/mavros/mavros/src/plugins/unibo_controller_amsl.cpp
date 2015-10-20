@@ -8,7 +8,7 @@
 #include "mavros/ArtvaRead.h"
 #include "mavros/Global_position_int.h"
 #include "mavros/Safety.h"
-#include "mavros/Highres_imu.h"
+#include "mavros/Raw_imu.h"
 
 #include <guidance_node_amsl/Directive.h>
 //#include <guidance_node_amsl/Position.h>
@@ -53,7 +53,7 @@ public:
 		ROS_INFO("reading ARTVA message from Arduino!");
 		artva_pub = nodeHandle.advertise<mavros::ArtvaRead>("/artva_read", 10);
 		safety_pub = nodeHandle.advertise<mavros::Safety>("/safety_odroid", 10);
-		imu_pub = nodeHandle.advertise<mavros::Highres_imu>("/imu", 10);
+		imu_pub = nodeHandle.advertise<mavros::Raw_imu>("/imu", 10);
 
 
 
@@ -83,7 +83,7 @@ public:
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_DISTANCE_SENSOR, &UniboControllerAMSLPlugin::handle_distance_sensor),
 //			MESSAGE_HANDLER(MAVLINK_MSG_ID_VFR_HUD, &UniboControllerAMSLPlugin::handle_vfr_hud),
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_DEBUG_VECT, &UniboControllerAMSLPlugin::handle_ARTVA_read),
-			MESSAGE_HANDLER(MAVLINK_MSG_ID_HIGHRES_IMU, &UniboControllerAMSLPlugin::handle_IMU_read)
+			MESSAGE_HANDLER(MAVLINK_MSG_ID_RAW_IMU, &UniboControllerAMSLPlugin::handle_IMU_read)
 		};
 	}
 
@@ -112,7 +112,7 @@ private:
 	mavros::Attitude attitude_msg;  //private and accessed by many handlers
 	mavros::Safety safety_;
 	mavros::Global_position_int global_pos_;
-	mavros::Highres_imu imu_;
+	mavros::Raw_imu imu_;
 
 	//message to move the quadcopter
 	mavros::OverrideRCIn velocity_;
@@ -284,24 +284,19 @@ private:
 
 	void handle_IMU_read(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid){
 
-		mavlink_highres_imu_t highres_imu;
-		mavlink_msg_highres_imu_decode(msg, &highres_imu);
+		mavlink_raw_imu_t raw_imu;
+		mavlink_msg_raw_imu_decode(msg, &raw_imu);
 
-		imu_.time_usec = highres_imu.time_usec;
-		imu_.xacc = highres_imu.xacc;
-		imu_.yacc = highres_imu.yacc;
-		imu_.zacc = highres_imu.zacc;
-		imu_.xgyro = highres_imu.xgyro;
-		imu_.ygyro = highres_imu.ygyro;
-		imu_.zgyro = highres_imu.zgyro;
-		imu_.xmag = highres_imu.xmag;
-		imu_.ymag = highres_imu.ymag;
-		imu_.zmag = highres_imu.zmag;
-		imu_.abs_pressure = highres_imu.abs_pressure;
-		imu_.diff_pressure = highres_imu.diff_pressure;
-		imu_.pressure_alt = highres_imu.pressure_alt;
-		imu_.temperature = highres_imu.temperature;
-		imu_.fields_updated = highres_imu.fields_updated;
+		imu_.time_usec = raw_imu.time_usec;
+		imu_.xacc = raw_imu.xacc;
+		imu_.yacc = raw_imu.yacc;
+		imu_.zacc = raw_imu.zacc;
+		imu_.xgyro = raw_imu.xgyro;
+		imu_.ygyro = raw_imu.ygyro;
+		imu_.zgyro = raw_imu.zgyro;
+		imu_.xmag = raw_imu.xmag;
+		imu_.ymag = raw_imu.ymag;
+		imu_.zmag = raw_imu.zmag;
 
 		imu_pub.publish(imu_);
 	}
