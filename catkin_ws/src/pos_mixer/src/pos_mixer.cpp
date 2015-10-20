@@ -104,8 +104,8 @@ public:
 	void run()
 	{
 		//ros::Rate loop_rate(rate);
-
-		while (ros::ok())
+		ros::spin();
+		/*while (ros::ok())
 		{
 			ROS_INFO_ONCE("POS_MIXER: RUNNING");
 			// ROS_INFO_ONCE("POS_MIXER: RELATIVE_ALT SET");
@@ -114,7 +114,7 @@ public:
 			ros::spinOnce();
 
 			//loop_rate.sleep();
-		}
+		}*/
 	}
 
 protected:

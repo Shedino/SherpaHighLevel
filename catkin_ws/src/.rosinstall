@@ -1,1 +1,15 @@
-- git: {local-name: mavros, uri: 'https://github.com/mavlink/mavros.git'}
+
+- git: {local-name: lrs_msgs_common, uri: 'git@gitlab.ida.liu.se:lrs/lrs_msgs_common.git'}
+- git: {local-name: lrs_msgs_tst, uri: 'git@gitlab.ida.liu.se:lrs/lrs_msgs_tst.git'}
+- git: {local-name: lrs_srvs_tst, uri: 'git@gitlab.ida.liu.se:lrs/lrs_srvs_tst.git'}
+- git: {local-name: lrs_srvs_exec, uri: 'git@gitlab.ida.liu.se:lrs/lrs_srvs_exec.git'}
+- git: {local-name: lrs_srvs_ra, uri: 'git@gitlab.ida.liu.se:lrs/lrs_srvs_ra.git'}
+- git: {local-name: lrs_resource, uri: 'git@gitlab.ida.liu.se:lrs/lrs_resource.git'}
+- git: {local-name: lrs_tst, uri: 'git@gitlab.ida.liu.se:lrs/lrs_tst.git'}
+- git: {local-name: lrs_exec, uri: 'git@gitlab.ida.liu.se:lrs/lrs_exec.git'}
+- git: {local-name: lrs_exec_txt, uri: 'git@gitlab.ida.liu.se:lrs/lrs_exec_txt.git'}
+- git: {local-name: lrs_util_tst, uri: 'git@gitlab.ida.liu.se:lrs/lrs_util_tst.git'}
+- git: {local-name: lrs_util_gs, uri: 'git@gitlab.ida.liu.se:lrs/lrs_util_gs.git'}
+- git: {local-name: lrs_srvs_wdb, uri: 'git@gitlab.ida.liu.se:lrs/lrs_srvs_wdb.git'}
+- git: {local-name: lrs_common, uri: 'git@gitlab.ida.liu.se:lrs/lrs_common.git'}
+- git: {local-name: lrs_wdb, uri: 'git@gitlab.ida.liu.se:lrs/lrs_wdb.git'}

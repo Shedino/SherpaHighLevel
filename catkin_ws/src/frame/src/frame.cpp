@@ -114,8 +114,8 @@ public:
 	{
 		// ros::Rate loop_rate(rate);
 
-		// ros::spin();
-		while (ros::ok())
+		ros::spin();
+		/*while (ros::ok())
 		{
 			ROS_INFO_ONCE("FRAME: RUNNING");
 			// ROS_INFO_ONCE("FRAME: RELATIVE_ALT SET");
@@ -124,7 +124,7 @@ public:
 			ros::spinOnce();
 
 			// loop_rate.sleep();
-		}
+		}*/
 	}
 
 protected:
