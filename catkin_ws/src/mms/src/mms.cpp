@@ -9,6 +9,7 @@
 #include <mavros/Sonar.h> // input
 #include "mms_msgs/MMS_status.h"// output
 #include <reference/Distance.h>// input
+#include <mavros/Safety.h>// input
 
 // STATES DEFINITION -> CREATE A DEDICATED LIBRARY = TODO
 #define ON_GROUND_NO_HOME 10
@@ -24,6 +25,8 @@
 #define PERFORMING_GO_TO 100
 // #define READY_TO_LAND 110
 #define PERFORMING_LANDING 120
+#define MANUAL_FLIGHT 1000
+
 
 double PI = 3.1416; // pi
 double eps_LAND = 10000.0; // distance to the target LAND position in millimeter
@@ -44,6 +47,7 @@ public:
 		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
 		subFromDistance_=n_.subscribe("/distance", 10, &MmsNodeClass::readDistanceMessage,this);
 		subFromGridAck_ = n_.subscribe("/grid_ack", 10, &MmsNodeClass::readGridAckMessage,this);
+		subSafety_ = n_.subscribe("/safety", 2, &MmsNodeClass::readSafetyMessage,this);
 		
 		// publishers
 		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
@@ -71,9 +75,13 @@ public:
 		WAYPOINT = false;
 		ARMED = false;
 		GRID_ENDED = false;
+		GRID_EVENT = false;
+		SAFETY_ON = false;
+		SAFETY_OFF = false;
 
 		//Init something
 		currentState = ON_GROUND_NO_HOME;
+		previousState = ON_GROUND_NO_HOME;
 		target_frame = 6;
 		rate = 10;
 		uint16_t counter_ = 0;
@@ -89,6 +97,18 @@ public:
 		inputDist_.error_alt=msg->error_alt;
 		inputDist_.command=msg->command;
 		inputDist_.seq=msg->seq;
+	}
+	
+	void readSafetyMessage(const mavros::Safety::ConstPtr& msg)
+	{
+		Safety_.safety = msg->safety;
+		if (Safety_.safety){
+			SAFETY_ON = true;
+			SAFETY_OFF = false;
+		} else {
+			SAFETY_OFF = true;
+			SAFETY_ON = false;
+		}
 	}
 
 	void readSysStatusMessage(const mms_msgs::Sys_status::ConstPtr& msg)
@@ -262,6 +282,8 @@ public:
 		WAYPOINT = false;
 		GRID_EVENT = false;
 		GRID_ENDED = false;
+		SAFETY_ON = false;
+		SAFETY_OFF = false;
 	}
 
 	void MMS_Handle()
@@ -275,7 +297,7 @@ public:
 			outputMmsStatus_.target_ref_frame = 6;//inputCmd_.frame;
 			pubToMmsStatus_.publish(outputMmsStatus_);
 			ROS_INFO_ONCE("MMS->REF: CURRENT_STATE = ON_GROUND_NO_HOME");
-
+			
 			if (ARMED)
 			{
 				set_events_false();
@@ -338,7 +360,7 @@ public:
 			break;
 
 		case ON_GROUND_DISARMED:
-
+			
 			if (TAKEOFF)
 			{
 				set_events_false();
@@ -587,6 +609,16 @@ public:
 
 		case PERFORMING_TAKEOFF:
 
+			/*if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+				set_events_false();
+				previousState = currentState;   //save last state in previousState
+				currentState = MANUAL_FLIGHT;
+				outputMmsStatus_.mms_state = currentState;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
+				break;
+			}*/
+			
 			if (LAND)
 			{
 				set_events_false();
@@ -631,20 +663,31 @@ public:
 					// break; // comment this line to execute also the following if()
 				}
 			}
-					if (TAKEOFF || SET_HOME || WAYPOINT)
-					{
-						set_events_false();
-						outputAckMission_.mission_item_reached = false;
-						outputAckMission_.seq = inputCmd_.seq;
-						outputAckMission_.mav_mission_accepted = false;
-						pubToAckMission_.publish(outputAckMission_);
-						ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
-						break;
-					}
+			
+			if (TAKEOFF || SET_HOME || WAYPOINT)
+			{
+				set_events_false();
+				outputAckMission_.mission_item_reached = false;
+				outputAckMission_.seq = inputCmd_.seq;
+				outputAckMission_.mav_mission_accepted = false;
+				pubToAckMission_.publish(outputAckMission_);
+				ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+				break;
+			}
 			break;
 
 		case IN_FLIGHT:
 
+			/*if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+				set_events_false();
+				previousState = currentState;   //save last state in previousState
+				currentState = MANUAL_FLIGHT;
+				outputMmsStatus_.mms_state = currentState;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
+				break;
+			}*/
+			
 			if (LAND)
 			{
 				set_events_false();
@@ -767,6 +810,16 @@ public:
 
 		case GRID:
 			
+			/*if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+				set_events_false();
+				previousState = currentState;   //save last state in previousState
+				currentState = MANUAL_FLIGHT;
+				outputMmsStatus_.mms_state = currentState;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
+				break;
+			}*/
+			
 			if (LAND){
 				set_events_false();
 				LAND = true;
@@ -828,6 +881,16 @@ public:
 
 		case PERFORMING_GO_TO:
 
+			/*if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+				set_events_false();
+				previousState = currentState;   //save last state in previousState
+				currentState = MANUAL_FLIGHT;
+				outputMmsStatus_.mms_state = currentState;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
+				break;
+			}*/
+			
 			if (LAND)
 			{
 				set_events_false();
@@ -955,8 +1018,22 @@ public:
 				}*/
 			//}
 			break;
-		}
+			
+		case MANUAL_FLIGHT;
 
+			if (SAFETY_OFF)
+			{
+				set_events_false();
+				currentState = previousState;   //rolling back to last state
+				outputMmsStatus_.mms_state = currentState;
+				outputMmsStatus_.target_ref_frame = target_frame;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO("MMS: CURRENT_STATE = BACK TO OLD ONE. SAFETY_OFF");
+
+				break;
+			}
+			break;
+		}
 }
 
 void run() {
@@ -990,6 +1067,9 @@ mms_msgs::Ack_arm inputAckArm_;
 
 ros::Subscriber subFromGridAck_;
 mms_msgs::Grid_ack Grid_ack_;
+
+ros::Subscriber subSafety_;
+mavros::Safety Safety_;
 
 ros::Subscriber subFromSysStatus_;
 mms_msgs::Sys_status inputSysStatus_;
@@ -1026,6 +1106,8 @@ bool WAYPOINT;
 bool GRID_EVENT;
 bool ARMED;
 bool GRID_ENDED;
+bool SAFETY_ON;
+bool SAFETY_OFF;
 // static bool CONDITION_YAW = false;
 
 // INPUTS APM -> MMS
@@ -1043,6 +1125,7 @@ bool GRID_ENDED;
 
 // STATE INITIALIZATION
 int currentState;
+int previousState;      //used when rolling back to previous state from MANUAL_FLIGHT
 // int lastARMState = ON_GROUND_DISARMED;
 int target_frame;
 

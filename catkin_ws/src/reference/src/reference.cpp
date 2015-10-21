@@ -1103,6 +1103,11 @@ public:
 				pubToDistance_.publish(outputDist_);
 			}
 			break;
+		
+		case MANUAL_FLIGHT:
+			//Do nothing?
+			break;
+		
 		}
 }
 
@@ -1172,6 +1177,7 @@ static const int  GRID = 90;
 static const int  PERFORMING_GO_TO = 100;
 //static const int  READY_TO_LAND = 110;
 static const int  PERFORMING_LANDING = 120;
+static const int  MANUAL_FLIGHT = 1000;
 
 static const int  MAX_VERTEX_GRID = 10;
 
