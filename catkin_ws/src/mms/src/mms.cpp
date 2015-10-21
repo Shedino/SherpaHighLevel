@@ -47,7 +47,7 @@ public:
 		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
 		subFromDistance_=n_.subscribe("/distance", 10, &MmsNodeClass::readDistanceMessage,this);
 		subFromGridAck_ = n_.subscribe("/grid_ack", 10, &MmsNodeClass::readGridAckMessage,this);
-		subSafety_ = n_.subscribe("/safety", 2, &MmsNodeClass::readSafetyMessage,this);
+		subSafety_ = n_.subscribe("/safety_odroid", 2, &MmsNodeClass::readSafetyMessage,this);
 		
 		// publishers
 		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
@@ -105,9 +105,11 @@ public:
 		if (Safety_.safety){
 			SAFETY_ON = true;
 			SAFETY_OFF = false;
+			ROS_INFO("MMS: safety on");
 		} else {
 			SAFETY_OFF = true;
 			SAFETY_ON = false;
+			ROS_INFO("MMS: safety off");
 		}
 	}
 
@@ -609,7 +611,7 @@ public:
 
 		case PERFORMING_TAKEOFF:
 
-			/*if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+			if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
 				set_events_false();
 				previousState = currentState;   //save last state in previousState
 				currentState = MANUAL_FLIGHT;
@@ -617,7 +619,7 @@ public:
 				pubToMmsStatus_.publish(outputMmsStatus_);
 				ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
 				break;
-			}*/
+			}
 			
 			if (LAND)
 			{
@@ -678,7 +680,7 @@ public:
 
 		case IN_FLIGHT:
 
-			/*if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+			if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
 				set_events_false();
 				previousState = currentState;   //save last state in previousState
 				currentState = MANUAL_FLIGHT;
@@ -686,7 +688,7 @@ public:
 				pubToMmsStatus_.publish(outputMmsStatus_);
 				ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
 				break;
-			}*/
+			}
 			
 			if (LAND)
 			{
@@ -810,7 +812,7 @@ public:
 
 		case GRID:
 			
-			/*if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+			if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
 				set_events_false();
 				previousState = currentState;   //save last state in previousState
 				currentState = MANUAL_FLIGHT;
@@ -818,7 +820,7 @@ public:
 				pubToMmsStatus_.publish(outputMmsStatus_);
 				ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
 				break;
-			}*/
+			}
 			
 			if (LAND){
 				set_events_false();
@@ -881,7 +883,7 @@ public:
 
 		case PERFORMING_GO_TO:
 
-			/*if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+			if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
 				set_events_false();
 				previousState = currentState;   //save last state in previousState
 				currentState = MANUAL_FLIGHT;
@@ -889,7 +891,7 @@ public:
 				pubToMmsStatus_.publish(outputMmsStatus_);
 				ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
 				break;
-			}*/
+			}
 			
 			if (LAND)
 			{
@@ -1019,7 +1021,7 @@ public:
 			//}
 			break;
 			
-		case MANUAL_FLIGHT;
+		case MANUAL_FLIGHT:
 
 			if (SAFETY_OFF)
 			{

@@ -38,7 +38,7 @@ public:
 		subFromPosNav_=n_.subscribe("/position_nav", 10, &UavSimNodeClass::readPosNav,this);
 		
 		// publishers
-		pubToSafety_=n_.advertise<mavros::Safety>("/safety",10);
+		pubToSafety_=n_.advertise<mavros::Safety>("/safety_odroid",10);
 		pubToSystStatus_=n_.advertise<mms_msgs::Sys_status>("/system_status",10);
 		pubToGlobPosInt_=n_.advertise<mavros::Global_position_int>("/global_position_int",10);
 		pubToSonar_=n_.advertise<mavros::Sonar>("/sonar",10);
@@ -94,7 +94,7 @@ public:
 	void loop_handle()
 	{
 		counter_print++;
-		pubToSafety_.publish(safety_);
+		//pubToSafety_.publish(safety_);
 		pubToSystStatus_.publish(sys_status_);
 		pubToSonar_.publish(sonar_);
 
