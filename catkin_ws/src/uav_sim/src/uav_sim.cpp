@@ -46,7 +46,7 @@ public:
 		pubToSystStatus_ = n_.advertise<mms_msgs::Sys_status>("/system_status",10);
 		pubToGlobPosInt_ = n_.advertise<mavros::Global_position_int>("/global_position_int",10);
 		pubToSonar_ = n_.advertise<mavros::Sonar>("/sonar",10);
-		pubGeopose_ = n_.advertise<geographic_msgs::GeoPose>("/geopose",10);
+		pubGeopose_ = n_.advertise<geographic_msgs::GeoPose>("geopose",10);
 	
 		rate = 10;
 		counter_print = 0;
