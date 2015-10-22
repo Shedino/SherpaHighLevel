@@ -45,7 +45,7 @@ class CameraHandler
 	CameraHandler(): it_(nh_){
 		// Subscribe to input video feed and commands
 		image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &CameraHandler::imageCb, this);
-		command_sub = nh_.subscribe("/command_sent", 10, &CameraHandler::command_handler, this);
+		command_sub = nh_.subscribe("/sent_command", 10, &CameraHandler::command_handler, this);
 
 		//image_pub_ = it_.advertise("/camera_handler/output_video", 1);      //only if we have to modify images and publish again
 		camera_pub = nh_.advertise<camera_handler_sherpa::Camera>("/camera_trigger", 20);
@@ -67,8 +67,8 @@ class CameraHandler
 				photo_taken_counter = 0;
 				_delay_seconds = msg->param1;
 				_N_photo = msg->param2;      //if this is 0 unlimited photos
-				_compare_frames = (int)(_delay_seconds / FPS);       //how many frames to wait to have the desired delay
-				//ROS_INFO("CAMERA HANDLER: compare_frames: %d", _compare_frames);
+				_compare_frames = (int)(_delay_seconds * FPS);       //how many frames to wait to have the desired delay
+				ROS_INFO("CAMERA HANDLER: compare_frames: %d - delay: %f - FPS: %d", _compare_frames, _delay_seconds, FPS);
 				//misison ack
 				outputAckMission_.seq = seq_photo;
 				outputAckMission_.mav_mission_accepted = true;
@@ -195,7 +195,8 @@ class CameraHandler
 			ROS_ERROR("cv_bridge exception: %s", e.what());
 			return;
 		}
-		_counter_frames++;
+		_counter_frames++;  
+		if (_counter_frames >= 10000) _counter_frames = 0;		//check for overflow, counter reset
 		
 		if (taking_photos && _counter_frames>=_compare_frames){           //we are taking pictures and we passed the delay (rounded)
 			_counter_frames = 0;
