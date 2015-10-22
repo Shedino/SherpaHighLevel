@@ -8,6 +8,9 @@
 #include "mavros/Safety.h"
 #include "mavros/Sonar.h"
 #include "mms_msgs/Sys_status.h"
+#include "geographic_msgs/GeoPose.h"
+#include "geographic_msgs/GeoPoint.h"
+#include "geometry_msgs/Quaternion.h"
 
 
 // STATES DEFINITION
@@ -22,6 +25,7 @@
 #define GRID 90
 #define PERFORMING_GO_TO 100
 #define PERFORMING_LANDING 120
+#define MANUAL_FLIGHT 1000
 
 double PI = 3.1416; // pi
 
@@ -32,16 +36,17 @@ public:
 		n_=node;
 
 		//subscribers
-		subFromDirective_=n_.subscribe("/directive", 10, &UavSimNodeClass::readDirective,this);
-		subFromReference_=n_.subscribe("/reference", 10, &UavSimNodeClass::readReference,this);
-		subFromState_=n_.subscribe("/mms_status", 10, &UavSimNodeClass::readState,this);
-		subFromPosNav_=n_.subscribe("/position_nav", 10, &UavSimNodeClass::readPosNav,this);
+		subFromDirective_ = n_.subscribe("/directive", 10, &UavSimNodeClass::readDirective,this);
+		subFromReference_ = n_.subscribe("/reference", 10, &UavSimNodeClass::readReference,this);
+		subFromState_ = n_.subscribe("/mms_status", 10, &UavSimNodeClass::readState,this);
+		subFromPosNav_ = n_.subscribe("/position_nav", 10, &UavSimNodeClass::readPosNav,this);
 		
 		// publishers
-		pubToSafety_=n_.advertise<mavros::Safety>("/safety_odroid",10);
-		pubToSystStatus_=n_.advertise<mms_msgs::Sys_status>("/system_status",10);
-		pubToGlobPosInt_=n_.advertise<mavros::Global_position_int>("/global_position_int",10);
-		pubToSonar_=n_.advertise<mavros::Sonar>("/sonar",10);
+		pubToSafety_ = n_.advertise<mavros::Safety>("/safety_odroid",10);
+		pubToSystStatus_ = n_.advertise<mms_msgs::Sys_status>("/system_status",10);
+		pubToGlobPosInt_ = n_.advertise<mavros::Global_position_int>("/global_position_int",10);
+		pubToSonar_ = n_.advertise<mavros::Sonar>("/sonar",10);
+		pubGeopose_ = n_.advertise<geographic_msgs::GeoPose>("/geopose",10);
 	
 		rate = 10;
 		counter_print = 0;
@@ -97,6 +102,10 @@ public:
 		//pubToSafety_.publish(safety_);
 		pubToSystStatus_.publish(sys_status_);
 		pubToSonar_.publish(sonar_);
+		quaternion_.x = 1;
+		quaternion_.y = 0;
+		quaternion_.z = 0;
+		quaternion_.w = 0;
 
 		switch(inputMmsStatus_.mms_state)
 		{
@@ -148,8 +157,8 @@ public:
 					ROS_INFO("SIM: PERFORMING TAKEOFF");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;
-				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
+				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/60;
+				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/60;   
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
@@ -193,8 +202,17 @@ public:
 				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;    
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
+			
+			case MANUAL_FLIGHT:
+				break;
 		}
-
+		
+		geopoint_.latitude = globPosInt_.lat / 10000000.0f;
+		geopoint_.longitude = globPosInt_.lon / 10000000.0f;
+		geopoint_.altitude = globPosInt_.alt / 1000.0f;
+		geopose_.position = geopoint_;
+		geopose_.orientation = quaternion_;
+		pubGeopose_.publish(geopose_);
 }
 
 
@@ -227,6 +245,7 @@ ros::Publisher pubToSafety_;
 ros::Publisher pubToSystStatus_;
 ros::Publisher pubToGlobPosInt_;
 ros::Publisher pubToSonar_;
+ros::Publisher pubGeopose_;
 
 
 guidance_node_amsl::Directive directive_;
@@ -238,7 +257,9 @@ mavros::Safety safety_;
 mavros::Sonar sonar_;
 mms_msgs::Sys_status sys_status_;
 
-
+geographic_msgs::GeoPose geopose_;
+geographic_msgs::GeoPoint geopoint_;
+geometry_msgs::Quaternion quaternion_;
 
 int rate;
 

@@ -1030,7 +1030,7 @@ public:
 				outputMmsStatus_.mms_state = currentState;
 				outputMmsStatus_.target_ref_frame = target_frame;
 				pubToMmsStatus_.publish(outputMmsStatus_);
-				ROS_INFO("MMS: CURRENT_STATE = BACK TO OLD ONE. SAFETY_OFF");
+				ROS_INFO("MMS: CURRENT_STATE = BACK TO OLD ONE: %d",currentState);
 
 				break;
 			}

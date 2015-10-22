@@ -879,7 +879,7 @@ public:
 					for (int i = 0; i<N_WP-1; i++){
 						tot_distance += sqrt(pow(WP[i][0]-WP[i+1][0],2)+pow(WP[i][1]-WP[i+1][1],2));     //sum of all distances between WPs
 					}
-					double grid_exec_time = tot_distance / speed_grid;                   //TODO send this time to executor!!
+					double grid_exec_time = tot_distance / speed_grid;                  
 					reference::Grid_info gridInfo;
 					gridInfo.success = success_grid;
 					gridInfo.N_WP = N_WP;
@@ -1105,7 +1105,15 @@ public:
 			break;
 		
 		case MANUAL_FLIGHT:
-			//Do nothing?
+			if (new_state == true)
+				{
+					ROS_INFO("REF: MANUAL_FLIGHT");
+					new_state = false;
+				}
+				if (new_frame == true)
+				{
+					new_frame = false;
+				}
 			break;
 		
 		}
