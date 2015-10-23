@@ -5,7 +5,7 @@ LIST OF TODOS FOR HIGH-LEVEL-SHERPA
 3) Speed in WP (Nicola)
 4) N photo and Delay (Michele)  ----------------------------------------  DONE  ----  TO BE TESTED
 5) Video/Photo dynamic FPS + dimension (Michele)  ----------------------  NOT FEASIBLE
-6) Better Landing (???)    ---------------------------------------------  ADDED HIGHRES_IMU TOPIC  ----  NOT SUPPORTED BY APM :(  ---- TODO USE DIFFERENT MESSAGE
+6) Better Landing (???)    ---------------------------------------------  ADDED RAW_IMU TOPIC  ---- 
 7) Ref in WGS84 + AMSL (Michele)        --------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED IN FLIGHT
 8) Librery WGS84<-->NED (Michele)       --------------------------------  DONE  ----  TESTED SOFTWARE  ----  IT WORKS!!
 9) QoS sensors (Marco)
@@ -13,4 +13,5 @@ LIST OF TODOS FOR HIGH-LEVEL-SHERPA
 11) Uav_sim (All)
 12) Fake GPS for VICON (Michele)        --------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED IN FLIGHT
 13) Forest Flight (???)
-14) 
+14) MANUAL_FLIGHT and rollback (Michele)--------------------------------  DONE  ----  TESTED SOFTWARE  ----
+15) 
