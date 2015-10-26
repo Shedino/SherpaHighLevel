@@ -8,7 +8,7 @@ roslaunch mavros uniboAMSLUSB.launch &
 sleep 10
 rosrun usb_cam usb_cam_node &
 sleep 10
-rosrun camera_handler_SHERPA camera_handler_SHERPA &
+rosrun camera_handler_sherpa camera_handler_sherpa &
 sleep 6
 rosrun web_video_server web_video_server &
 sleep 5
