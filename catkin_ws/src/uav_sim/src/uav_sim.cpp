@@ -12,6 +12,9 @@
 #include "geographic_msgs/GeoPoint.h"
 #include "geometry_msgs/Quaternion.h"
 
+#include <math.h>
+
+
 
 // STATES DEFINITION
 #define ON_GROUND_NO_HOME 10
@@ -123,7 +126,7 @@ public:
 				globPosInt_.vx = 0;
 				globPosInt_.vy = 0;
 				globPosInt_.vz = 0;
-				globPosInt_.hdg = 0;
+				globPosInt_.hdg = 0;            //degrees * 100
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
@@ -176,6 +179,7 @@ public:
 				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
 				globPosInt_.lat += (reference_.Latitude - inputPos_.Latitude)/70;
 				globPosInt_.lon += (reference_.Longitude - inputPos_.Longitude)/70;
+				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180/M_PI*5;
 				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
