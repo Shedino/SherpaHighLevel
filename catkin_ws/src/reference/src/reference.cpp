@@ -76,6 +76,7 @@ public:
 		d_grid = 0;
 		received_grid_cmd = false;
 		waiting_for_vertex_grid = false;
+		repeat_flag = false;
 		vertex_grid_n = 0;
 		received_vertexes_grid = 0;
 		speed_grid = 0;
@@ -261,6 +262,7 @@ public:
 				d_grid = inputCmd_.param2;
 				height_grid = inputCmd_.param3;
 				vertex_grid_n = inputCmd_.param4;
+				repeat_flag = inputCmd_.param7 == 1 ? true : false; 
 				//TODO add sanity checks (max vertexes, min vertexes, positive speed and height, ...)
 			}break;
 			case 161:    //GRID_VERTEX
@@ -916,11 +918,14 @@ public:
 						waiting_for_WP_execution_grid = false;
 						WP_completed_grid++;
 					}
-				} else if (WP_completed_grid==N_WP && success_grid){
+				} else if (WP_completed_grid==N_WP && success_grid && !repeat_flag){ //completed grid and repeat_flag is off
 					//GRID execution ended. Return EVENT to MMS
 					grid_ack_.grid_completed = true;
 					grid_ack_.completion_type = 1;      //success
 					pubGridAck_.publish(grid_ack_);
+				} else if (WP_completed_grid==N_WP && success_grid && repeat_flag){  //completed grid but repeat_flag is on
+					//START GRID again until termination command
+					WP_completed_grid = 0;   //reset to first WP to start over
 				} else if (!success_grid){
 					//FAIL
 					grid_ack_.grid_completed = true;
@@ -1207,6 +1212,7 @@ uint16_t counter_print;
 float d_grid;
 bool received_grid_cmd;
 bool waiting_for_vertex_grid;
+bool repeat_flag;
 int vertex_grid_n; 
 int received_vertexes_grid;
 float speed_grid;
