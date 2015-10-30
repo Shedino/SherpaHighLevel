@@ -9,6 +9,9 @@
 #include "mavros/Global_position_int.h"
 #include "mavros/Safety.h"
 #include "mavros/Raw_imu.h"
+#include "geographic_msgs/GeoPose.h"
+#include "geographic_msgs/GeoPoint.h"
+#include "geometry_msgs/Quaternion.h"
 
 #include <guidance_node_amsl/Directive.h>
 //#include <guidance_node_amsl/Position.h>
@@ -54,6 +57,7 @@ public:
 		artva_pub = nodeHandle.advertise<mavros::ArtvaRead>("/artva_read", 10);
 		safety_pub = nodeHandle.advertise<mavros::Safety>("/safety_odroid", 10);
 		imu_pub = nodeHandle.advertise<mavros::Raw_imu>("/imu", 10);
+		pubGeopose_ = nodeHandle.advertise<geographic_msgs::GeoPose>("geopose",10);
 
 
 
@@ -69,6 +73,11 @@ public:
 		mavros::Sonar temp_sonar;
 		temp_sonar.distance = -1;      //if there is no sonar, the distance is initialized to -1
 		distance_sensor_pub.publish(temp_sonar);
+
+		quaternion_.x = 1;
+		quaternion_.y = 0;
+		quaternion_.z = 0;
+		quaternion_.w = 0;
 	}
 
 	//should be logic mapping between id number and message type
@@ -76,6 +85,7 @@ public:
 		return {
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_GLOBAL_POSITION_INT, &UniboControllerAMSLPlugin::handle_global_position_int),
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_ATTITUDE, &UniboControllerAMSLPlugin::handle_attitude),
+			MESSAGE_HANDLER(MAVLINK_MSG_ID_ATTITUDE_QUATERNION, &UniboControllerAMSLPlugin::handle_attitude_quaternion),
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_RC_CHANNELS_RAW, &UniboControllerAMSLPlugin::handle_rc_channels_raw),
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_COMMAND_ACK, &UniboControllerAMSLPlugin::handle_arm_ack),
 			MESSAGE_HANDLER(MAVLINK_MSG_ID_HEARTBEAT, &UniboControllerAMSLPlugin::handle_heartbeat),
@@ -105,6 +115,7 @@ private:
 	ros::Publisher safety_pub;
 	ros::Publisher artva_pub;
 	ros::Publisher imu_pub;
+	ros::Publisher pubGeopose_;
 
 	mms_msgs::Sys_status _system_status;
 
@@ -113,6 +124,11 @@ private:
 	mavros::Safety safety_;
 	mavros::Global_position_int global_pos_;
 	mavros::Raw_imu imu_;
+
+	geographic_msgs::GeoPose geopose_;
+	geographic_msgs::GeoPoint geopoint_;
+	geometry_msgs::Quaternion quaternion_;
+
 
 	//message to move the quadcopter
 	mavros::OverrideRCIn velocity_;
@@ -211,10 +227,21 @@ private:
 		} else {
 			global_pos_.hdg = (int)((attitude.yaw+6.28)*180/3.14*100);   //attitude comes in +-pi but hdg is 0..359.99 deg. Adding 2*pi to attitude if negative.
 		}
-		
 
 		//position_pub.publish(position_msg);       //already published when received position_int
 		attitude_pub.publish(attitude_msg);
+	}
+
+	void handle_attitude_quaternion(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {      //TODO check if they are received
+
+		mavlink_attitude_quaternion_t attitude;
+		mavlink_msg_attitude_quaternion_decode(msg, &attitude);
+		
+		quaternion_.x = attitude.q1;
+		quaternion_.y = attitude.q2;
+		quaternion_.z = attitude.q3;
+		quaternion_.w = attitude.q4;
+		geopose_.orientation = quaternion_;
 	}
 
 	void handle_heartbeat(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
@@ -275,11 +302,14 @@ private:
 		global_pos_.vy = 0;            //NOT USED NOW
 		global_pos_.vz = 0;            //NOT USED NOW
 
-		//DEBUG
-//		ROS_INFO("HANDLE POSITION");
 
-
+		geopoint_.latitude = global_pos_.lat / 10000000.0f;    //to publish geopose
+		geopoint_.longitude = global_pos_.lon / 10000000.0f;
+		geopoint_.altitude = global_pos_.alt / 1000.0f;
+		geopose_.position = geopoint_;
 		position_pub.publish(global_pos_);
+		
+		pubGeopose_.publish(geopose_);
 	}
 
 	void handle_IMU_read(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid){
