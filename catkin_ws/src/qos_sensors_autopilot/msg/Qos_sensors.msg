@@ -1,0 +1,12 @@
+bool camera_present
+bool camera_working
+int16 camera_failure_counter
+bool sonar_present
+bool sonar_working
+int16 sonar_failure_counter
+bool artva_present
+bool artva_working
+int16 artva_failure_counter
+bool laser_present
+bool laser_working
+int16 laser_failure_counter

@@ -926,6 +926,7 @@ public:
 				} else if (WP_completed_grid==N_WP && success_grid && repeat_flag){  //completed grid but repeat_flag is on
 					//START GRID again until termination command
 					WP_completed_grid = 0;   //reset to first WP to start over
+					ROS_INFO("REF->GRID: Restarting GRID because repeat_flag");
 				} else if (!success_grid){
 					//FAIL
 					grid_ack_.grid_completed = true;
