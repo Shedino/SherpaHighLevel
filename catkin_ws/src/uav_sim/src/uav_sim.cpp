@@ -127,31 +127,25 @@ public:
 				globPosInt_.vy = 0;
 				globPosInt_.vz = 0;
 				globPosInt_.hdg = 0;            //degrees * 100
-				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
 			case SETTING_HOME:
-				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
 			case ON_GROUND_DISARMED:
-				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
 			case ARMING:
 				sys_status_.armed = true;             //armed
 				pubToSystStatus_.publish(sys_status_);
-				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
 			case DISARMING:
 				sys_status_.armed = false;             //armed
 				pubToSystStatus_.publish(sys_status_);
-				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
 			case ON_GROUND_ARMED:
-				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
 			case PERFORMING_TAKEOFF:
@@ -161,12 +155,10 @@ public:
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
 				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/60;
-				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/60;   
-				pubToGlobPosInt_.publish(globPosInt_);
+				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/60;
 				break;
 
 			case IN_FLIGHT:
-				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
 			case PERFORMING_GO_TO:
@@ -180,7 +172,6 @@ public:
 				globPosInt_.lat += (reference_.Latitude - inputPos_.Latitude)/70;
 				globPosInt_.lon += (reference_.Longitude - inputPos_.Longitude)/70;
 				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180/M_PI*5;
-				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
 			case GRID:	
@@ -193,7 +184,6 @@ public:
 				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;  
 				globPosInt_.lat += (reference_.Latitude - inputPos_.Latitude)/70;
 				globPosInt_.lon += (reference_.Longitude - inputPos_.Longitude)/70;
-				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 
 			case PERFORMING_LANDING:
@@ -204,12 +194,21 @@ public:
 				}
 				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;
 				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;    
-				pubToGlobPosInt_.publish(globPosInt_);
 				break;
 			
 			case MANUAL_FLIGHT:
 				break;
 		}
+		
+		std::string location;                                 //location: for indoor at terra  TODO remove later
+		if (n_.getParam("/location", location)){
+			if (location == "terra"){
+				int temp_lat = globPosInt_.lat;
+				globPosInt_.lat = -globPosInt_.lon;
+				globPosInt_.lon = temp_lat;
+			}
+		}
+		pubToGlobPosInt_.publish(globPosInt_);
 		
 		geopoint_.latitude = globPosInt_.lat / 10000000.0f;
 		geopoint_.longitude = globPosInt_.lon / 10000000.0f;

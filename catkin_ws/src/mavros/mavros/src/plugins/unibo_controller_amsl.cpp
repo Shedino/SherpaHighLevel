@@ -302,12 +302,22 @@ private:
 		global_pos_.vy = 0;            //NOT USED NOW
 		global_pos_.vz = 0;            //NOT USED NOW
 
-
+		std::string location;   //location: for indoor at terra           TODO remove later on              
+		if (nodeHandle.getParam("/location", location)){
+			if (location == "terra"){
+				int temp_lat = global_pos_.lat;
+				global_pos_.lat = -global_pos_.lon;
+				global_pos_.lon = temp_lat;
+			}
+		}
+		
+		position_pub.publish(global_pos_);
+		
+		
 		geopoint_.latitude = global_pos_.lat / 10000000.0f;    //to publish geopose
 		geopoint_.longitude = global_pos_.lon / 10000000.0f;
 		geopoint_.altitude = global_pos_.alt / 1000.0f;
 		geopose_.position = geopoint_;
-		position_pub.publish(global_pos_);
 		
 		pubGeopose_.publish(geopose_);
 	}

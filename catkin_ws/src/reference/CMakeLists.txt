@@ -7,6 +7,7 @@ project(reference)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  geographic_msgs
   message_generation
   wgs84_ned_lib
 )
@@ -49,6 +50,8 @@ find_package(catkin REQUIRED COMPONENTS
    FILES
    Distance.msg
    Grid_info.msg
+   LeashingCommand.msg
+   LeashingStatus.msg
  )
 
 ## Generate services in the 'srv' folder
@@ -69,6 +72,7 @@ find_package(catkin REQUIRED COMPONENTS
 generate_messages(
   DEPENDENCIES 
   std_msgs
+  geographic_msgs
 )
 
 ###################################
@@ -83,7 +87,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES reference
- CATKIN_DEPENDS roscpp std_msgs message_runtime wgs84_ned_lib
+ CATKIN_DEPENDS roscpp std_msgs geographic_msgs message_runtime wgs84_ned_lib
 #  DEPENDS system_lib
 )
 
