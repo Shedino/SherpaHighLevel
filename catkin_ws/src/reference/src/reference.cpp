@@ -8,9 +8,13 @@
 #include "mms_msgs/MMS_status.h"
 #include <mavros/Sonar.h>
 #include <frame/Ref_system.h>
-#include "reference/Distance.h"
-#include "reference/Grid_info.h"
+#include "reference/Distance.h"	
+#include "reference/Grid_info.h"	//GRID
+#include "reference/Grid_info.h"	//GRID
 #include "WP_grid.h"         //GRID
+#include "reference/LeashingCommand.h"   //leashing
+#include "reference/LeashingStatus.h"    //leashing
+#include "geographic_msgs/GeoPoint.h"	 //leashing
 #include <wgs84_ned_lib/wgs84_ned_lib.h>       
 
 double eps_WP = 1500.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here
@@ -19,6 +23,21 @@ double eps_YAW = 20.0; // distance to the target YAW position in deg
 
 double PI = 3.1416; // pi
 
+class leashing_target_ned{
+	public:
+		double x;
+		double y;
+		double z;
+};
+class leashing_offset_ned{
+	public:
+		double x_offset;
+		double y_offset;
+		double z_offset;
+		double rho_offset;
+		double psi_offset;
+};
+
 class ReferenceNodeClass {
 public:
 	ReferenceNodeClass(ros::NodeHandle& node){
@@ -26,12 +45,15 @@ public:
 		n_=node;
 
 		//subscribers
-		subFromPosition_=n_.subscribe("/position_nav", 10, &ReferenceNodeClass::readPositionMessage,this);
-		subFromGlobPosInt_=n_.subscribe("/global_position_int", 10, &ReferenceNodeClass::readGlobalPosIntMessage,this);
-		subFromCmd_=n_.subscribe("/sent_command", 10, &ReferenceNodeClass::readCmdMessage,this);     //excluding command verifier
+		subFromPosition_ = n_.subscribe("/position_nav", 10, &ReferenceNodeClass::readPositionMessage,this);
+		subFromGlobPosInt_ = n_.subscribe("/global_position_int", 10, &ReferenceNodeClass::readGlobalPosIntMessage,this);
+		subFromCmd_ = n_.subscribe("/sent_command", 10, &ReferenceNodeClass::readCmdMessage,this);     //excluding command verifier
         subFromSonar_ = n_.subscribe("/sonar", 10, &ReferenceNodeClass::readSonarMessage,this);
-		subFromMmsStatus_=n_.subscribe("/mms_status", 10, &ReferenceNodeClass::readMmsStatusMessage,this);
-		subFromFrame_=n_.subscribe("/ref_system", 10, &ReferenceNodeClass::readFrameMessage,this);
+		subFromMmsStatus_ = n_.subscribe("/mms_status", 10, &ReferenceNodeClass::readMmsStatusMessage,this);
+		subFromFrame_ = n_.subscribe("/ref_system", 10, &ReferenceNodeClass::readFrameMessage,this);
+		subLeashingTargetPosition_ = n_.subscribe("/leashing_target_position", 10, &ReferenceNodeClass::readLeashingTarget,this);
+		subLeashingCommand_ = n_.subscribe("/leashing_command", 10, &ReferenceNodeClass::readLeashingCommand,this);
+		subLeashingStatus_ = n_.subscribe("/leashing_status", 10, &ReferenceNodeClass::readLeashingStatus,this);
 		
 		// publishers
 		pubToReference_ = n_.advertise<guidance_node_amsl::Reference>("/reference",10);
@@ -214,6 +236,25 @@ public:
 		inputGlobPosInt_.hdg = msg->hdg;
 		inputGlobPosInt_.time_boot_ms = msg->time_boot_ms;
 	}
+	
+	void readLeashingTarget(const geographic_msgs::GeoPoint::ConstPtr& msg){
+		if (currentState == LEASHING){
+			leashing_target_ = *msg;
+			double temp_x, temp_y;
+			get_pos_NED_from_WGS84 (&temp_x, &temp_y, leashing_target_.latitude, leashing_target_.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+			leashing_target_ned_.x = temp_x;
+			leashing_target_ned_.y = temp_y;
+			leashing_target_ned_.z = leashing_target_.altitude;
+		}
+	}
+	
+	void readLeashingCommand(const reference::LeashingCommand::ConstPtr& msg){
+		if (currentState == LEASHING) leashing_command_ = *msg;
+	}
+	
+	void readLeashingStatus(const reference::LeashingStatus::ConstPtr& msg){
+		if (currentState == LEASHING) leashing_status_ = *msg;
+	}
 
 	void readCmdMessage(const mms_msgs::Cmd::ConstPtr& msg)
 	{
@@ -318,6 +359,22 @@ public:
 			case 300: // MAV_CMD_MISSION_START
 			{
 				ROS_INFO("REF: MAV_CMD_MISSION_START");
+			}break;
+			case 25: // MAV_CMD_NAV_FOLLOW (LEASHING)
+			{
+				if (inputCmd_.param1 == 1){
+					//initial offset
+					double temp_reference_x, temp_reference_y;
+					get_pos_NED_from_WGS84 (&temp_reference_x, &temp_reference_y, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+					double temp_target_x, temp_target_y;
+					get_pos_NED_from_WGS84 (&temp_target_x, &temp_target_y, leashing_target_.latitude, leashing_target_.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+					leashing_offset_ned_.x_offset = temp_reference_x - temp_target_x;          //initial offset
+					leashing_offset_ned_.y_offset = temp_reference_y - temp_target_y;
+					leashing_offset_ned_.z_offset = outputRef_.AltitudeRelative/1000.0f - leashing_target_.altitude;
+					leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
+					leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
+					yaw_leashing = outputRef_.Yawangle;    //take actual yaw
+				}
 			}break;
 		}
 	}
@@ -1060,7 +1117,97 @@ public:
 		}
 	}
 	break;*/
-
+		case LEASHING:
+			//TODO
+			if (new_state == true){
+				ROS_INFO("REF: LEASHING");
+				new_state = false;
+			}
+			if (new_frame == true){
+				new_frame = false;
+			}
+			switch (leashing_command_.horizontal_control_mode){
+				case 0:	//HORIZONTAL_CONTROL_MODE_NONE
+					//WHAT HERE?? TODO
+					break;
+				case 1:	//HORIZONTAL_CONTROL_MODE_KEEP_DISTANCE
+					//WHAT HERE?? TODO
+					break;
+				case 2:	//HORIZONTAL_CONTROL_MODE_DISTANCE_HEADING_ABSOLUTE
+					leashing_offset_ned_.rho_offset = leashing_command_.horizontal_distance;
+					leashing_offset_ned_.psi_offset = leashing_command_.horizontal_heading;
+					leashing_offset_ned_.x_offset = leashing_offset_ned_.rho_offset * cos(leashing_offset_ned_.psi_offset);
+					leashing_offset_ned_.y_offset = leashing_offset_ned_.rho_offset * sin(leashing_offset_ned_.psi_offset);
+					break;
+				case 3:	//HORIZONTAL_CONTROL_MODE_NORTH_EAST_ABSOLUTE
+					leashing_offset_ned_.x_offset = leashing_command_.distance_north;
+					leashing_offset_ned_.y_offset = leashing_command_.distance_east;
+					leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
+					leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
+					break;
+				case 4:	//HORIZONTAL_CONTROL_MODE_DISTANCE_HEADING_VEL
+					leashing_offset_ned_.rho_offset += leashing_command_.horizontal_distance_vel * 0.2;  //max speed 2 m/s  //TODO check hardcoded
+					leashing_offset_ned_.psi_offset += leashing_command_.horizontal_heading_vel * 0.2 / leashing_offset_ned_.rho_offset; //max tangential velocity 2 m/s -->normalized with rho //TODO check hardcoded
+					leashing_offset_ned_.x_offset = leashing_offset_ned_.rho_offset * cos(leashing_offset_ned_.psi_offset);
+					leashing_offset_ned_.y_offset = leashing_offset_ned_.rho_offset * sin(leashing_offset_ned_.psi_offset);
+					break;
+				case 5:		//HORIZONTAL_CONTROL_MODE_NORTH_EAST_VEL
+					//TODO add yaw of the command issuer (rescuer)
+					leashing_offset_ned_.x_offset += leashing_command_.distance_north_vel * 0.2;		//max speed 2 m/s  //TODO check hardcoded
+					leashing_offset_ned_.y_offset += leashing_command_.distance_east_vel * 0.2;
+					leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
+					leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
+					break;
+			}
+			
+			switch (leashing_command_.vertical_control_mode){
+				case 0:		//VERTICAL_CONTROL_MODE_NONE
+					//WHAT HERE?? TODO
+					break;
+				case 1:		//VERTICAL_CONTROL_MODE_KEEP
+					//WHAT HERE?? TODO
+					break;
+				case 2:		//VERTICAL_CONTROL_MODE_ABSOLUTE
+					leashing_offset_ned_.z_offset = leashing_command_.vertical_distance;
+					break;
+				case 3:		//VERTICAL_CONTROL_MODE_VEL
+					leashing_offset_ned_.z_offset += leashing_command_.vertical_distance_vel * 0.1; //max speed 1 m/s  //TODO check hardcoded
+					break;
+			}
+			
+			switch (leashing_command_.yaw_control_mode){
+				case 0:	//YAW_CONTROL_MODE_NONE
+					yaw_leashing = outputRef_.Yawangle;    //take actual yaw
+					break;
+				case 1:	//YAW_CONTROL_MODE_ABSOLUTE
+					yaw_leashing = leashing_command_.yaw;
+					break;
+				case 2:	//YAW_CONTROL_MODE_VEL
+					yaw_leashing += leashing_command_.yaw_vel * 0.3;   //3 rad/s as maximum rotational velocity //TODO check hardcoded
+					break;
+				case 3:		//YAW_CONTROL_MODE_TOWARDS_POINT
+					double temp_point_x, temp_point_y;
+					get_pos_NED_from_WGS84 (&temp_point_x, &temp_point_y, leashing_command_.yawpoint.latitude, leashing_command_.yawpoint.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+					yaw_leashing = atan2(temp_point_x-(leashing_target_ned_.x+leashing_offset_ned_.x_offset), temp_point_y-(leashing_target_ned_.y+leashing_offset_ned_.y_offset));   //atan of vector point-wasp_reference, where wasp_reference is target+offset for leashing
+					break;
+				case 4:		//YAW_CONTROL_MODE_TOWARDS_ANCHOR
+					yaw_leashing = atan2(leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset) + M_PI;
+					break;
+				case 5:		//YAW_CONTROL_MODE_AWAY_FROM_ANCHOR
+					yaw_leashing = atan2(leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset);
+					break;
+			}
+			//Publish references in WGS84
+			double temp_lat, temp_lon;
+			get_pos_WGS84_from_NED (&temp_lat, &temp_lon, (leashing_target_ned_.x+leashing_offset_ned_.x_offset), (leashing_target_ned_.y+leashing_offset_ned_.y_offset), Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+			outputRef_.Latitude = temp_lat;
+			outputRef_.Longitude = temp_lon;
+			outputRef_.AltitudeRelative = leashing_target_ned_.z + leashing_offset_ned_.z_offset;
+			outputRef_.Yawangle = yaw_leashing;
+			pubToReference_.publish(outputRef_);
+			
+			break;
+		
 		case PERFORMING_LANDING:
 			if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
 			{
@@ -1121,7 +1268,6 @@ public:
 					new_frame = false;
 				}
 			break;
-		
 		}
 }
 
@@ -1149,6 +1295,9 @@ ros::Subscriber subFromMmsStatus_;
 ros::Subscriber subFromSonar_;
 ros::Subscriber subFromFrame_;
 ros::Subscriber subFromGlobPosInt_;
+ros::Subscriber subLeashingTargetPosition_;
+ros::Subscriber subLeashingCommand_;
+ros::Subscriber subLeashingStatus_;
 
 ros::Publisher pubToReference_;
 ros::Publisher pubGridAck_;
@@ -1174,7 +1323,9 @@ guidance_node_amsl::Reference tempRef_;
 guidance_node_amsl::Reference waypointRef_;
 mavros::Global_position_int Home_;
 
-
+reference::LeashingCommand leashing_command_;   //leashing
+reference::LeashingStatus leashing_status_;    //leashing
+geographic_msgs::GeoPoint leashing_target_;	 //leashing
 
 // STATES DEFINITION
 static const int ON_GROUND_NO_HOME = 10;         //TODO make a .h to include in both reference and mms
@@ -1191,6 +1342,7 @@ static const int  GRID = 90;
 static const int  PERFORMING_GO_TO = 100;
 //static const int  READY_TO_LAND = 110;
 static const int  PERFORMING_LANDING = 120;
+static const int LEASHING = 140;
 static const int  MANUAL_FLIGHT = 1000;
 
 static const int  MAX_VERTEX_GRID = 10;
@@ -1226,6 +1378,12 @@ int N_WP;      //OUTPUT
 int WP_completed_grid;
 bool waiting_for_WP_execution_grid;
 mms_msgs::Grid_ack grid_ack_;
+
+//LEASHING RELATED
+leashing_target_ned leashing_target_ned_;
+leashing_offset_ned leashing_offset_ned_;
+double yaw_leashing;
+
 
 private:
 
