@@ -4,10 +4,16 @@
 #include "guidance_node_amsl/Reference.h"
 #include "guidance_node_amsl/Position_nav.h"
 #include "mms_msgs/Cmd.h"
+#include "mms_msgs/Grid_ack.h"
 #include "mms_msgs/MMS_status.h"
 #include <mavros/Sonar.h>
 #include <frame/Ref_system.h>
 #include "reference/Distance.h"
+#include "WP_grid.h"         //GRID
+
+double eps_WP = 1500.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here
+double eps_alt = 500.0; // distance to the target altitude in millimeters
+double eps_YAW = 20.0; // distance to the target YAW position in deg
 
 double PI = 3.1416; // pi
 
@@ -28,8 +34,9 @@ public:
 		subFromGlobPosInt_ID1=n_.subscribe("/global_position_int_ID1", 10, &ReferenceNodeClass::readGlobalPosIntMessage_ID1,this);
 		
 		// publishers
-		pubToReference_=n_.advertise<guidance_node_amsl::Reference>("/reference",10);
-		pubToDistance_=n_.advertise<reference::Distance>("/distance",10);
+		pubToReference_ = n_.advertise<guidance_node_amsl::Reference>("/reference",10);
+		pubToDistance_ = n_.advertise<reference::Distance>("/distance",10);
+		pubGridAck_ = n_.advertise<mms_msgs::Grid_ack>("/grid_ack",10);
 
 		//Initializing outputRef_
 		outputRef_.Latitude = 0;
@@ -69,6 +76,27 @@ public:
 		land = false;
 		counter_print = 0;
 		Dh_TO = 5000;
+		
+		//GRID
+		d_grid = 0;
+		received_grid_cmd = false;
+		waiting_for_vertex_grid = false;
+		vertex_grid_n = 0;
+		received_vertexes_grid = 0;
+		speed_grid = 0;
+		height_grid = 0;
+		vertex_grid = new float *[MAX_VERTEX_GRID];
+		for(int i = 0; i<MAX_VERTEX_GRID; i++){
+	    	vertex_grid[i] = new float[2];
+		}
+		success_grid = false;   //OUTPUT
+		WP = new float *[150];        //OUTPUT    //TODO check hardcoded 150
+		for(int i = 0; i<150; i++){
+	    	WP[i] = new float[2];
+		}
+		N_WP = 0;      //OUTPUT
+		WP_completed_grid = 0;
+		waiting_for_WP_execution_grid = false;
 	}
 
 	class e_to_tartget{
@@ -339,6 +367,41 @@ gradi decimali */
 				// target_.Mode = 0;
 				new_state = true; new_frame = true; // these booleans enable the execution of successive nav_waypoint commands
 			} break;
+			case 160:    //GRID_START
+			{
+				received_grid_cmd = true;
+				waiting_for_vertex_grid = true;
+				speed_grid = inputCmd_.param1;
+				d_grid = inputCmd_.param2;
+				height_grid = inputCmd_.param3;
+				vertex_grid_n = inputCmd_.param4;
+				//TODO add sanity checks (max vertexes, min vertexes, positive speed and height, ...)
+			}break;
+			case 161:    //GRID_VERTEX
+			{
+				for (int i = 0; i<3; i++){
+					if (i == 0){
+						vertex_grid[received_vertexes_grid][0] = inputCmd_.param1;       //LAT
+						vertex_grid[received_vertexes_grid][1] = inputCmd_.param2;		 //LON
+						ROS_INFO("REF: Vertex Received: %f - %f", inputCmd_.param1, inputCmd_.param2);
+						received_vertexes_grid++;
+					} else if (i == 1){
+						vertex_grid[received_vertexes_grid][0] = inputCmd_.param3;
+						vertex_grid[received_vertexes_grid][1] = inputCmd_.param4;
+						ROS_INFO("REF: Vertex Received: %f - %f", inputCmd_.param3, inputCmd_.param4);
+						received_vertexes_grid++;
+					} else if (i == 2){
+						vertex_grid[received_vertexes_grid][0] = inputCmd_.param5;
+						vertex_grid[received_vertexes_grid][1] = inputCmd_.param6;          //MAX 3 vertex per command
+						ROS_INFO("REF: Vertex Received: %f - %f", inputCmd_.param5, inputCmd_.param6);
+						received_vertexes_grid++;
+					}
+					if (received_vertexes_grid == vertex_grid_n){
+						waiting_for_vertex_grid = false;       //received all the vertexes
+						break;                      //exit for cycle, we have all vertexes
+					}
+				}
+			}break;
 			case 21:  // MAV_CMD_NAV_LAND
 			{
 				ROS_INFO("REF: MAV_CMD_DO_NAV_LAND");
@@ -355,7 +418,6 @@ gradi decimali */
 				outputRef_.frame = inputCmd_.frame;
 				outputDist_.seq = inputCmd_.seq;
 				Dh_TO = outputRef_.AltitudeRelative;
-				//ROS_INFO("Seqence 1: %d", outputDist_.seq);	//TODO remove
 			}break;
 			case 25: // MAV_CMD_NAV_FOLLOW
 			{
@@ -506,7 +568,7 @@ gradi decimali */
 			if (new_state == true)
 			{
 				new_state = false;
-
+				
 				/*ROS_INFO("REF: SETTING_HOME");
 
 				Home.lat = inputGlobPosInt_.lat;
@@ -959,6 +1021,61 @@ gradi decimali */
 			}
 			break;*/
 
+		case GRID:
+			{
+				if (received_grid_cmd && !waiting_for_vertex_grid){   //have received all vertexes
+					ROS_INFO("REF: GRID. Starting GRID alg. N. vertex: %d - Distance: %f", vertex_grid_n, d_grid);
+					for (int i = 0; i < vertex_grid_n; i++){
+						ROS_INFO("REF: GRID. Vertex %d: %f - %f", i+1, vertex_grid [i][0], vertex_grid [i][1]);
+								//TODO add conversion WGS84-->NED
+					}
+					//initial_pos_grid[0] = outputRef_.Latitude;    //latest reference as initial point    //TODO add conversion WGS84-->NED and put this back in
+					//initial_pos_grid[1] = outputRef_.Longitude;	//latest reference as initial point		 //TODO add conversion WGS84-->NED
+					WP_grid(vertex_grid, &vertex_grid_n, initial_pos_grid, d_grid, WP, &success_grid, &N_WP);
+					
+					/*ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f", success_grid, N_WP, speed_grid, height_grid);
+					ROS_INFO("REF: GRID! New vertex: %d", vertex_grid_n);
+					for (int i = 0; i < N_WP; i++){
+						ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP[i][0], WP[i][1]);
+					}*/
+					received_grid_cmd = false;     //WP calculated. Now they need to be sent as reference
+				}
+				//TODO add conversion NED-->WGS84
+				if (WP_completed_grid<N_WP && !waiting_for_WP_execution_grid && success_grid){           
+					waiting_for_WP_execution_grid = true;
+					outputRef_.Latitude = WP[WP_completed_grid][0];
+					outputRef_.Longitude = WP[WP_completed_grid][1];
+					outputRef_.AltitudeRelative = height_grid;           //yaw shoul be already the last target  //TODO maybe we can set is from parameters
+					outputRef_.frame = actual_frame;                 //TODO check this with Nicola
+					ROS_INFO("REF->GRID: Sent a WP");
+					pubToReference_.publish(outputRef_);
+				} else if (waiting_for_WP_execution_grid && success_grid){
+					//Waiting for the execution of the WP
+					distance();
+					outputDist_.error_pos = error_to_t.error_pos;
+					outputDist_.error_ang = error_to_t.error_ang;
+					outputDist_.error_alt = error_to_t.error_alt;
+					outputDist_.command = 160; // GRID
+					pubToDistance_.publish(outputDist_);
+					if (outputDist_.error_pos < eps_WP && outputDist_.error_ang < eps_YAW && outputDist_.error_alt < eps_alt){
+						//WP reached
+						waiting_for_WP_execution_grid = false;
+						WP_completed_grid++;
+					}
+				} else if (WP_completed_grid==N_WP && success_grid){
+					//GRID execution ended. Return EVENT to MMS
+					grid_ack_.grid_completed = true;
+					grid_ack_.completion_type = 1;      //success
+					pubGridAck_.publish(grid_ack_);
+				} else if (!success_grid){
+					//FAIL
+					grid_ack_.grid_completed = true;
+					grid_ack_.completion_type = 0;      //generic failure
+					pubGridAck_.publish(grid_ack_);
+				}
+			}
+		break;
+
 		case PERFORMING_GO_TO:
 			if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
 			{
@@ -1259,8 +1376,10 @@ frame::Ref_system oldFrame_;
 //ros::Publisher pubToAckCmd_;
 //ros::Publisher pubToArm_;
 ros::Publisher pubToReference_;
-guidance_node_amsl::Reference outputRef_;
-guidance_node_amsl::Reference target_;
+guidance_node_amsl::Reference outputRef_;     
+guidance_node_amsl::Reference target_;    
+
+ros::Publisher pubGridAck_;
 
 // ros::Publisher pubToSysStatus_;
 ros::Publisher pubToDistance_;
@@ -1280,7 +1399,7 @@ guidance_node_amsl::Reference waypointRef_;
 
 
 // STATES DEFINITION
-static const int ON_GROUND_NO_HOME = 10;
+static const int ON_GROUND_NO_HOME = 10;         //TODO make a .h to include in both reference and mms
 static const int SETTING_HOME = 20;
 static const int  ON_GROUND_DISARMED = 30;
 static const int  ARMING = 40;
@@ -1289,11 +1408,14 @@ static const int  ON_GROUND_ARMED = 50;
 //static const int  ON_GROUND_READY_TO_TAKEOFF = 60;
 static const int  PERFORMING_TAKEOFF = 70;
 static const int  IN_FLIGHT = 80;
+static const int  GRID = 90;
 //static const int  READY_TO_GO = 90;
 static const int  PERFORMING_GO_TO = 100;
 //static const int  READY_TO_LAND = 110;
 static const int  PERFORMING_LANDING = 120;
 static const int  FOLLOWING_THE_TARGET = 130;
+
+static const int  MAX_VERTEX_GRID = 10;
 
 // STATE INITIALIZATION
 int currentState;
@@ -1314,6 +1436,23 @@ const static float earthFlattening=1/298.257223563;
 float meridionalCurvatureRadius;
 float primeVerticalCurvatureRadius;
 float target_Speed;
+
+//GRID RELATED
+float d_grid;
+bool received_grid_cmd;
+bool waiting_for_vertex_grid;
+int vertex_grid_n; 
+int received_vertexes_grid;
+float speed_grid;
+float height_grid;
+float **vertex_grid;
+float initial_pos_grid [2];
+bool success_grid;   //OUTPUT
+float **WP;        //OUTPUT
+int N_WP;      //OUTPUT
+int WP_completed_grid;
+bool waiting_for_WP_execution_grid;
+mms_msgs::Grid_ack grid_ack_;
 
 private:
 

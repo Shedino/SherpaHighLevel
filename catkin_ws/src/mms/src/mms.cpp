@@ -5,6 +5,7 @@
 #include "mms_msgs/Arm.h"// output
 #include "mms_msgs/Ack_arm.h" // input
 #include "mms_msgs/Sys_status.h"// input
+#include "mms_msgs/Grid_ack.h"  //input
 #include <mavros/Sonar.h> // input
 #include "mms_msgs/MMS_status.h"// output
 #include <reference/Distance.h>// input
@@ -20,7 +21,7 @@
 // #define ON_GROUND_READY_TO_TAKEOFF 60
 #define PERFORMING_TAKEOFF 70
 #define IN_FLIGHT 80
-// #define READY_TO_GO 90
+#define GRID 90
 #define PERFORMING_GO_TO 100
 // #define READY_TO_LAND 110
 #define PERFORMING_LANDING 120
@@ -41,10 +42,17 @@ public:
 
 		//subscribers
 		subFromCmd_=n_.subscribe("/sent_command", 10, &MmsNodeClass::readCmdMessage,this); //subscribe to "sent_command" to exclude the "cmd_verifier" node
+<<<<<<< HEAD
         subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
 		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
 		subFromDistance_=n_.subscribe("/distance", 10, &MmsNodeClass::readDistanceMessage,this);
 		subFromGlobPosInt_ID1=n_.subscribe("/global_position_int_ID1", 10, &MmsNodeClass::readGlobalPosIntMessage_ID1,this);
+=======
+		subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
+		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
+		subFromDistance_=n_.subscribe("/distance", 10, &MmsNodeClass::readDistanceMessage,this);
+		subFromGridAck_ = n_.subscribe("/grid_ack", 10, &MmsNodeClass::readGridAckMessage,this);
+>>>>>>> refs/remotes/origin/delegation
 		
 		// publishers
 		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
@@ -71,6 +79,7 @@ public:
 		MISSION_START = false;
 		WAYPOINT = false;
 		ARMED = false;
+		GRID_ENDED = false;
 
 		//Init something
 		currentState = ON_GROUND_NO_HOME;
@@ -116,6 +125,13 @@ public:
 			ARMED = false;
                 //ROS_INFO("DISARMED");
 		}
+	}
+
+	void readGridAckMessage(const mms_msgs::Grid_ack::ConstPtr& msg){
+		Grid_ack_.grid_completed = msg->grid_completed;
+		Grid_ack_.completion_type = msg->completion_type;
+		if (Grid_ack_.grid_completed) GRID_ENDED = true;
+		else GRID_ENDED = false;
 	}
 
 	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
@@ -166,6 +182,31 @@ public:
 				target_frame = 6;
 				WAYPOINT = false;
 			}
+
+		} break;
+		case 160:  // GRID
+		{
+			ROS_INFO("MMS: CMD_GRID. Params: %f - %f - %f - %f",inputCmd_.param1,inputCmd_.param2,inputCmd_.param3,inputCmd_.param4);
+			ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
+
+			if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11))       //TODO add more sanity check maybe
+				{
+					target_frame = inputCmd_.frame;
+					seq_number = inputCmd_.seq;
+					GRID_EVENT = true;
+				}
+				else
+				{
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = seq_number;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
+
+					inputCmd_.command = 0; // 0 = NOT USED it's used to disable the switch-case structure
+					target_frame = 6;
+					GRID_EVENT = false;
+			    }
 
 		} break;
 		case 21:  // MAV_CMD_NAV_LAND
@@ -294,7 +335,12 @@ public:
 		LAND = false;
 		MISSION_START = false;
 		WAYPOINT = false;
+<<<<<<< HEAD
 		FOLLOW_THE_TARGET = false;
+=======
+		GRID_EVENT = false;
+		GRID_ENDED = false;
+>>>>>>> refs/remotes/origin/delegation
 	}
 
 	void MMS_Handle()
@@ -644,7 +690,7 @@ public:
 			if (inputDist_.command == 22 && seq_number == inputDist_.seq)
 			{
 				ROS_INFO_ONCE("MMS: REACHING THE TAKEOFF TARGET");
-				ROS_INFO("MMS: Distances: %.3f - %.3f - %.3f", inputDist_.error_pos, inputDist_.error_ang, inputDist_.error_alt);
+				//ROS_INFO("MMS: Distances: %.3f - %.3f - %.3f", inputDist_.error_pos, inputDist_.error_ang, inputDist_.error_alt);
 				if (inputDist_.error_pos < eps_TO && inputDist_.error_ang < eps_YAW && inputDist_.error_alt < eps_alt)
 				{
 					set_events_false();
@@ -715,7 +761,11 @@ public:
 				ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_GO_TO"); // READY_TO_GO");
 				break;
 			}
+<<<<<<< HEAD
 			if (FOLLOW_THE_TARGET)
+=======
+			if (GRID_EVENT)           //TODO add this event in other states too (in waypoint and ??)
+>>>>>>> refs/remotes/origin/delegation
 			{
 				set_events_false();
 
@@ -725,11 +775,16 @@ public:
 				pubToAckMission_.publish(outputAckMission_);
 				ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
+<<<<<<< HEAD
 				currentState = FOLLOWING_THE_TARGET; 
+=======
+				currentState = GRID; //
+>>>>>>> refs/remotes/origin/delegation
 				outputMmsStatus_.mms_state = currentState;
 				outputMmsStatus_.target_ref_frame = target_frame;
 				pubToMmsStatus_.publish(outputMmsStatus_);
 
+<<<<<<< HEAD
 				ROS_INFO("MMS->REF: CURRENT_STATE = FOLLOWING_THE_TARGET");
 				break;
 			}
@@ -743,6 +798,21 @@ public:
 						ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
 						break;
 					}
+=======
+				ROS_INFO("MMS->REF: CURRENT_STATE = GRID"); // READY_TO_GO");
+				break;
+			}
+			if (TAKEOFF || SET_HOME)
+			{
+				set_events_false();
+				outputAckMission_.mission_item_reached = false;
+				outputAckMission_.seq = inputCmd_.seq;
+				outputAckMission_.mav_mission_accepted = false;
+				pubToAckMission_.publish(outputAckMission_);
+				ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+				break;
+			}
+>>>>>>> refs/remotes/origin/delegation
 			break;
 		// this state is exlcuded from the state machine because it is useless when we don't want to use the MISSION_START
 		/*case READY_TO_GO:
@@ -797,6 +867,67 @@ public:
 				break;
 			}
 			break;*/
+
+		case GRID:
+			
+			if (LAND){
+				set_events_false();
+				LAND = true;
+
+				outputAckMission_.mission_item_reached = false;
+				outputAckMission_.seq = inputCmd_.seq;
+				outputAckMission_.mav_mission_accepted = true;
+				pubToAckMission_.publish(outputAckMission_);
+				ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+				currentState = PERFORMING_LANDING; // READY_TO_LAND;
+				outputMmsStatus_.mms_state = currentState;
+				outputMmsStatus_.target_ref_frame = target_frame;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_LANDING");//READY_TO_LAND");
+
+				break;
+			}
+			if (WAYPOINT){
+				set_events_false();
+
+				outputAckMission_.mission_item_reached = false;
+				outputAckMission_.seq = inputCmd_.seq;
+				outputAckMission_.mav_mission_accepted = true;
+				pubToAckMission_.publish(outputAckMission_);
+				ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+				currentState = PERFORMING_GO_TO;//READY_TO_GO;
+				outputMmsStatus_.mms_state = currentState;
+				outputMmsStatus_.target_ref_frame = target_frame;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_GO_TO");//READY_TO_GO");
+
+				break;
+			}
+			if (GRID_ENDED){
+				set_events_false();
+				currentState = IN_FLIGHT;
+				outputMmsStatus_.mms_state = currentState;
+				outputMmsStatus_.target_ref_frame = target_frame;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO("MMS->REF: CURRENT_STATE = IN_FLIGHT");
+
+				if (Grid_ack_.completion_type == 1){       //success
+					outputAckMission_.mission_item_reached = true;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: GRID FINISHED SUCCESFULLY");
+				} else {                               //failure
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: GRID FINISHED NOT SUCCESFULLY");
+				}
+			}
+			break;
 
 		case PERFORMING_GO_TO:
 
@@ -1056,6 +1187,9 @@ mms_msgs::Cmd inputCmd_;
 ros::Subscriber subFromAckArm_;
 mms_msgs::Ack_arm inputAckArm_;
 
+ros::Subscriber subFromGridAck_;
+mms_msgs::Grid_ack Grid_ack_;
+
 ros::Subscriber subFromSysStatus_;
 mms_msgs::Sys_status inputSysStatus_;
 
@@ -1092,8 +1226,13 @@ bool TAKEOFF;
 bool LAND;
 bool MISSION_START;
 bool WAYPOINT;
+bool GRID_EVENT;
 bool ARMED;
+<<<<<<< HEAD
 bool FOLLOW_THE_TARGET;
+=======
+bool GRID_ENDED;
+>>>>>>> refs/remotes/origin/delegation
 // static bool CONDITION_YAW = false;
 
 // INPUTS APM -> MMS

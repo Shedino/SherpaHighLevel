@@ -96,7 +96,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 #include_directories(~/catkin_ws/src/${PROJECT_NAME}/include/${PROJECT_NAME} ~/Matlab/extern/include ~/Matlab/simulink/include)
 include_directories(
-  include 
+  include
   include/${PROJECT_NAME}
   ${catkin_INCLUDE_DIRS}
   ~/Matlab/extern/include ~/Matlab/simulink/include

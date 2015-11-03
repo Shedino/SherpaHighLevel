@@ -52,6 +52,7 @@ add_message_files(
   Sys_status.msg
   MMS_status.msg
   Ack_mission.msg
+  Grid_ack.msg
 )
 
 ## Generate services in the 'srv' folder

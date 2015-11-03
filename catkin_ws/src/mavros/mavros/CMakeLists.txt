@@ -76,6 +76,7 @@ add_message_files(
   Global_position_int.msg
   Safety.msg
   ArtvaRead.msg
+  Highres_imu.msg
 )
 
 ## Generate services in the 'srv' folder
