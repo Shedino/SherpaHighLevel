@@ -200,14 +200,14 @@ public:
 				break;
 		}
 		
-		std::string location;                                 //location: for indoor at terra  TODO remove later
+		/*std::string location;                                 //location: for indoor at terra  TODO remove later
 		if (n_.getParam("/location", location)){
 			if (location == "terra"){
 				int temp_lat = globPosInt_.lat;
 				globPosInt_.lat = -globPosInt_.lon;
 				globPosInt_.lon = temp_lat;
 			}
-		}
+		}*/
 		pubToGlobPosInt_.publish(globPosInt_);
 		
 		geopoint_.latitude = globPosInt_.lat / 10000000.0f;
