@@ -31,9 +31,9 @@
 
 double PI = 3.1416; // pi
 double eps_LAND = 10000.0; // distance to the target LAND position in millimeter
-double eps_WP = 1500.0; // distance to the target WAYPOINT position in millimeters
-double eps_TO = 1500.0; // distance to the target TAKEOFF position in millimeters
-double eps_alt = 500.0; // distance to the target altitude in millimeters
+double eps_WP = 500.0; // distance to the target WAYPOINT position in millimeters           //TODO no hardcoded
+double eps_TO = 500.0; // distance to the target TAKEOFF position in millimeters
+double eps_alt = 400.0; // distance to the target altitude in millimeters
 double eps_YAW = 20.0; // distance to the target YAW position in deg
 
 class MmsNodeClass {
