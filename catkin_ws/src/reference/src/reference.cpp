@@ -1068,55 +1068,7 @@ public:
 				pubToDistance_.publish(outputDist_);
 			}
 		break;
-// this state is useless if MISSION_START is not implemented
-/*case READY_TO_LAND:
-	if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
-	{
-		if (new_state == true)
-		{
-			ROS_INFO("REF: READY_TO_LAND");
-			new_state = false;
-			// comment these lines to avoid the drone accumulates position and yaw errors
-			// comment these lines to make the published reference equal to the last valid one
-			//get_current_position();
-			//outputRef_.frame = actual_frame;
-			//tempRef_ = outputRef_;
-			//tempRelAlt = inputGlobPosInt_.alt;
-			ROS_INFO("REF->NAV: REFERENCE = READY_TO_LAND");
-		}
 
-		if (new_frame == true)
-		{
-			new_frame = false;
-
-			if (actual_frame == 6 && target_frame == 6) // 6 = barometer
-			{
-				outputRef_ = tempRef_;
-				outputRef_.frame = actual_frame;
-				pubToReference_.publish(outputRef_);// as it is
-			}
-			if (actual_frame == 11 && target_frame == 11) // 11 = sonar
-			{
-				outputRef_ = tempRef_;
-				outputRef_.frame = actual_frame;
-				pubToReference_.publish(outputRef_);// as it is
-			}
-			if (actual_frame == 6 && target_frame == 11)
-			{
-				outputRef_ = tempRef_;
-				outputRef_.frame = actual_frame;
-				outputRef_.AltitudeRelative = tempRelAlt;
-				ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-				pubToReference_.publish(outputRef_);
-			}
-			if (actual_frame == 11 && target_frame == 6)
-			{
-				ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-				ROS_INFO("REF: NO REFERENCE PUBLISHED");
-			}
-		}
-	}
-	break;*/
 		case LEASHING:
 			//TODO
 			if (new_state == true){
@@ -1147,7 +1099,10 @@ public:
 					break;
 				case 4:	//HORIZONTAL_CONTROL_MODE_DISTANCE_HEADING_VEL
 					leashing_offset_ned_.rho_offset += leashing_command_.horizontal_distance_vel * 0.2;  //max speed 2 m/s  //TODO check hardcoded
+					if (leashing_offset_ned_.rho_offset <= 0) leashing_offset_ned_.rho_offset = 0;   //cannot become negative
 					leashing_offset_ned_.psi_offset += leashing_command_.horizontal_heading_vel * 0.2 / leashing_offset_ned_.rho_offset; //max tangential velocity 2 m/s -->normalized with rho //TODO check hardcoded
+					if (leashing_offset_ned_.psi_offset >= 2*M_PI) leashing_offset_ned_.psi_offset -= 2*M_PI;    //reset every 2pi
+					if (leashing_offset_ned_.psi_offset <= -2*M_PI) leashing_offset_ned_.psi_offset += 2*M_PI;    //reset every 2pi
 					leashing_offset_ned_.x_offset = leashing_offset_ned_.rho_offset * cos(leashing_offset_ned_.psi_offset);
 					leashing_offset_ned_.y_offset = leashing_offset_ned_.rho_offset * sin(leashing_offset_ned_.psi_offset);
 					break;
@@ -1171,7 +1126,7 @@ public:
 					leashing_offset_ned_.z_offset = leashing_command_.vertical_distance;
 					break;
 				case 3:		//VERTICAL_CONTROL_MODE_VEL
-					leashing_offset_ned_.z_offset += leashing_command_.vertical_distance_vel * 0.1; //max speed 1 m/s  //TODO check hardcoded
+					leashing_offset_ned_.z_offset += leashing_command_.vertical_distance_vel * 0.1; //max speed 1 m/s  //TODO check hardcoded   //TODO add check with terrain altitude
 					break;
 			}
 			
