@@ -28,6 +28,7 @@
 #define GRID 90
 #define PERFORMING_GO_TO 100
 #define PERFORMING_LANDING 120
+#define LEASHING 140
 #define MANUAL_FLIGHT 1000
 
 double PI = 3.1416; // pi
@@ -154,11 +155,28 @@ public:
 					ROS_INFO("SIM: PERFORMING TAKEOFF");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/60;
-				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/60;
+				if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
+					globPosInt_.relative_alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+					globPosInt_.alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+				} else {
+					globPosInt_.relative_alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+				}
 				break;
 
 			case IN_FLIGHT:
+				if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
+					globPosInt_.relative_alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+					globPosInt_.alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+				} else {
+					globPosInt_.relative_alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+				}
+				if ((float)(reference_.Latitude - inputPos_.Latitude) > 0)	globPosInt_.lat += ceil((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
+				else globPosInt_.lat += floor((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
+				if ((float)(reference_.Longitude - inputPos_.Longitude) > 0) globPosInt_.lon += ceil((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
+				else globPosInt_.lon += floor((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
+				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;
 				break;
 
 			case PERFORMING_GO_TO:
@@ -167,11 +185,18 @@ public:
 					ROS_INFO("SIM: PERFORMING GO TO");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;
-				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;   
-				globPosInt_.lat += (reference_.Latitude - inputPos_.Latitude)/70;
-				globPosInt_.lon += (reference_.Longitude - inputPos_.Longitude)/70;
-				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180/M_PI*5;
+				if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
+					globPosInt_.relative_alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+					globPosInt_.alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+				} else {
+					globPosInt_.relative_alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+				}
+				if ((float)(reference_.Latitude - inputPos_.Latitude) > 0)	globPosInt_.lat += ceil((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
+				else globPosInt_.lat += floor((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
+				if ((float)(reference_.Longitude - inputPos_.Longitude) > 0) globPosInt_.lon += ceil((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
+				else globPosInt_.lon += floor((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
+				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;
 				break;
 
 			case GRID:	
@@ -180,10 +205,17 @@ public:
 					ROS_INFO("SIM: PERFORMING GRID");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;
-				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;  
-				globPosInt_.lat += (reference_.Latitude - inputPos_.Latitude)/70;
-				globPosInt_.lon += (reference_.Longitude - inputPos_.Longitude)/70;
+				if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
+					globPosInt_.relative_alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+					globPosInt_.alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+				} else {
+					globPosInt_.relative_alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+				}
+				if ((float)(reference_.Latitude - inputPos_.Latitude) > 0)	globPosInt_.lat += ceil((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
+				else globPosInt_.lat += floor((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
+				if ((float)(reference_.Longitude - inputPos_.Longitude) > 0) globPosInt_.lon += ceil((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
+				else globPosInt_.lon += floor((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
 				break;
 
 			case PERFORMING_LANDING:
@@ -192,11 +224,35 @@ public:
 					ROS_INFO("SIM: PERFORMING LANDING");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				globPosInt_.relative_alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;
-				globPosInt_.alt += (reference_.AltitudeRelative - inputPos_.Altitude)/80;    
+				if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
+					globPosInt_.relative_alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+					globPosInt_.alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+				} else {
+					globPosInt_.relative_alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+				}  
 				break;
 			
 			case MANUAL_FLIGHT:
+				break;
+
+			case LEASHING:
+				if (counter_print >= 30){
+					counter_print = 0;
+					ROS_INFO("SIM: PERFORMING LEASHING");
+				}
+				if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
+					globPosInt_.relative_alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+					globPosInt_.alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+				} else {
+					globPosInt_.relative_alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
+				}
+				if ((float)(reference_.Latitude - inputPos_.Latitude) > 0)	globPosInt_.lat += ceil((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
+				else globPosInt_.lat += floor((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
+				if ((float)(reference_.Longitude - inputPos_.Longitude) > 0) globPosInt_.lon += ceil((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
+				else globPosInt_.lon += floor((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
+				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;
 				break;
 		}
 		
