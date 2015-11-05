@@ -1173,7 +1173,7 @@ public:
 			outputRef_.AltitudeRelative = (leashing_target_ned_.z + leashing_offset_ned_.z_offset)*1000.0f;
 			outputRef_.Yawangle = yaw_leashing;
 			pubToReference_.publish(outputRef_);
-			ROS_INFO("REF: LEASHING: %f - %f - %f - %f", leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset, leashing_offset_ned_.rho_offset, leashing_offset_ned_.psi_offset);			
+			//ROS_INFO("REF: LEASHING: %f - %f - %f - %f", leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset, leashing_offset_ned_.rho_offset, leashing_offset_ned_.psi_offset);			
 
 			break;
 		
