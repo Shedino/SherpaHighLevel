@@ -115,6 +115,10 @@ public:
 		N_WP = 0;      //OUTPUT
 		WP_completed_grid = 0;
 		waiting_for_WP_execution_grid = false;
+
+		//LEASHING
+		leashing_received_terget = false;
+		yaw_leashing = 0;
 	}
 
 	class e_to_tartget{
@@ -238,6 +242,7 @@ public:
 	}
 	
 	void readLeashingTarget(const geographic_msgs::GeoPoint::ConstPtr& msg){
+		if (!leashing_received_terget) leashing_received_terget = true;
 		if (currentState == LEASHING){
 			leashing_target_ = *msg;
 			double temp_x, temp_y;
@@ -364,16 +369,24 @@ public:
 			{
 				if (inputCmd_.param1 == 1){
 					//initial offset
-					double temp_reference_x, temp_reference_y;
-					get_pos_NED_from_WGS84 (&temp_reference_x, &temp_reference_y, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-					double temp_target_x, temp_target_y;
-					get_pos_NED_from_WGS84 (&temp_target_x, &temp_target_y, leashing_target_.latitude, leashing_target_.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-					leashing_offset_ned_.x_offset = temp_reference_x - temp_target_x;          //initial offset
-					leashing_offset_ned_.y_offset = temp_reference_y - temp_target_y;
-					leashing_offset_ned_.z_offset = outputRef_.AltitudeRelative/1000.0f - leashing_target_.altitude;
-					leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
-					leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
-					yaw_leashing = outputRef_.Yawangle;    //take actual yaw
+					if (leashing_received_terget){        //TODO reset flag when leashing is over
+						double temp_reference_x, temp_reference_y;
+						get_pos_NED_from_WGS84 (&temp_reference_x, &temp_reference_y, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+						double temp_target_x, temp_target_y;
+						get_pos_NED_from_WGS84 (&temp_target_x, &temp_target_y, leashing_target_.latitude, leashing_target_.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+						leashing_offset_ned_.x_offset = temp_reference_x - temp_target_x;          //initial offset
+						leashing_offset_ned_.y_offset = temp_reference_y - temp_target_y;
+						leashing_offset_ned_.z_offset = outputRef_.AltitudeRelative/1000.0f - leashing_target_.altitude;
+						leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
+						leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
+						yaw_leashing = outputRef_.Yawangle;    //take actual yaw
+					} else {                                     //not received target topic
+						leashing_offset_ned_.x_offset = 0;
+						leashing_offset_ned_.y_offset = 0;
+						leashing_offset_ned_.z_offset = 2;
+						leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
+						leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
+					}
 				}
 			}break;
 		}
@@ -1155,12 +1168,13 @@ public:
 			//Publish references in WGS84
 			double temp_lat, temp_lon;
 			get_pos_WGS84_from_NED (&temp_lat, &temp_lon, (leashing_target_ned_.x+leashing_offset_ned_.x_offset), (leashing_target_ned_.y+leashing_offset_ned_.y_offset), Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-			outputRef_.Latitude = temp_lat;
-			outputRef_.Longitude = temp_lon;
-			outputRef_.AltitudeRelative = leashing_target_ned_.z + leashing_offset_ned_.z_offset;
+			outputRef_.Latitude = temp_lat*10000000.0f;
+			outputRef_.Longitude = temp_lon*10000000.0f;
+			outputRef_.AltitudeRelative = (leashing_target_ned_.z + leashing_offset_ned_.z_offset)*1000.0f;
 			outputRef_.Yawangle = yaw_leashing;
 			pubToReference_.publish(outputRef_);
-			
+			ROS_INFO("REF: LEASHING: %f - %f - %f - %f", leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset, leashing_offset_ned_.rho_offset, leashing_offset_ned_.psi_offset);			
+
 			break;
 		
 		case PERFORMING_LANDING:
@@ -1338,6 +1352,7 @@ mms_msgs::Grid_ack grid_ack_;
 leashing_target_ned leashing_target_ned_;
 leashing_offset_ned leashing_offset_ned_;
 double yaw_leashing;
+bool leashing_received_terget;
 
 
 private:
