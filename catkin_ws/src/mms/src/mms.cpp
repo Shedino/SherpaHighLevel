@@ -109,7 +109,7 @@ public:
 			SAFETY_ON = true;
 			SAFETY_OFF = false;
 			ROS_INFO("MMS: safety on");
-		} else if (!SAFETY_OFF) {
+		} else if (!Safety_.safety && !SAFETY_OFF) {
 			SAFETY_OFF = true;
 			SAFETY_ON = false;
 			ROS_INFO("MMS: safety off");
