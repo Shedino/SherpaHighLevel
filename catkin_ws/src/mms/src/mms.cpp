@@ -105,11 +105,11 @@ public:
 	void readSafetyMessage(const mavros::Safety::ConstPtr& msg)
 	{
 		Safety_.safety = msg->safety;
-		if (Safety_.safety){
+		if (Safety_.safety && !SAFETY_ON){
 			SAFETY_ON = true;
 			SAFETY_OFF = false;
 			ROS_INFO("MMS: safety on");
-		} else {
+		} else if (!SAFETY_OFF) {
 			SAFETY_OFF = true;
 			SAFETY_ON = false;
 			ROS_INFO("MMS: safety off");
