@@ -794,6 +794,7 @@ public:
 					{
 						outputRef_ = tempRef_;
 						outputRef_.AltitudeRelative = tempRef_.AltitudeRelative+Dh_TO+1;
+						tempRef_ = outputRef_;       //MIC ADDED
 						outputRef_.frame = actual_frame;
 						ROS_INFO("REF->NAV: TAKEOFF BARO");
 						pubToReference_.publish(outputRef_);
@@ -802,6 +803,7 @@ public:
 					{
 						outputRef_ = tempRef_;
 						outputRef_.AltitudeRelative = Dh_TO+2;
+						tempRef_ = outputRef_;		//MIC ADDED
 						outputRef_.frame = actual_frame;
 						ROS_INFO("REF->NAV: TAKEOFF SONAR");
 						pubToReference_.publish(outputRef_);
@@ -810,6 +812,7 @@ public:
 					{
 						outputRef_ = tempRef_;
 						outputRef_.AltitudeRelative = tempRelAlt+Dh_TO+3;
+						tempRef_ = outputRef_;		//MIC ADDED
 						outputRef_.frame = actual_frame;
 						ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
 						pubToReference_.publish(outputRef_);
@@ -853,13 +856,13 @@ public:
 					{
 						outputRef_ = tempRef_;
 						outputRef_.frame = actual_frame;
-						pubToReference_.publish(outputRef_);// as it is
+						pubToReference_.publish(outputRef_);// as it is     
 					}
 					if (actual_frame == 11 && target_frame == 11) // 11 = sonar
 					{
 						outputRef_ = tempRef_;
 						outputRef_.frame = actual_frame;
-						pubToReference_.publish(outputRef_);// as it is
+						pubToReference_.publish(outputRef_);// as it is		
 					}
 					if (actual_frame == 6 && target_frame == 11)
 					{
@@ -867,7 +870,7 @@ public:
 						outputRef_.frame = actual_frame;
 						outputRef_.AltitudeRelative = tempRelAlt;
 						ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-						pubToReference_.publish(outputRef_);
+						pubToReference_.publish(outputRef_);				
 					}
 					if (actual_frame == 11 && target_frame == 6)
 					{
