@@ -482,7 +482,7 @@ public:
 					ROS_INFO("MMS: ARMING FAILED");
 					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_DISARMED");
 				}
-				if (TAKEOFF || SET_HOME || WAYPOINT)
+				if (SET_HOME || WAYPOINT)
 				{
 					set_events_false();
 					outputAckMission_.mission_item_reached = false;

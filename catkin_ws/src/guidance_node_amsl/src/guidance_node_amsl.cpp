@@ -95,7 +95,7 @@ public:
 	
 	void handle_mms_status(const mms_msgs::MMS_status::ConstPtr& msg)
 	{
-		if (msg->mms_state == 60) trigger_ = true;          //trigger integral on READY_TO_TAKEOFF state
+		if (msg->mms_state == 70) trigger_ = true;          //trigger integral on PERFORMING_TAKEOFF state
 		else if (msg->mms_state == 30) trigger_ = false;		//disable integral on ON_GROUND_DISARMED state --> this happens after LAND
 	}
 
