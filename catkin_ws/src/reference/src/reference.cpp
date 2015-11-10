@@ -932,11 +932,11 @@ gradi decimali */
 					new_state = false;
 					// comment these lines to avoid the drone stops when the distance is inside the allowed error sphere
 					// comment these lines to make the published reference equal to the last valid one
-					/* get_current_position(); 
+					/* get_current_position();*/
 					outputRef_.frame = actual_frame;
 					tempRef_ = outputRef_;
 					tempRelAlt = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
-					ROS_INFO("REF->NAV: REFERENCE = IN_FLIGHT");*/
+					ROS_INFO("REF->NAV: REFERENCE = IN_FLIGHT");
 				}
 
 				if (new_frame == true)
@@ -1254,7 +1254,7 @@ gradi decimali */
 					outputRef_.frame = actual_frame;
 					//tempRef_.frame = actual_frame;
 					outputRef_.AltitudeRelative = inputGlobPosInt_.relative_alt-inputHome_.relative_alt;
-					temp_AltitudeRelative = outputRef_.AltitudeRelative;
+					//temp_AltitudeRelative = outputRef_.AltitudeRelative;
 					ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
 					pubToReference_.publish(outputRef_);
 					ROS_INFO("REF: MAV_CMD_DO_NAV_FOLLOW. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
