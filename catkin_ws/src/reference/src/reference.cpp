@@ -53,7 +53,6 @@ public:
 		subFromFrame_ = n_.subscribe("/ref_system", 10, &ReferenceNodeClass::readFrameMessage,this);
 		subLeashingTargetPosition_ = n_.subscribe("/leashing_target_position", 10, &ReferenceNodeClass::readLeashingTarget,this);
 		subLeashingCommand_ = n_.subscribe("/leashing_command", 10, &ReferenceNodeClass::readLeashingCommand,this);
-		subLeashingStatus_ = n_.subscribe("/leashing_status", 10, &ReferenceNodeClass::readLeashingStatus,this);
 		
 		// publishers
 		pubToReference_ = n_.advertise<guidance_node_amsl::Reference>("/reference",10);
@@ -61,6 +60,7 @@ public:
 		pubGridAck_ = n_.advertise<mms_msgs::Grid_ack>("/grid_ack",10);
 		pubHome_ = n_.advertise<mavros::Global_position_int>("/home",5);
 		pubGridInfo_ = n_.advertise<reference::Grid_info>("/grid_info",2);
+		pubLeashingStatus_ = n_.advertise<reference::LeashingStatus>("/leashing_status",5);
 
 		//Initializing outputRef_
 		outputRef_.Latitude = 0;
@@ -254,12 +254,25 @@ public:
 	}
 	
 	void readLeashingCommand(const reference::LeashingCommand::ConstPtr& msg){
-		if (currentState == LEASHING) leashing_command_ = *msg;
+		if (currentState == LEASHING) {
+			leashing_command_ = *msg;
+			
+			leashing_status_.horizontal_control_mode = leashing_command_.horizontal_control_mode;
+			leashing_status_.horizontal_distance = leashing_offset_ned_.rho_offset;
+			leashing_status_.horizontal_heading = leashing_offset_ned_.psi_offset;
+			leashing_status_.distance_north = leashing_offset_ned_.x_offset;
+			leashing_status_.distance_east = leashing_offset_ned_.y_offset;
+			leashing_status_.vertical_control_mode = leashing_command_.vertical_control_mode;
+			leashing_status_.vertical_distance = leashing_offset_ned_.z_offset;
+			leashing_status_.yaw_control_mode = leashing_command_.yaw_control_mode;
+			leashing_status_.yaw = yaw_leashing;
+			leashing_status_.yawpoint = leashing_command_.yawpoint; 
+		}
 	}
 	
-	void readLeashingStatus(const reference::LeashingStatus::ConstPtr& msg){
+	/*void readLeashingStatus(const reference::LeashingStatus::ConstPtr& msg){
 		if (currentState == LEASHING) leashing_status_ = *msg;
-	}
+	}*/
 
 	void readCmdMessage(const mms_msgs::Cmd::ConstPtr& msg)
 	{
@@ -1269,13 +1282,13 @@ ros::Subscriber subFromFrame_;
 ros::Subscriber subFromGlobPosInt_;
 ros::Subscriber subLeashingTargetPosition_;
 ros::Subscriber subLeashingCommand_;
-ros::Subscriber subLeashingStatus_;
 
 ros::Publisher pubToReference_;
 ros::Publisher pubGridAck_;
 ros::Publisher pubToDistance_;
 ros::Publisher pubHome_;
 ros::Publisher pubGridInfo_;
+ros::Publisher pubLeashingStatus_;
 
 guidance_node_amsl::Position_nav inputPos_;
 mavros::Global_position_int inputGlobPosInt_;
