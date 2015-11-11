@@ -105,17 +105,23 @@ public:
 		counter_print++;
 		//pubToSafety_.publish(safety_);
 		pubToSystStatus_.publish(sys_status_);
+		if (globPosInt_.relative_alt <= 3000)
+			sonar_.distance = globPosInt_.relative_alt;
+		else
+			sonar_.distance = 0;
 		pubToSonar_.publish(sonar_);
 		quaternion_.x = 1;
 		quaternion_.y = 0;
 		quaternion_.z = 0;
 		quaternion_.w = 0;
+		
+		float error_lat;
+		float error_lon;
 
 		switch(inputMmsStatus_.mms_state)
 		{
 			case ON_GROUND_NO_HOME:
 				safety_.safety = false;                              //HARDCODED INITIALIAZED
-				sonar_.distance = 5000;
 				sys_status_.armed = false;             //armed
 				sys_status_.voltage_battery = 15000;  //15 V
 				sys_status_.valid_ref_frame = 11;     //baro
@@ -172,10 +178,16 @@ public:
 					globPosInt_.relative_alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				}
-				if ((float)(reference_.Latitude - inputPos_.Latitude) > 0)	globPosInt_.lat += ceil((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
-				else globPosInt_.lat += floor((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
-				if ((float)(reference_.Longitude - inputPos_.Longitude) > 0) globPosInt_.lon += ceil((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
-				else globPosInt_.lon += floor((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
+				error_lat = (float)(reference_.Latitude - inputPos_.Latitude);
+				if (error_lat >= 600) error_lat = 600;
+				if (error_lat <= -600) error_lat = -600;
+				if (error_lat > 0)	globPosInt_.lat += ceil(error_lat/70.0f);
+				else globPosInt_.lat += floor(error_lat/70.0f);
+				error_lon = (float)(reference_.Longitude - inputPos_.Longitude);
+				if (error_lon >= 600) error_lon = 600;
+				if (error_lon <= -600) error_lon = -600;
+				if (error_lon > 0) globPosInt_.lon += ceil(error_lon/70.0f);
+				else globPosInt_.lon += floor(error_lon/70.0f);
 				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;
 				break;
 
@@ -192,10 +204,16 @@ public:
 					globPosInt_.relative_alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				}
-				if ((float)(reference_.Latitude - inputPos_.Latitude) > 0)	globPosInt_.lat += ceil((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
-				else globPosInt_.lat += floor((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
-				if ((float)(reference_.Longitude - inputPos_.Longitude) > 0) globPosInt_.lon += ceil((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
-				else globPosInt_.lon += floor((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
+				error_lat = (float)(reference_.Latitude - inputPos_.Latitude);
+				if (error_lat >= 600) error_lat = 600;
+				if (error_lat <= -600) error_lat = -600;
+				if (error_lat > 0)	globPosInt_.lat += ceil(error_lat/70.0f);
+				else globPosInt_.lat += floor(error_lat/70.0f);
+				error_lon = (float)(reference_.Longitude - inputPos_.Longitude);
+				if (error_lon >= 600) error_lon = 600;
+				if (error_lon <= -600) error_lon = -600;
+				if (error_lon > 0) globPosInt_.lon += ceil(error_lon/70.0f);
+				else globPosInt_.lon += floor(error_lon/70.0f);
 				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;
 				break;
 
@@ -212,10 +230,16 @@ public:
 					globPosInt_.relative_alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				}
-				if ((float)(reference_.Latitude - inputPos_.Latitude) > 0)	globPosInt_.lat += ceil((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
-				else globPosInt_.lat += floor((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
-				if ((float)(reference_.Longitude - inputPos_.Longitude) > 0) globPosInt_.lon += ceil((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
-				else globPosInt_.lon += floor((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
+				error_lat = (float)(reference_.Latitude - inputPos_.Latitude);
+				if (error_lat >= 600) error_lat = 600;
+				if (error_lat <= -600) error_lat = -600;
+				if (error_lat > 0)	globPosInt_.lat += ceil(error_lat/70.0f);
+				else globPosInt_.lat += floor(error_lat/70.0f);
+				error_lon = (float)(reference_.Longitude - inputPos_.Longitude);
+				if (error_lon >= 600) error_lon = 600;
+				if (error_lon <= -600) error_lon = -600;
+				if (error_lon > 0) globPosInt_.lon += ceil(error_lon/70.0f);
+				else globPosInt_.lon += floor(error_lon/70.0f);
 				break;
 
 			case PERFORMING_LANDING:
@@ -248,10 +272,16 @@ public:
 					globPosInt_.relative_alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				}
-				if ((float)(reference_.Latitude - inputPos_.Latitude) > 0)	globPosInt_.lat += ceil((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
-				else globPosInt_.lat += floor((float)(reference_.Latitude - inputPos_.Latitude)/70.0f);
-				if ((float)(reference_.Longitude - inputPos_.Longitude) > 0) globPosInt_.lon += ceil((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
-				else globPosInt_.lon += floor((float)(reference_.Longitude - inputPos_.Longitude)/70.0f);
+				error_lat = (float)(reference_.Latitude - inputPos_.Latitude);
+				if (error_lat >= 600) error_lat = 600;
+				if (error_lat <= -600) error_lat = -600;
+				if (error_lat > 0)	globPosInt_.lat += ceil(error_lat/70.0f);
+				else globPosInt_.lat += floor(error_lat/70.0f);
+				error_lon = (float)(reference_.Longitude - inputPos_.Longitude);
+				if (error_lon >= 600) error_lon = 600;
+				if (error_lon <= -600) error_lon = -600;
+				if (error_lon > 0) globPosInt_.lon += ceil(error_lon/70.0f);
+				else globPosInt_.lon += floor(error_lon/70.0f);
 				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;
 				break;
 		}
