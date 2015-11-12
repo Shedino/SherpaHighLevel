@@ -119,15 +119,15 @@ public:
 		//LEASHING
 		leashing_received_terget = false;
 		yaw_leashing = 0;
-		leashing_status_.horizontal_control_mode = 2;  //absolute
-		leashing_status_.horizontal_distance = leashing_offset_ned_.rho_offset;
-		leashing_status_.horizontal_heading = leashing_offset_ned_.psi_offset;
-		leashing_status_.distance_north = leashing_offset_ned_.x_offset;
-		leashing_status_.distance_east = leashing_offset_ned_.y_offset;
-		leashing_status_.vertical_control_mode = 2;  //absolute
-		leashing_status_.vertical_distance = leashing_offset_ned_.z_offset;
-		leashing_status_.yaw_control_mode = 1;  //absolute
-		leashing_status_.yaw = yaw_leashing;
+		leashing_status_.horizontal_control_mode = 0;  //none
+		leashing_status_.horizontal_distance = 0;
+		leashing_status_.horizontal_heading = 0;
+		leashing_status_.distance_north = 0;
+		leashing_status_.distance_east = 0;
+		leashing_status_.vertical_control_mode = 0;  //none
+		leashing_status_.vertical_distance = 0;
+		leashing_status_.yaw_control_mode = 0;  //none
+		leashing_status_.yaw = 0;
 		//leashing_status_.yawpoint = ;   //TODO initialize better
 	}
 
@@ -267,15 +267,9 @@ public:
 		if (currentState == LEASHING) {
 			leashing_command_ = *msg;
 			
-			leashing_status_.horizontal_control_mode = leashing_command_.horizontal_control_mode;
-			leashing_status_.horizontal_distance = leashing_offset_ned_.rho_offset;
-			leashing_status_.horizontal_heading = leashing_offset_ned_.psi_offset;
-			leashing_status_.distance_north = leashing_offset_ned_.x_offset;
-			leashing_status_.distance_east = leashing_offset_ned_.y_offset;
-			leashing_status_.vertical_control_mode = leashing_command_.vertical_control_mode;
-			leashing_status_.vertical_distance = leashing_offset_ned_.z_offset;
-			leashing_status_.yaw_control_mode = leashing_command_.yaw_control_mode;
-			leashing_status_.yaw = yaw_leashing;
+			if (leashing_command_.horizontal_control_mode != 0) leashing_status_.horizontal_control_mode = leashing_command_.horizontal_control_mode;
+			if (leashing_command_.vertical_control_mode != 0) leashing_status_.vertical_control_mode = leashing_command_.vertical_control_mode;
+			if (leashing_command_.yaw_control_mode != 0) leashing_status_.yaw_control_mode = leashing_command_.yaw_control_mode;
 			leashing_status_.yawpoint = leashing_command_.yawpoint;
 		}
 	}
@@ -392,7 +386,7 @@ public:
 			{
 				if (inputCmd_.param1 == 1){
 					//initial offset
-					if (leashing_received_terget){        //TODO reset flag when leashing is over
+					/*if (leashing_received_terget){        //TODO reset flag when leashing is over
 						double temp_reference_x, temp_reference_y;
 						get_pos_NED_from_WGS84 (&temp_reference_x, &temp_reference_y, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
 						double temp_target_x, temp_target_y;
@@ -403,13 +397,13 @@ public:
 						leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
 						leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
 						yaw_leashing = outputRef_.Yawangle;    //take actual yaw
-					} else {                                     //not received target topic
+					} else { */                                    //not received target topic
 						leashing_offset_ned_.x_offset = 0;
 						leashing_offset_ned_.y_offset = 0;
 						leashing_offset_ned_.z_offset = 2;
-						leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
-						leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
-					}
+						leashing_offset_ned_.rho_offset = 0;
+						leashing_offset_ned_.psi_offset = 0;
+					//}
 				}
 			}break;
 		}
@@ -1109,7 +1103,6 @@ public:
 		break;
 
 		case LEASHING:
-			pubLeashingStatus_.publish(leashing_status_);
 			if (new_state == true){
 				ROS_INFO("REF: LEASHING");
 				new_state = false;
@@ -1117,44 +1110,63 @@ public:
 			if (new_frame == true){
 				new_frame = false;
 			}
-			switch (leashing_command_.horizontal_control_mode){
+			switch (leashing_status_.horizontal_control_mode){
 				case 0:	//HORIZONTAL_CONTROL_MODE_NONE
+					//ROS_INFO("REF: LEASHING HORIZONTAL NONE");
 					//WHAT HERE?? TODO
 					break;
 				case 1:	//HORIZONTAL_CONTROL_MODE_KEEP_DISTANCE
+					//ROS_INFO("REF: LEASHING HORIZONTAL KEEP DISTANCE");
 					//WHAT HERE?? TODO
 					break;
 				case 2:	//HORIZONTAL_CONTROL_MODE_DISTANCE_HEADING_ABSOLUTE
+					//ROS_INFO("REF: LEASHING HORIZONTAL ABSOLUTE");
 					leashing_offset_ned_.rho_offset = leashing_command_.horizontal_distance;
 					leashing_offset_ned_.psi_offset = leashing_command_.horizontal_heading;
 					leashing_offset_ned_.x_offset = leashing_offset_ned_.rho_offset * cos(leashing_offset_ned_.psi_offset);
 					leashing_offset_ned_.y_offset = leashing_offset_ned_.rho_offset * sin(leashing_offset_ned_.psi_offset);
 					break;
 				case 3:	//HORIZONTAL_CONTROL_MODE_NORTH_EAST_ABSOLUTE
+					//ROS_INFO("REF: LEASHING HORIZONTAL NE ABSOLUTE");
 					leashing_offset_ned_.x_offset = leashing_command_.distance_north;
 					leashing_offset_ned_.y_offset = leashing_command_.distance_east;
 					leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
-					leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
+					if (leashing_offset_ned_.rho_offset > 0.1){
+						leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.y_offset,leashing_offset_ned_.y_offset);
+					} else {
+						leashing_offset_ned_.psi_offset = 0;
+					}
 					break;
 				case 4:	//HORIZONTAL_CONTROL_MODE_DISTANCE_HEADING_VEL
+					//ROS_INFO("REF: LEASHING DISTANCE HEADING: %f - %f", leashing_command_.horizontal_distance_vel, leashing_command_.horizontal_heading_vel);
 					leashing_offset_ned_.rho_offset += leashing_command_.horizontal_distance_vel * 0.2;  //max speed 2 m/s  //TODO check hardcoded
-					if (leashing_offset_ned_.rho_offset <= 0) leashing_offset_ned_.rho_offset = 0;   //cannot become negative
-					leashing_offset_ned_.psi_offset += leashing_command_.horizontal_heading_vel * 0.2 / leashing_offset_ned_.rho_offset; //max tangential velocity 2 m/s -->normalized with rho //TODO check hardcoded
+					if (leashing_offset_ned_.rho_offset < 0) leashing_offset_ned_.rho_offset = 0;   //cannot become negative
+					if (leashing_offset_ned_.rho_offset > 0.1){
+						leashing_offset_ned_.psi_offset += leashing_command_.horizontal_heading_vel * 0.2 / leashing_offset_ned_.rho_offset; //max tangential velocity 2 m/s -->normalized with rho //TODO check hardcoded
+					} else {
+						leashing_offset_ned_.psi_offset += 0;
+					}
 					if (leashing_offset_ned_.psi_offset >= 2*M_PI) leashing_offset_ned_.psi_offset -= 2*M_PI;    //reset every 2pi
 					if (leashing_offset_ned_.psi_offset <= -2*M_PI) leashing_offset_ned_.psi_offset += 2*M_PI;    //reset every 2pi
+					//ROS_INFO("REF: LEASHING offset: %f - %f", leashing_offset_ned_.rho_offset, leashing_offset_ned_.psi_offset);
 					leashing_offset_ned_.x_offset = leashing_offset_ned_.rho_offset * cos(leashing_offset_ned_.psi_offset);
 					leashing_offset_ned_.y_offset = leashing_offset_ned_.rho_offset * sin(leashing_offset_ned_.psi_offset);
 					break;
 				case 5:		//HORIZONTAL_CONTROL_MODE_NORTH_EAST_VEL
+					//ROS_INFO("REF: LEASHING HORIZONTAL VEL NE");
 					//TODO add yaw of the command issuer (rescuer)
 					leashing_offset_ned_.x_offset += leashing_command_.distance_north_vel * 0.2;		//max speed 2 m/s  //TODO check hardcoded
 					leashing_offset_ned_.y_offset += leashing_command_.distance_east_vel * 0.2;
 					leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
-					leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
+					if (leashing_offset_ned_.rho_offset > 0.1){
+						leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.y_offset,leashing_offset_ned_.x_offset);
+					} else {
+						leashing_offset_ned_.psi_offset = 0;
+					}
 					break;
 			}
 			
-			switch (leashing_command_.vertical_control_mode){
+			switch (leashing_status_.vertical_control_mode){
 				case 0:		//VERTICAL_CONTROL_MODE_NONE
 					//WHAT HERE?? TODO
 					break;
@@ -1169,7 +1181,7 @@ public:
 					break;
 			}
 			
-			switch (leashing_command_.yaw_control_mode){
+			switch (leashing_status_.yaw_control_mode){
 				case 0:	//YAW_CONTROL_MODE_NONE
 					yaw_leashing = outputRef_.Yawangle;    //take actual yaw
 					break;
@@ -1182,18 +1194,18 @@ public:
 				case 3:		//YAW_CONTROL_MODE_TOWARDS_POINT
 					double temp_point_x, temp_point_y;
 					get_pos_NED_from_WGS84 (&temp_point_x, &temp_point_y, leashing_command_.yawpoint.latitude, leashing_command_.yawpoint.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-					yaw_leashing = atan2(temp_point_x-(leashing_target_ned_.x+leashing_offset_ned_.x_offset), temp_point_y-(leashing_target_ned_.y+leashing_offset_ned_.y_offset));   //atan of vector point-wasp_reference, where wasp_reference is target+offset for leashing
+					yaw_leashing = atan2(temp_point_y-(leashing_target_ned_.y+leashing_offset_ned_.y_offset), temp_point_x-(leashing_target_ned_.x+leashing_offset_ned_.x_offset));   //atan of vector point-wasp_reference, where wasp_reference is target+offset for leashing
 					break;
 				case 4:		//YAW_CONTROL_MODE_TOWARDS_ANCHOR
 					if (leashing_offset_ned_.rho_offset > 0.2){
-						yaw_leashing = atan2(leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset) + M_PI;
+						yaw_leashing = atan2(leashing_offset_ned_.y_offset, leashing_offset_ned_.x_offset) + M_PI;
 					} else {
 						//do nothing. Do not change yaw when leashing distance is too small because atan can be close to undefined
 					}
 					break;
 				case 5:		//YAW_CONTROL_MODE_AWAY_FROM_ANCHOR
 					if (leashing_offset_ned_.rho_offset > 0.2){
-						yaw_leashing = atan2(leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset);
+						yaw_leashing = atan2(leashing_offset_ned_.y_offset, leashing_offset_ned_.x_offset);
 					} else {
 						//do nothing. Do not change yaw when leashing distance is too small because atan can be close to undefined
 					}
@@ -1207,8 +1219,14 @@ public:
 			outputRef_.AltitudeRelative = (leashing_target_ned_.z + leashing_offset_ned_.z_offset)*1000.0f;
 			outputRef_.Yawangle = yaw_leashing;
 			pubToReference_.publish(outputRef_);
-			//ROS_INFO("REF: LEASHING: %f - %f - %f - %f", leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset, leashing_offset_ned_.rho_offset, leashing_offset_ned_.psi_offset);			
-
+			ROS_INFO("REF: LEASHING: %d - %f - %f - %f - %f", leashing_status_.horizontal_control_mode, leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset, leashing_offset_ned_.rho_offset, leashing_offset_ned_.psi_offset);
+			leashing_status_.horizontal_distance = leashing_offset_ned_.rho_offset;
+			leashing_status_.horizontal_heading = leashing_offset_ned_.psi_offset;
+			leashing_status_.distance_north = leashing_offset_ned_.x_offset;
+			leashing_status_.distance_east = leashing_offset_ned_.y_offset;
+			leashing_status_.vertical_distance = leashing_offset_ned_.z_offset;
+			leashing_status_.yaw = yaw_leashing;
+			pubLeashingStatus_.publish(leashing_status_);
 			break;
 		
 		case PERFORMING_LANDING:
