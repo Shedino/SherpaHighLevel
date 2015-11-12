@@ -179,13 +179,13 @@ public:
 					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				}
 				error_lat = (float)(reference_.Latitude - inputPos_.Latitude);
-				if (error_lat >= 600) error_lat = 600;
-				if (error_lat <= -600) error_lat = -600;
+				if (error_lat >= 400) error_lat = 400;
+				if (error_lat <= -400) error_lat = -400;
 				if (error_lat > 0)	globPosInt_.lat += ceil(error_lat/70.0f);
 				else globPosInt_.lat += floor(error_lat/70.0f);
 				error_lon = (float)(reference_.Longitude - inputPos_.Longitude);
-				if (error_lon >= 600) error_lon = 600;
-				if (error_lon <= -600) error_lon = -600;
+				if (error_lon >= 400) error_lon = 400;
+				if (error_lon <= -400) error_lon = -400;
 				if (error_lon > 0) globPosInt_.lon += ceil(error_lon/70.0f);
 				else globPosInt_.lon += floor(error_lon/70.0f);
 				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;
@@ -205,13 +205,13 @@ public:
 					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				}
 				error_lat = (float)(reference_.Latitude - inputPos_.Latitude);
-				if (error_lat >= 600) error_lat = 600;
-				if (error_lat <= -600) error_lat = -600;
+				if (error_lat >= 400) error_lat = 400;
+				if (error_lat <= -400) error_lat = -400;
 				if (error_lat > 0)	globPosInt_.lat += ceil(error_lat/70.0f);
 				else globPosInt_.lat += floor(error_lat/70.0f);
 				error_lon = (float)(reference_.Longitude - inputPos_.Longitude);
-				if (error_lon >= 600) error_lon = 600;
-				if (error_lon <= -600) error_lon = -600;
+				if (error_lon >= 400) error_lon = 400;
+				if (error_lon <= -400) error_lon = -400;
 				if (error_lon > 0) globPosInt_.lon += ceil(error_lon/70.0f);
 				else globPosInt_.lon += floor(error_lon/70.0f);
 				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;
@@ -231,13 +231,13 @@ public:
 					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				}
 				error_lat = (float)(reference_.Latitude - inputPos_.Latitude);
-				if (error_lat >= 600) error_lat = 600;
-				if (error_lat <= -600) error_lat = -600;
+				if (error_lat >= 400) error_lat = 400;
+				if (error_lat <= -400) error_lat = -400;
 				if (error_lat > 0)	globPosInt_.lat += ceil(error_lat/70.0f);
 				else globPosInt_.lat += floor(error_lat/70.0f);
 				error_lon = (float)(reference_.Longitude - inputPos_.Longitude);
-				if (error_lon >= 600) error_lon = 600;
-				if (error_lon <= -600) error_lon = -600;
+				if (error_lon >= 400) error_lon = 400;
+				if (error_lon <= -400) error_lon = -400;
 				if (error_lon > 0) globPosInt_.lon += ceil(error_lon/70.0f);
 				else globPosInt_.lon += floor(error_lon/70.0f);
 				break;
@@ -273,13 +273,13 @@ public:
 					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				}
 				error_lat = (float)(reference_.Latitude - inputPos_.Latitude);
-				if (error_lat >= 600) error_lat = 600;
-				if (error_lat <= -600) error_lat = -600;
+				if (error_lat >= 400) error_lat = 400;
+				if (error_lat <= -400) error_lat = -400;
 				if (error_lat > 0)	globPosInt_.lat += ceil(error_lat/70.0f);
 				else globPosInt_.lat += floor(error_lat/70.0f);
 				error_lon = (float)(reference_.Longitude - inputPos_.Longitude);
-				if (error_lon >= 600) error_lon = 600;
-				if (error_lon <= -600) error_lon = -600;
+				if (error_lon >= 400) error_lon = 400;
+				if (error_lon <= -400) error_lon = -400;
 				if (error_lon > 0) globPosInt_.lon += ceil(error_lon/70.0f);
 				else globPosInt_.lon += floor(error_lon/70.0f);
 				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;

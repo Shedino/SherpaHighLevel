@@ -14,7 +14,7 @@
 #include "WP_grid.h"         //GRID
 #include "reference/LeashingCommand.h"   //leashing
 #include "reference/LeashingStatus.h"    //leashing
-#include "geographic_msgs/GeoPoint.h"	 //leashing
+#include "geographic_msgs/GeoPose.h"	 //leashing
 #include <wgs84_ned_lib/wgs84_ned_lib.h>       
 
 double eps_WP = 1500.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here
@@ -119,6 +119,16 @@ public:
 		//LEASHING
 		leashing_received_terget = false;
 		yaw_leashing = 0;
+		leashing_status_.horizontal_control_mode = 2;  //absolute
+		leashing_status_.horizontal_distance = leashing_offset_ned_.rho_offset;
+		leashing_status_.horizontal_heading = leashing_offset_ned_.psi_offset;
+		leashing_status_.distance_north = leashing_offset_ned_.x_offset;
+		leashing_status_.distance_east = leashing_offset_ned_.y_offset;
+		leashing_status_.vertical_control_mode = 2;  //absolute
+		leashing_status_.vertical_distance = leashing_offset_ned_.z_offset;
+		leashing_status_.yaw_control_mode = 1;  //absolute
+		leashing_status_.yaw = yaw_leashing;
+		//leashing_status_.yawpoint = ;   //TODO initialize better
 	}
 
 	class e_to_tartget{
@@ -241,15 +251,15 @@ public:
 		inputGlobPosInt_.time_boot_ms = msg->time_boot_ms;
 	}
 	
-	void readLeashingTarget(const geographic_msgs::GeoPoint::ConstPtr& msg){
+	void readLeashingTarget(const geographic_msgs::GeoPose::ConstPtr& msg){
 		if (!leashing_received_terget) leashing_received_terget = true;
 		if (currentState == LEASHING){
 			leashing_target_ = *msg;
 			double temp_x, temp_y;
-			get_pos_NED_from_WGS84 (&temp_x, &temp_y, leashing_target_.latitude, leashing_target_.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+			get_pos_NED_from_WGS84 (&temp_x, &temp_y, leashing_target_.position.latitude, leashing_target_.position.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
 			leashing_target_ned_.x = temp_x;
 			leashing_target_ned_.y = temp_y;
-			leashing_target_ned_.z = leashing_target_.altitude;
+			leashing_target_ned_.z = leashing_target_.position.altitude;
 		}
 	}
 	
@@ -266,7 +276,7 @@ public:
 			leashing_status_.vertical_distance = leashing_offset_ned_.z_offset;
 			leashing_status_.yaw_control_mode = leashing_command_.yaw_control_mode;
 			leashing_status_.yaw = yaw_leashing;
-			leashing_status_.yawpoint = leashing_command_.yawpoint; 
+			leashing_status_.yawpoint = leashing_command_.yawpoint;
 		}
 	}
 	
@@ -386,10 +396,10 @@ public:
 						double temp_reference_x, temp_reference_y;
 						get_pos_NED_from_WGS84 (&temp_reference_x, &temp_reference_y, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
 						double temp_target_x, temp_target_y;
-						get_pos_NED_from_WGS84 (&temp_target_x, &temp_target_y, leashing_target_.latitude, leashing_target_.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+						get_pos_NED_from_WGS84 (&temp_target_x, &temp_target_y, leashing_target_.position.latitude, leashing_target_.position.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
 						leashing_offset_ned_.x_offset = temp_reference_x - temp_target_x;          //initial offset
 						leashing_offset_ned_.y_offset = temp_reference_y - temp_target_y;
-						leashing_offset_ned_.z_offset = outputRef_.AltitudeRelative/1000.0f - leashing_target_.altitude;
+						leashing_offset_ned_.z_offset = outputRef_.AltitudeRelative/1000.0f - leashing_target_.position.altitude;
 						leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
 						leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
 						yaw_leashing = outputRef_.Yawangle;    //take actual yaw
@@ -1099,7 +1109,7 @@ public:
 		break;
 
 		case LEASHING:
-			//TODO
+			pubLeashingStatus_.publish(leashing_status_);
 			if (new_state == true){
 				ROS_INFO("REF: LEASHING");
 				new_state = false;
@@ -1175,10 +1185,18 @@ public:
 					yaw_leashing = atan2(temp_point_x-(leashing_target_ned_.x+leashing_offset_ned_.x_offset), temp_point_y-(leashing_target_ned_.y+leashing_offset_ned_.y_offset));   //atan of vector point-wasp_reference, where wasp_reference is target+offset for leashing
 					break;
 				case 4:		//YAW_CONTROL_MODE_TOWARDS_ANCHOR
-					yaw_leashing = atan2(leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset) + M_PI;
+					if (leashing_offset_ned_.rho_offset > 0.2){
+						yaw_leashing = atan2(leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset) + M_PI;
+					} else {
+						//do nothing. Do not change yaw when leashing distance is too small because atan can be close to undefined
+					}
 					break;
 				case 5:		//YAW_CONTROL_MODE_AWAY_FROM_ANCHOR
-					yaw_leashing = atan2(leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset);
+					if (leashing_offset_ned_.rho_offset > 0.2){
+						yaw_leashing = atan2(leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset);
+					} else {
+						//do nothing. Do not change yaw when leashing distance is too small because atan can be close to undefined
+					}
 					break;
 			}
 			//Publish references in WGS84
@@ -1310,7 +1328,7 @@ mavros::Global_position_int Home_;
 
 reference::LeashingCommand leashing_command_;   //leashing
 reference::LeashingStatus leashing_status_;    //leashing
-geographic_msgs::GeoPoint leashing_target_;	 //leashing
+geographic_msgs::GeoPose leashing_target_;	 //leashing
 
 // STATES DEFINITION
 static const int ON_GROUND_NO_HOME = 10;         //TODO make a .h to include in both reference and mms
