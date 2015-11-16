@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   guidance_node_amsl
   mavros
   mms_msgs
+  wgs84_ned_lib
 )
 
 ## System dependencies are found with CMake's conventions

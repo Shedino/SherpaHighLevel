@@ -11,6 +11,7 @@
 #include "geographic_msgs/GeoPose.h"
 #include "geographic_msgs/GeoPoint.h"
 #include "geometry_msgs/Quaternion.h"
+#include <wgs84_ned_lib/wgs84_ned_lib.h> 
 
 #include <math.h>
 
@@ -33,6 +34,14 @@
 
 double PI = 3.1416; // pi
 
+class position_ned{
+	public:
+		double x;
+		double y;
+		double alt;
+		double yaw;
+};
+
 class UavSimNodeClass {
 public:
 	UavSimNodeClass(ros::NodeHandle& node){
@@ -54,6 +63,15 @@ public:
 	
 		rate = 10;
 		counter_print = 0;
+		
+		home_lat = 584943710;   //TERRA LAB
+		home_lon = 151015000;
+		home_alt = 100800;
+		
+		position_ned_.x = 0;
+		position_ned_.y = 0;
+		position_ned_.alt = 0;
+		position_ned_.yaw = 0;
 	}
 
 	
@@ -104,19 +122,10 @@ public:
 	{
 		counter_print++;
 		//pubToSafety_.publish(safety_);
-		pubToSystStatus_.publish(sys_status_);
-		if (globPosInt_.relative_alt <= 3000)
-			sonar_.distance = globPosInt_.relative_alt;
-		else
-			sonar_.distance = 0;
-		pubToSonar_.publish(sonar_);
-		quaternion_.x = 1;
-		quaternion_.y = 0;
-		quaternion_.z = 0;
-		quaternion_.w = 0;
 		
-		float error_lat;
-		float error_lon;
+		
+		//float error_lat;
+		//float error_lon;
 
 		switch(inputMmsStatus_.mms_state)
 		{
@@ -125,15 +134,15 @@ public:
 				sys_status_.armed = false;             //armed
 				sys_status_.voltage_battery = 15000;  //15 V
 				sys_status_.valid_ref_frame = 11;     //baro
-				globPosInt_.time_boot_ms = 0;
-				globPosInt_.lat = 584943710;     //TERRA LAB
-				globPosInt_.lon = 151015000;	//TERRA LAB
-				globPosInt_.alt = 100800;		//TERRA LAB
+				/*globPosInt_.time_boot_ms = 0;
+				globPosInt_.lat = home_lat;     //TERRA LAB
+				globPosInt_.lon = home_lon;	//TERRA LAB
+				globPosInt_.alt = home_alt;		//TERRA LAB
 				globPosInt_.relative_alt = 0; //starting from 0
 				globPosInt_.vx = 0;
 				globPosInt_.vy = 0;
 				globPosInt_.vz = 0;
-				globPosInt_.hdg = 0;            //degrees * 100
+				globPosInt_.hdg = 0;            //degrees * 100*/
 				break;
 
 			case SETTING_HOME:
@@ -161,17 +170,28 @@ public:
 					ROS_INFO("SIM: PERFORMING TAKEOFF");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
+				
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
+				position_ned_.alt += -directive_.vzBody / 10;
+				position_ned_.yaw += directive_.yawRate / 10;
+				
+				/*if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
 					globPosInt_.relative_alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 					globPosInt_.alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				} else {
 					globPosInt_.relative_alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
-				}
+				}*/
 				break;
 
 			case IN_FLIGHT:
-				if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
+				position_ned_.alt += -directive_.vzBody / 10;
+				position_ned_.yaw += directive_.yawRate / 10;
+				
+				/*if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
 					globPosInt_.relative_alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 					globPosInt_.alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				} else {
@@ -188,7 +208,7 @@ public:
 				if (error_lon <= -400) error_lon = -400;
 				if (error_lon > 0) globPosInt_.lon += ceil(error_lon/70.0f);
 				else globPosInt_.lon += floor(error_lon/70.0f);
-				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;
+				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;*/
 				break;
 
 			case PERFORMING_GO_TO:
@@ -197,7 +217,12 @@ public:
 					ROS_INFO("SIM: PERFORMING GO TO");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
+				position_ned_.alt += -directive_.vzBody / 10;
+				position_ned_.yaw += directive_.yawRate / 10;
+				
+				/*if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
 					globPosInt_.relative_alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 					globPosInt_.alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				} else {
@@ -214,16 +239,20 @@ public:
 				if (error_lon <= -400) error_lon = -400;
 				if (error_lon > 0) globPosInt_.lon += ceil(error_lon/70.0f);
 				else globPosInt_.lon += floor(error_lon/70.0f);
-				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;
+				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;*/
 				break;
 
-			case GRID:	
+			case GRID:
 				if (counter_print >= 30){
 					counter_print = 0;
 					ROS_INFO("SIM: PERFORMING GRID");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
+				position_ned_.alt += -directive_.vzBody / 10;
+				position_ned_.yaw += directive_.yawRate / 10;
+				/*if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
 					globPosInt_.relative_alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 					globPosInt_.alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				} else {
@@ -239,7 +268,7 @@ public:
 				if (error_lon >= 400) error_lon = 400;
 				if (error_lon <= -400) error_lon = -400;
 				if (error_lon > 0) globPosInt_.lon += ceil(error_lon/70.0f);
-				else globPosInt_.lon += floor(error_lon/70.0f);
+				else globPosInt_.lon += floor(error_lon/70.0f);*/
 				break;
 
 			case PERFORMING_LANDING:
@@ -248,13 +277,17 @@ public:
 					ROS_INFO("SIM: PERFORMING LANDING");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
+				position_ned_.alt += -directive_.vzBody / 10;
+				position_ned_.yaw += directive_.yawRate / 10;
+				/*if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
 					globPosInt_.relative_alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 					globPosInt_.alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				} else {
 					globPosInt_.relative_alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 					globPosInt_.alt += floor((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
-				}  
+				}  */
 				break;
 			
 			case MANUAL_FLIGHT:
@@ -265,7 +298,11 @@ public:
 					counter_print = 0;
 					ROS_INFO("SIM: PERFORMING LEASHING");
 				}
-				if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
+				position_ned_.alt += -directive_.vzBody / 10;
+				position_ned_.yaw += directive_.yawRate / 10;
+				/*if ((float)(reference_.AltitudeRelative - inputPos_.Altitude) > 0){
 					globPosInt_.relative_alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 					globPosInt_.alt += ceil((float)(reference_.AltitudeRelative - inputPos_.Altitude)/60.0f);
 				} else {
@@ -282,7 +319,7 @@ public:
 				if (error_lon <= -400) error_lon = -400;
 				if (error_lon > 0) globPosInt_.lon += ceil(error_lon/70.0f);
 				else globPosInt_.lon += floor(error_lon/70.0f);
-				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;
+				globPosInt_.hdg += (reference_.Yawangle - inputPos_.YawAngle)*180.0/M_PI*5;*/
 				break;
 		}
 		
@@ -294,14 +331,39 @@ public:
 				globPosInt_.lon = temp_lat;
 			}
 		}*/
+		
+		double temp_ref_latitude;
+		double temp_ref_longitude;
+		get_pos_WGS84_from_NED (&temp_ref_latitude, &temp_ref_longitude, position_ned_.x, position_ned_.y, home_lat/10000000.0f, home_lon/10000000.0f);
+		globPosInt_.time_boot_ms = 0;
+		globPosInt_.lat = int(temp_ref_latitude*10000000.0f);    
+		globPosInt_.lon = int(temp_ref_longitude*10000000.0f);	
+		globPosInt_.alt = int(position_ned_.alt*1000.0f) + home_alt;		
+		globPosInt_.relative_alt = int(position_ned_.alt*1000.0f); 
+		globPosInt_.vx = 0;
+		globPosInt_.vy = 0;
+		globPosInt_.vz = 0;
+		globPosInt_.hdg = position_ned_.yaw * 180 / M_PI * 100;            //degrees * 100*/
+		
 		pubToGlobPosInt_.publish(globPosInt_);
 		
-		geopoint_.latitude = globPosInt_.lat / 10000000.0f;
-		geopoint_.longitude = globPosInt_.lon / 10000000.0f;
+		geopoint_.latitude = ((double)globPosInt_.lat) / 10000000.0;
+		geopoint_.longitude = ((double)globPosInt_.lon) / 10000000.0;
 		geopoint_.altitude = globPosInt_.alt / 1000.0f;
 		geopose_.position = geopoint_;
+		quaternion_.x = cos(position_ned_.yaw/2);
+		quaternion_.y = 0;
+		quaternion_.z = 0;
+		quaternion_.w = sin(position_ned_.yaw/2);
 		geopose_.orientation = quaternion_;
 		pubGeopose_.publish(geopose_);
+		
+		pubToSystStatus_.publish(sys_status_);
+		if (globPosInt_.relative_alt <= 3000)
+			sonar_.distance = globPosInt_.relative_alt;
+		else
+			sonar_.distance = 0;
+		pubToSonar_.publish(sonar_);
 }
 
 
@@ -351,6 +413,12 @@ geographic_msgs::GeoPoint geopoint_;
 geometry_msgs::Quaternion quaternion_;
 
 int rate;
+
+int home_lat;
+int home_lon;
+int home_alt;
+
+position_ned position_ned_;
 
 uint16_t counter_print;
 

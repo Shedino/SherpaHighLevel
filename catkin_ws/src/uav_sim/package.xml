@@ -45,12 +45,14 @@
   <build_depend>guidance_node_amsl</build_depend>
   <build_depend>mms_msgs</build_depend>
   <build_depend>mavros</build_depend>
+  <build_depend>wgs84_ned_lib</build_depend>
 
   <run_depend>roscpp</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>guidance_node_amsl</run_depend>
   <run_depend>mms_msgs</run_depend>
   <run_depend>mavros</run_depend>
+  <run_depend>wgs84_ned_lib</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

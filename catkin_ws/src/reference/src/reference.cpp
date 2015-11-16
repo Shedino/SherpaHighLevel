@@ -117,7 +117,6 @@ public:
 		waiting_for_WP_execution_grid = false;
 
 		//LEASHING
-		leashing_received_terget = false;
 		yaw_leashing = 0;
 		leashing_status_.horizontal_control_mode = 0;  //none
 		leashing_status_.horizontal_distance = 0;
@@ -252,15 +251,12 @@ public:
 	}
 	
 	void readLeashingTarget(const geographic_msgs::GeoPose::ConstPtr& msg){
-		if (!leashing_received_terget) leashing_received_terget = true;
-		if (currentState == LEASHING){
-			leashing_target_ = *msg;
-			double temp_x, temp_y;
-			get_pos_NED_from_WGS84 (&temp_x, &temp_y, leashing_target_.position.latitude, leashing_target_.position.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-			leashing_target_ned_.x = temp_x;
-			leashing_target_ned_.y = temp_y;
-			leashing_target_ned_.z = leashing_target_.position.altitude;
-		}
+		leashing_target_ = *msg;
+		double temp_x, temp_y;
+		get_pos_NED_from_WGS84 (&temp_x, &temp_y, leashing_target_.position.latitude, leashing_target_.position.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+		leashing_target_ned_.x = temp_x;
+		leashing_target_ned_.y = temp_y;
+		leashing_target_ned_.z = leashing_target_.position.altitude;
 	}
 	
 	void readLeashingCommand(const reference::LeashingCommand::ConstPtr& msg){
@@ -386,24 +382,34 @@ public:
 			{
 				if (inputCmd_.param1 == 1){
 					//initial offset
-					/*if (leashing_received_terget){        //TODO reset flag when leashing is over
-						double temp_reference_x, temp_reference_y;
-						get_pos_NED_from_WGS84 (&temp_reference_x, &temp_reference_y, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-						double temp_target_x, temp_target_y;
-						get_pos_NED_from_WGS84 (&temp_target_x, &temp_target_y, leashing_target_.position.latitude, leashing_target_.position.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-						leashing_offset_ned_.x_offset = temp_reference_x - temp_target_x;          //initial offset
-						leashing_offset_ned_.y_offset = temp_reference_y - temp_target_y;
-						leashing_offset_ned_.z_offset = outputRef_.AltitudeRelative/1000.0f - leashing_target_.position.altitude;
-						leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
-						leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
-						yaw_leashing = outputRef_.Yawangle;    //take actual yaw
-					} else { */                                    //not received target topic
-						leashing_offset_ned_.x_offset = 0;
+					//we should have already the target, but better add sanity check
+					double temp_reference_x, temp_reference_y;
+					get_pos_NED_from_WGS84 (&temp_reference_x, &temp_reference_y, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+					double temp_target_x, temp_target_y;
+					get_pos_NED_from_WGS84 (&temp_target_x, &temp_target_y, leashing_target_.position.latitude, leashing_target_.position.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+					leashing_offset_ned_.x_offset = temp_reference_x - temp_target_x;          //initial offset
+					leashing_offset_ned_.y_offset = temp_reference_y - temp_target_y;
+					leashing_offset_ned_.z_offset = outputRef_.AltitudeRelative/1000.0f - leashing_target_.position.altitude;
+					if (leashing_offset_ned_.x_offset > 10 || leashing_offset_ned_.y_offset > 10 || leashing_offset_ned_.z_offset > 15){   //target-wasp too far
+						//TODO maybe it is better to abort leashing
+						ROS_INFO("REF: LEASHING target-wasp too far");
+						leashing_offset_ned_.x_offset = 0;          //initial offset
 						leashing_offset_ned_.y_offset = 0;
-						leashing_offset_ned_.z_offset = 2;
-						leashing_offset_ned_.rho_offset = 0;
+						leashing_offset_ned_.z_offset =	3;
+					}
+					leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
+					if (leashing_offset_ned_.rho_offset > 0.1){
+						leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.x_offset,leashing_offset_ned_.y_offset);
+					} else {
 						leashing_offset_ned_.psi_offset = 0;
-					//}
+					}
+					yaw_leashing = outputRef_.Yawangle;    //take actual yaw
+					
+					/*leashing_offset_ned_.x_offset = 0;
+					leashing_offset_ned_.y_offset = 0;
+					leashing_offset_ned_.z_offset = 2;
+					leashing_offset_ned_.rho_offset = 0;
+					leashing_offset_ned_.psi_offset = 0;*/
 				}
 			}break;
 		}
@@ -1013,6 +1019,7 @@ public:
 					grid_ack_.grid_completed = true;
 					grid_ack_.completion_type = 1;      //success
 					pubGridAck_.publish(grid_ack_);
+					tempRef_ = outputRef_;
 				} else if (WP_completed_grid==N_WP && success_grid && repeat_flag){  //completed grid but repeat_flag is on
 					//START GRID again until termination command
 					WP_completed_grid = 0;   //reset to first WP to start over
@@ -1022,6 +1029,7 @@ public:
 					grid_ack_.grid_completed = true;
 					grid_ack_.completion_type = 0;      //generic failure
 					pubGridAck_.publish(grid_ack_);
+					tempRef_ = outputRef_;
 				}
 			}
 		break;
@@ -1112,12 +1120,10 @@ public:
 			}
 			switch (leashing_status_.horizontal_control_mode){
 				case 0:	//HORIZONTAL_CONTROL_MODE_NONE
-					//ROS_INFO("REF: LEASHING HORIZONTAL NONE");
-					//WHAT HERE?? TODO
+					//NEUTRAL MODE. DO NOTHING
 					break;
 				case 1:	//HORIZONTAL_CONTROL_MODE_KEEP_DISTANCE
-					//ROS_INFO("REF: LEASHING HORIZONTAL KEEP DISTANCE");
-					//WHAT HERE?? TODO
+					
 					break;
 				case 2:	//HORIZONTAL_CONTROL_MODE_DISTANCE_HEADING_ABSOLUTE
 					//ROS_INFO("REF: LEASHING HORIZONTAL ABSOLUTE");
@@ -1168,7 +1174,7 @@ public:
 			
 			switch (leashing_status_.vertical_control_mode){
 				case 0:		//VERTICAL_CONTROL_MODE_NONE
-					//WHAT HERE?? TODO
+
 					break;
 				case 1:		//VERTICAL_CONTROL_MODE_KEEP
 					//WHAT HERE?? TODO
@@ -1197,14 +1203,14 @@ public:
 					yaw_leashing = atan2(temp_point_y-(leashing_target_ned_.y+leashing_offset_ned_.y_offset), temp_point_x-(leashing_target_ned_.x+leashing_offset_ned_.x_offset));   //atan of vector point-wasp_reference, where wasp_reference is target+offset for leashing
 					break;
 				case 4:		//YAW_CONTROL_MODE_TOWARDS_ANCHOR
-					if (leashing_offset_ned_.rho_offset > 0.2){
+					if (leashing_offset_ned_.rho_offset > 0.1){
 						yaw_leashing = atan2(leashing_offset_ned_.y_offset, leashing_offset_ned_.x_offset) + M_PI;
 					} else {
 						//do nothing. Do not change yaw when leashing distance is too small because atan can be close to undefined
 					}
 					break;
 				case 5:		//YAW_CONTROL_MODE_AWAY_FROM_ANCHOR
-					if (leashing_offset_ned_.rho_offset > 0.2){
+					if (leashing_offset_ned_.rho_offset > 0.1){
 						yaw_leashing = atan2(leashing_offset_ned_.y_offset, leashing_offset_ned_.x_offset);
 					} else {
 						//do nothing. Do not change yaw when leashing distance is too small because atan can be close to undefined
@@ -1219,14 +1225,15 @@ public:
 			outputRef_.AltitudeRelative = (leashing_target_ned_.z + leashing_offset_ned_.z_offset)*1000.0f;
 			outputRef_.Yawangle = yaw_leashing;
 			pubToReference_.publish(outputRef_);
-			ROS_INFO("REF: LEASHING: %d - %f - %f - %f - %f", leashing_status_.horizontal_control_mode, leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset, leashing_offset_ned_.rho_offset, leashing_offset_ned_.psi_offset);
+			tempRef_ = outputRef_;
+			//ROS_INFO("REF: LEASHING: %d - %f - %f - %f - %f", leashing_status_.horizontal_control_mode, leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset, leashing_offset_ned_.rho_offset, leashing_offset_ned_.psi_offset);
 			leashing_status_.horizontal_distance = leashing_offset_ned_.rho_offset;
 			leashing_status_.horizontal_heading = leashing_offset_ned_.psi_offset;
 			leashing_status_.distance_north = leashing_offset_ned_.x_offset;
 			leashing_status_.distance_east = leashing_offset_ned_.y_offset;
 			leashing_status_.vertical_distance = leashing_offset_ned_.z_offset;
 			leashing_status_.yaw = yaw_leashing;
-			pubLeashingStatus_.publish(leashing_status_);
+			pubLeashingStatus_.publish(leashing_status_);  //TODO maybe modify this to include failures
 			break;
 		
 		case PERFORMING_LANDING:
@@ -1404,7 +1411,6 @@ mms_msgs::Grid_ack grid_ack_;
 leashing_target_ned leashing_target_ned_;
 leashing_offset_ned leashing_offset_ned_;
 double yaw_leashing;
-bool leashing_received_terget;
 
 
 private:
