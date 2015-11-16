@@ -34,7 +34,7 @@ double eps_LAND = 10000.0; // distance to the target LAND position in millimeter
 double eps_WP = 50.0; // distance to the target WAYPOINT position in millimeters           //TODO no hardcoded
 double eps_TO = 50.0; // distance to the target TAKEOFF position in millimeters
 double eps_alt = 50.0; // distance to the target altitude in millimeters
-double eps_YAW = 20.0; // distance to the target YAW position in deg
+double eps_YAW = 10.0; // distance to the target YAW position in deg
 
 class MmsNodeClass {
 public:

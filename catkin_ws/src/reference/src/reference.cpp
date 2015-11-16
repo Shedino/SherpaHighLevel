@@ -955,6 +955,13 @@ public:
 
 		case GRID:
 			{
+				if (new_state == true)
+				{
+					ROS_INFO("REF: GRID");
+					new_state = false;
+					WP_completed_grid = 0;	//reset grid related variables
+					ROS_INFO("REF->NAV: REFERENCE = GRID");
+				}
 				if (received_grid_cmd && !waiting_for_vertex_grid){   //have received all vertexes
 					ROS_INFO("REF: GRID. Starting GRID alg. N. vertex: %d - Distance: %f", vertex_grid_n, d_grid);
 					for (int i = 0; i < vertex_grid_n; i++){
@@ -1014,17 +1021,17 @@ public:
 						waiting_for_WP_execution_grid = false;
 						WP_completed_grid++;
 					}
-				} else if (WP_completed_grid==N_WP && success_grid && !repeat_flag){ //completed grid and repeat_flag is off
+				} else if (waiting_for_WP_execution_grid && WP_completed_grid==N_WP && success_grid && !repeat_flag){ //completed grid and repeat_flag is off
 					//GRID execution ended. Return EVENT to MMS
 					grid_ack_.grid_completed = true;
 					grid_ack_.completion_type = 1;      //success
 					pubGridAck_.publish(grid_ack_);
 					tempRef_ = outputRef_;
-				} else if (WP_completed_grid==N_WP && success_grid && repeat_flag){  //completed grid but repeat_flag is on
+				} else if (waiting_for_WP_execution_grid && WP_completed_grid==N_WP && success_grid && repeat_flag){  //completed grid but repeat_flag is on
 					//START GRID again until termination command
 					WP_completed_grid = 0;   //reset to first WP to start over
 					ROS_INFO("REF->GRID: Restarting GRID because repeat_flag");
-				} else if (!success_grid){
+				} else if (!success_grid && !waiting_for_vertex_grid){
 					//FAIL
 					grid_ack_.grid_completed = true;
 					grid_ack_.completion_type = 0;      //generic failure

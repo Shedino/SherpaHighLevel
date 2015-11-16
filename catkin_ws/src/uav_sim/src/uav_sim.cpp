@@ -12,6 +12,7 @@
 #include "geographic_msgs/GeoPoint.h"
 #include "geometry_msgs/Quaternion.h"
 #include <wgs84_ned_lib/wgs84_ned_lib.h> 
+#include <tf/transform_datatypes.h>
 
 #include <math.h>
 
@@ -351,10 +352,11 @@ public:
 		geopoint_.longitude = ((double)globPosInt_.lon) / 10000000.0;
 		geopoint_.altitude = globPosInt_.alt / 1000.0f;
 		geopose_.position = geopoint_;
-		quaternion_.x = cos(position_ned_.yaw/2);
-		quaternion_.y = 0;
-		quaternion_.z = 0;
-		quaternion_.w = sin(position_ned_.yaw/2);
+		quaternion_ = tf::createQuaternionMsgFromRollPitchYaw(0,0,position_ned_.yaw);
+		//quaternion_.x = cos(position_ned_.yaw/2);
+		//quaternion_.y = 0;
+		//quaternion_.z = 0;
+		//quaternion_.w = sin(position_ned_.yaw/2);
 		geopose_.orientation = quaternion_;
 		pubGeopose_.publish(geopose_);
 		
