@@ -26,6 +26,7 @@
 // #define READY_TO_LAND 110
 #define PERFORMING_LANDING 120
 #define LEASHING 140
+#define PAUSED 150
 #define MANUAL_FLIGHT 1000
 
 
@@ -81,6 +82,8 @@ public:
 		SAFETY_OFF = false;
 		LEASHING_START = false;
 		LEASHING_END = false;
+		PAUSE = false;
+		CONTINUE = false;
 
 		//Init something
 		currentState = ON_GROUND_NO_HOME;
@@ -276,7 +279,7 @@ public:
 			}break;
 			case 25:  // MAV_CMD_NAV_FOLLOW (LEASHING)
 			{
-				seq_number = inputCmd_.seq;
+				//seq_number = inputCmd_.seq;
 				if (inputCmd_.param1 == 1){
 					LEASHING_START = true;
 					ROS_INFO("MMS: CMD_LEASHING_START");
@@ -289,6 +292,24 @@ public:
 					outputAckMission_.mav_mission_accepted = false;
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED (LEASHING). WRONG PARAM1");
+				}
+				
+			}break;
+			case 252:  // MAV_CMD_OVERRIDE_GOTO (PAUSE/CONTINUE)
+			{
+				//seq_number = inputCmd_.seq;
+				if (inputCmd_.param1 == 0){          //PAUSE
+					PAUSE = true;
+					ROS_INFO("MMS: CMD_PAUSE");
+				} else if (inputCmd_.param1 == 1){		//CONTINUE
+					CONTINUE = true;
+					ROS_INFO("MMS: CMD_CONTINUE");
+				} else {
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = seq_number;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED (PAUSE/CONTINUE). WRONG PARAM1");
 				}
 				
 			}break;
@@ -308,6 +329,8 @@ public:
 		SAFETY_OFF = false;
 		LEASHING_START = false;
 		LEASHING_END = false;
+		PAUSE = false;
+		CONTINUE = false;
 	}
 
 	void MMS_Handle()
@@ -591,45 +614,6 @@ public:
 						}
 				break;
 		
-				// this state is exlcuded from the state machine because it is useless when we don't want to use the MISSION_START 
-				/*case ON_GROUND_READY_TO_TAKEOFF:
-
-				if (LAND) // TODO automatic disarming
-				{
-					set_events_false();
-					ARMED = true;
-
-					outputAckMission_.mission_item_reached = false;
-					outputAckMission_.seq = inputCmd_.seq;
-					outputAckMission_.mav_mission_accepted = true;
-					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-					outputArm_.arm_disarm = false;
-					outputArm_.new_arm_disarm = true;
-					// pubToArm_.publish(outputArm_); // TODO automatic disarming
-					ROS_INFO("MMS->APM: DISARMING");
-
-					currentState = DISARMING;
-					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = 6;//inputCmd_.frame;
-					pubToMmsStatus_.publish(outputMmsStatus_);
-					ROS_INFO("MMS->REF: CURRENT_STATE = DISARMING");
-					counter_ = 0;     //start timing to rearm
-					break;
-				}
-				if (MISSION_START)
-				{
-					set_events_false();
-
-					currentState = PERFORMING_TAKEOFF;
-					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = target_frame;
-					pubToMmsStatus_.publish(outputMmsStatus_);
-					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_TAKEOFF");
-					break;
-				}
-				break;*/
 
 			case PERFORMING_TAKEOFF:
 
@@ -793,59 +777,7 @@ public:
 					ROS_INFO("MMS->REF: CURRENT_STATE = LEASHING");
 				}
 				break;
-			// this state is exlcuded from the state machine because it is useless when we don't want to use the MISSION_START
-			/*case READY_TO_GO:
-
-				if (LAND)
-				{
-					set_events_false();
-					LAND = true;
-
-					outputAckMission_.mission_item_reached = false;
-					outputAckMission_.seq = inputCmd_.seq;
-					outputAckMission_.mav_mission_accepted = true;
-					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-					currentState = READY_TO_LAND;
-					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = target_frame;
-					pubToMmsStatus_.publish(outputMmsStatus_);
-					ROS_INFO("MMS->REF: CURRENT_STATE = READY_TO_LAND");
-
-					break;
-				}
-				if (WAYPOINT)
-				{
-					set_events_false();
-
-					outputAckMission_.mission_item_reached = false;
-					outputAckMission_.seq = inputCmd_.seq;
-					outputAckMission_.mav_mission_accepted = true;
-					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-					currentState = READY_TO_GO;
-					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = target_frame;//inputCmd_.frame;
-					pubToMmsStatus_.publish(outputMmsStatus_);
-					ROS_INFO("MMS->REF: CURRENT_STATE = READY_TO_GO");
-
-					break;
-				}
-				if (MISSION_START)
-				{
-					set_events_false();
-
-					currentState = PERFORMING_GO_TO;
-					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = target_frame;
-					pubToMmsStatus_.publish(outputMmsStatus_);
-					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_GO_TO");
-
-					break;
-				}
-				break;*/
+			
 
 			case GRID:
 				
@@ -915,6 +847,15 @@ public:
 						pubToAckMission_.publish(outputAckMission_);
 						ROS_INFO("MMS->GCS: GRID FINISHED NOT SUCCESFULLY");
 					}
+				}
+				if (PAUSE){
+					set_events_false();
+					previousState = currentState;   //save last state in previousState
+					currentState = PAUSED;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PAUSED");
 				}
 				break;
 
@@ -1034,8 +975,17 @@ public:
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS: CURRENT_STATE = BACK TO OLD ONE: %d",currentState);
-
-					break;
+				}
+				break;
+				
+			case PAUSED:
+				if (CONTINUE){
+					set_events_false();
+					currentState = previousState;   //rolling back to last state
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS: CURRENT_STATE = BACK TO OLD ONE: %d",currentState);
 				}
 				break;
 			
@@ -1150,6 +1100,8 @@ bool SAFETY_ON;
 bool SAFETY_OFF;
 bool LEASHING_START;
 bool LEASHING_END;
+bool PAUSE;
+bool CONTINUE;
 // static bool CONDITION_YAW = false;
 
 // INPUTS APM -> MMS
