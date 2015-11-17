@@ -17,9 +17,9 @@
 #include "geographic_msgs/GeoPose.h"	 //leashing
 #include <wgs84_ned_lib/wgs84_ned_lib.h>       
 
-double eps_WP = 1500.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here
-double eps_alt = 500.0; // distance to the target altitude in millimeters
-double eps_YAW = 20.0; // distance to the target YAW position in deg
+double eps_WP = 100.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here MAKE PARAMETER SERVER
+double eps_alt = 100.0; // distance to the target altitude in millimeters
+double eps_YAW = 10.0; // distance to the target YAW position in deg
 
 double PI = 3.1416; // pi
 
@@ -345,6 +345,7 @@ public:
 					}
 					if (received_vertexes_grid == vertex_grid_n){
 						waiting_for_vertex_grid = false;       //received all the vertexes
+						received_vertexes_grid = 0;
 						break;                      //exit for cycle, we have all vertexes
 					}
 				}
@@ -959,9 +960,10 @@ public:
 				{
 					ROS_INFO("REF: GRID");
 					new_state = false;
-					WP_completed_grid = 0;	//reset grid related variables
+					//WP_completed_grid = 0;	//reset grid related variables
 					ROS_INFO("REF->NAV: REFERENCE = GRID");
 				}
+				//ROS_INFO("REF: GRID: Received_cmd %d - Waiting vertex %d", received_grid_cmd, waiting_for_vertex_grid);
 				if (received_grid_cmd && !waiting_for_vertex_grid){   //have received all vertexes
 					ROS_INFO("REF: GRID. Starting GRID alg. N. vertex: %d - Distance: %f", vertex_grid_n, d_grid);
 					for (int i = 0; i < vertex_grid_n; i++){
@@ -1023,22 +1025,24 @@ public:
 					}
 				} else if (WP_completed_grid==N_WP && success_grid && !repeat_flag){ //completed grid and repeat_flag is off
 					//GRID execution ended. Return EVENT to MMS
+					ROS_INFO("REF->GRID: GRID COMPLETED!");
 					grid_ack_.grid_completed = true;
 					grid_ack_.completion_type = 1;      //success
 					pubGridAck_.publish(grid_ack_);
 					tempRef_ = outputRef_;
-					waiting_for_vertex_grid = false;
+					WP_completed_grid = 0;
 				} else if (WP_completed_grid==N_WP && success_grid && repeat_flag){  //completed grid but repeat_flag is on
 					//START GRID again until termination command
 					WP_completed_grid = 0;   //reset to first WP to start over
 					ROS_INFO("REF->GRID: Restarting GRID because repeat_flag");
-				} else if (!success_grid && !waiting_for_vertex_grid){
+				} else if (!success_grid){
 					//FAIL
+					ROS_INFO("REF->GRID: GRID Alg failed");
 					grid_ack_.grid_completed = true;
 					grid_ack_.completion_type = 0;      //generic failure
 					pubGridAck_.publish(grid_ack_);
 					tempRef_ = outputRef_;
-					waiting_for_vertex_grid = false;
+					WP_completed_grid = 0;
 				}
 			}
 		break;
