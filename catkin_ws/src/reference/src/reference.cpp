@@ -99,6 +99,7 @@ public:
 		received_grid_cmd = false;
 		waiting_for_vertex_grid = false;
 		repeat_flag = false;
+		executing_grid = false;
 		vertex_grid_n = 0;
 		received_vertexes_grid = 0;
 		speed_grid = 0;
@@ -889,49 +890,56 @@ public:
 						gridInfo.N_WP = N_WP;
 						gridInfo.exec_time = grid_exec_time;
 						pubGridInfo_.publish(gridInfo);
-						ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f - Exec time: %f - Distance: %f", success_grid, N_WP, speed_grid, height_grid, grid_exec_time, tot_distance);
-						/*ROS_INFO("REF: GRID! New vertex: %d", vertex_grid_n);
-						for (int i = 0; i < N_WP; i++){
-							ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP[i][0], WP[i][1]);
-						}*/
 						received_grid_cmd = false;     //WP calculated. Now they need to be sent as reference
-					}
-					if (WP_completed_grid<N_WP && !waiting_for_WP_execution_grid && success_grid){           
-						waiting_for_WP_execution_grid = true;
-						double temp_ref_latitude;
-						double temp_ref_longitude;
-						get_pos_WGS84_from_NED (&temp_ref_latitude, &temp_ref_longitude, WP[WP_completed_grid][0], WP[WP_completed_grid][1], Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-						outputRef_.Latitude = (int)(temp_ref_latitude * 10000000.0f);
-						outputRef_.Longitude = (int)(temp_ref_longitude * 10000000.0f);
-						outputRef_.AltitudeRelative = height_grid * 1000.0f;  //yaw should be already the last target  //TODO maybe we can set yaw from mission, for example pointing in the direciton of flight
-						outputRef_.frame = actual_frame;                 //TODO check this with Nicola
-						ROS_INFO("REF->GRID: Sent a WP: %f - %f", WP[WP_completed_grid][0], WP[WP_completed_grid][1]);
-						pubToReference_.publish(outputRef_);
-						tempRef_ = outputRef_;
-					} else if (waiting_for_WP_execution_grid && success_grid){
-						//Waiting for the execution of the WP
-						distance();
-						outputDist_.error_pos = error_to_t.error_pos;
-						outputDist_.error_ang = error_to_t.error_ang;
-						outputDist_.error_alt = error_to_t.error_alt;
-						outputDist_.command = 160; // GRID
-						pubToDistance_.publish(outputDist_);
-						if (outputDist_.error_pos < eps_WP && outputDist_.error_ang < eps_YAW && outputDist_.error_alt < eps_alt){
-							//WP reached
-							waiting_for_WP_execution_grid = false;
-							WP_completed_grid++;
+						if (success_grid){
+							ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f - Exec time: %f - Distance: %f", success_grid, N_WP, speed_grid, height_grid, grid_exec_time, tot_distance);
+							/*ROS_INFO("REF: GRID! New vertex: %d", vertex_grid_n);
+							for (int i = 0; i < N_WP; i++){
+								ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP[i][0], WP[i][1]);
+							}*/
+							executing_grid = true;
 						}
-					} else if (WP_completed_grid==N_WP && success_grid && !repeat_flag){ //completed grid and repeat_flag is off
-						//GRID execution ended. Return EVENT to MMS
-						ROS_INFO("REF->GRID: GRID COMPLETED!");
-						grid_ack_.grid_completed = true;
-						grid_ack_.completion_type = 1;      //success
-						pubGridAck_.publish(grid_ack_);
-						WP_completed_grid = 0;
-					} else if (WP_completed_grid==N_WP && success_grid && repeat_flag){  //completed grid but repeat_flag is on
-						//START GRID again until termination command
-						WP_completed_grid = 0;   //reset to first WP to start over
-						ROS_INFO("REF->GRID: Restarting GRID because repeat_flag");
+					}
+					if (executing_grid){
+						if (WP_completed_grid<N_WP && !waiting_for_WP_execution_grid){           
+							waiting_for_WP_execution_grid = true;
+							double temp_ref_latitude;
+							double temp_ref_longitude;
+							get_pos_WGS84_from_NED (&temp_ref_latitude, &temp_ref_longitude, WP[WP_completed_grid][0], WP[WP_completed_grid][1], Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+							outputRef_.Latitude = (int)(temp_ref_latitude * 10000000.0f);
+							outputRef_.Longitude = (int)(temp_ref_longitude * 10000000.0f);
+							outputRef_.AltitudeRelative = height_grid * 1000.0f;  //yaw should be already the last target  //TODO maybe we can set yaw from mission, for example pointing in the direciton of flight
+							outputRef_.frame = actual_frame;                 //TODO check this with Nicola
+							ROS_INFO("REF->GRID: Sent a WP: %f - %f", WP[WP_completed_grid][0], WP[WP_completed_grid][1]);
+							pubToReference_.publish(outputRef_);
+							tempRef_ = outputRef_;
+						} else if (waiting_for_WP_execution_grid){
+							//Waiting for the execution of the WP
+							distance();
+							outputDist_.error_pos = error_to_t.error_pos;
+							outputDist_.error_ang = error_to_t.error_ang;
+							outputDist_.error_alt = error_to_t.error_alt;
+							outputDist_.command = 160; // GRID
+							pubToDistance_.publish(outputDist_);
+							if (outputDist_.error_pos < eps_WP && outputDist_.error_ang < eps_YAW && outputDist_.error_alt < eps_alt){
+								//WP reached
+								waiting_for_WP_execution_grid = false;
+								WP_completed_grid++;
+							}
+						} else if (WP_completed_grid==N_WP && !repeat_flag){ //completed grid and repeat_flag is off
+							//GRID execution ended. Return EVENT to MMS
+							ROS_INFO("REF->GRID: GRID COMPLETED!");
+							grid_ack_.grid_completed = true;
+							grid_ack_.completion_type = 1;      //success
+							pubGridAck_.publish(grid_ack_);
+							WP_completed_grid = 0;
+							executing_grid = false;
+						} else if (WP_completed_grid==N_WP && repeat_flag){  //completed grid but repeat_flag is on
+							//START GRID again until termination command
+							//TODO make the WP running in opposite way to save time!!
+							WP_completed_grid = 0;   //reset to first WP to start over
+							ROS_INFO("REF->GRID: Restarting GRID because repeat_flag");
+						}
 					} else if (!success_grid){
 						//FAIL
 						ROS_INFO("REF->GRID: GRID Alg failed");
@@ -939,6 +947,7 @@ public:
 						grid_ack_.completion_type = 0;      //generic failure
 						pubGridAck_.publish(grid_ack_);
 						WP_completed_grid = 0;
+						executing_grid = false;
 					}
 				}
 			break;
@@ -1329,6 +1338,7 @@ float **WP;        //OUTPUT
 int N_WP;      //OUTPUT
 int WP_completed_grid;
 bool waiting_for_WP_execution_grid;
+bool executing_grid;
 mms_msgs::Grid_ack grid_ack_;
 
 //LEASHING RELATED
