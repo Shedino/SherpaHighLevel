@@ -858,6 +858,7 @@ public:
 					{
 						ROS_INFO("REF: GRID");
 						new_state = false;
+						pubToReference_.publish(tempRef_);    //used mainly to roll back from pause //TODO don't like this!!
 						//WP_completed_grid = 0;	//reset grid related variables
 						ROS_INFO("REF->NAV: REFERENCE = GRID");
 					}
@@ -1226,7 +1227,9 @@ public:
 						new_frame = false;
 					}
 				//TODO manual velocity control here
-				
+				get_current_position();
+				pubToReference_.publish(outputRef_);
+				//TODO frame stuff
 				break;
 		}
 }
