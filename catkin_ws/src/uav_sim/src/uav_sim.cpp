@@ -11,6 +11,7 @@
 #include "geographic_msgs/GeoPose.h"
 #include "geographic_msgs/GeoPoint.h"
 #include "geometry_msgs/Quaternion.h"
+#include "qos_sensors_autopilot/Qos_sensors.h"
 #include <wgs84_ned_lib/wgs84_ned_lib.h> 
 #include <tf/transform_datatypes.h>
 
@@ -62,6 +63,7 @@ public:
 		pubToGlobPosInt_ = n_.advertise<mavros::Global_position_int>("/global_position_int",10);
 		pubToSonar_ = n_.advertise<mavros::Sonar>("/sonar",10);
 		pubGeopose_ = n_.advertise<geographic_msgs::GeoPose>("geopose",10);
+		pubQosSensors_ = n_.advertise<qos_sensors_autopilot::Qos_sensors>("/qos_sensors",2);
 	
 		rate = 10;
 		counter_print = 0;
@@ -74,6 +76,19 @@ public:
 		position_ned_.y = 0;
 		position_ned_.alt = 0;
 		position_ned_.yaw = 0;
+		
+		qos_sens_.camera_present = false;
+		qos_sens_.camera_working = false;
+		qos_sens_.camera_failure_counter = 0;
+		qos_sens_.sonar_present = false;
+		qos_sens_.sonar_working = false;
+		qos_sens_.sonar_failure_counter = 0;
+		qos_sens_.artva_present = false;
+		qos_sens_.artva_working = false;
+		qos_sens_.artva_failure_counter = 0;
+		qos_sens_.laser_present = false;
+		qos_sens_.laser_working = false;
+		qos_sens_.laser_failure_counter = 0;
 	}
 
 	
@@ -267,6 +282,7 @@ public:
 		else
 			sonar_.distance = 0;
 		pubToSonar_.publish(sonar_);
+		pubQosSensors_.publish(qos_sens_);
 }
 
 
@@ -274,7 +290,32 @@ public:
 
 void run() {
 	ros::Rate loop_rate(rate);
-
+	
+	//read parameters here
+	bool camera_pres;
+	bool sonar_pres;
+	bool artva_pres;
+	bool laser_pres;
+	if (n_.getParam("uav_sim/camera_present", camera_pres)){
+		qos_sens_.camera_present = camera_pres;
+		qos_sens_.camera_working = camera_pres;
+		ROS_INFO("SIM: Camera present: %s", qos_sens_.camera_present ? "yeah" : "nooo");
+	}
+	if (n_.getParam("uav_sim/sonar_present", sonar_pres)){
+		qos_sens_.sonar_present = sonar_pres;
+		qos_sens_.sonar_working = sonar_pres;
+		ROS_INFO("SIM: Sonar present: %s", qos_sens_.sonar_present ? "yeah" : "nooo");
+	}
+	if (n_.getParam("uav_sim/artva_present", artva_pres)){
+		qos_sens_.artva_present = artva_pres;
+		qos_sens_.artva_working = artva_pres;
+		ROS_INFO("SIM: ARTVA present: %s", qos_sens_.artva_present ? "yeah" : "nooo");
+	}
+	if (n_.getParam("uav_sim/laser_present", laser_pres)){
+		qos_sens_.laser_present = laser_pres;
+		qos_sens_.laser_working = laser_pres;
+		ROS_INFO("SIM: Laser present: %s", qos_sens_.laser_present ? "yeah" : "nooo");
+	}
 	while (ros::ok())
 	{
 		ROS_INFO_ONCE("SIM: RUNNING");
@@ -300,6 +341,7 @@ ros::Publisher pubToSystStatus_;
 ros::Publisher pubToGlobPosInt_;
 ros::Publisher pubToSonar_;
 ros::Publisher pubGeopose_;
+ros::Publisher pubQosSensors_;
 
 
 guidance_node_amsl::Directive directive_;
@@ -310,6 +352,7 @@ mavros::Global_position_int globPosInt_;
 mavros::Safety safety_;
 mavros::Sonar sonar_;
 mms_msgs::Sys_status sys_status_;
+qos_sensors_autopilot::Qos_sensors qos_sens_;
 
 geographic_msgs::GeoPose geopose_;
 geographic_msgs::GeoPoint geopoint_;

@@ -33,12 +33,16 @@ public:
 		
 		qos_sens_.camera_present = false;
 		qos_sens_.camera_working = false;
+		qos_sens_.camera_failure_counter = 0;
 		qos_sens_.sonar_present = false;
 		qos_sens_.sonar_working = false;
+		qos_sens_.sonar_failure_counter = 0;
 		qos_sens_.artva_present = false;
 		qos_sens_.artva_working = false;
+		qos_sens_.artva_failure_counter = 0;
 		qos_sens_.laser_present = false;
 		qos_sens_.laser_working = false;
+		qos_sens_.laser_failure_counter = 0;
 		
 		qos_autop_.autopilot_connected = false;
 		qos_autop_.receiving_position = false;
