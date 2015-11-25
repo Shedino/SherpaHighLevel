@@ -68,9 +68,13 @@ public:
 		rate = 10;
 		counter_print = 0;
 		
-		home_lat = 584943710;   //TERRA LAB
+		/*home_lat = 584943710;   //TERRA LAB
 		home_lon = 151015000;
-		home_alt = 100800;
+		home_alt = 100800;*/
+
+		home_lat = 441532780;   //CESENA LAB
+		home_lon = 122414260;
+		home_alt = 41000;
 		
 		position_ned_.x = 0;
 		position_ned_.y = 0;

@@ -17,8 +17,8 @@
 #include "geographic_msgs/GeoPose.h"	 //leashing
 #include <wgs84_ned_lib/wgs84_ned_lib.h>       
 
-double eps_WP = 100.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here MAKE PARAMETER SERVER
-double eps_alt = 100.0; // distance to the target altitude in millimeters
+double eps_WP = 400.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here MAKE PARAMETER SERVER
+double eps_alt = 400.0; // distance to the target altitude in millimeters
 double eps_YAW = 10.0; // distance to the target YAW position in deg
 
 double PI = 3.1416; // pi

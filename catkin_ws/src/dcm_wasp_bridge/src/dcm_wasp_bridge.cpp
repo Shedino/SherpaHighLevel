@@ -1,16 +1,17 @@
 #include "ros/ros.h"
 
-#include "mms_msgs/Cmd.h" // input
+#include "geographic_msgs/GeoPose.h" //geopose
 
 class DcmWaspBridgeClass {
 public:
 	DcmWaspBridgeClass(ros::NodeHandle& node){
 
-		n_=node;
+		n_ = node;
 
 		//subscribers
-		//subFromCmd_=n_.subscribe("/sent_command", 10, &DcmWaspBridgeClass::readCmdMessage,this); //subscribe to "sent_command" to exclude the "cmd_verifier" node
+		subGeopose_ = n_.subscribe("geopose", 10, &DcmWaspBridgeClass::readGeopose,this); //subscribe to geopose
 		
+
 		// publishers
 		//pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
 
@@ -19,12 +20,9 @@ public:
 		counter_ = 0;
 	}
 
-	/*void readGridAckMessage(const mms_msgs::Grid_ack::ConstPtr& msg){
-		Grid_ack_.grid_completed = msg->grid_completed;
-		Grid_ack_.completion_type = msg->completion_type;
-		if (Grid_ack_.grid_completed) GRID_ENDED = true;
-		else GRID_ENDED = false;
-	}*/
+	void readGeopose(const geographic_msgs::GeoPose::ConstPtr& msg){
+		geopose_ = *msg;
+	}
 
 	void dcm_bridge_handle()
 	{
@@ -36,7 +34,7 @@ void run() {
 
 	while (ros::ok())
 	{
-		ROS_INFO_ONCE("MMS: RUNNING");
+		ROS_INFO_ONCE("WBRIDGE: RUNNING");
 
 		dcm_bridge_handle();
 		counter_++;
@@ -51,6 +49,8 @@ protected:
 uint16_t counter_;
 int rate;
 ros::NodeHandle n_;
+ros::Subscriber subGeopose_;
+geographic_msgs::GeoPose geopose_;
 
 private:
 
