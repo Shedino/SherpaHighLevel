@@ -38,6 +38,14 @@ class leashing_offset_ned{
 		double psi_offset;
 };
 
+class delta_movements_ned{
+public:
+	double dx;
+	double dy;
+	double dalt;
+	double dyaw;
+};
+
 class ReferenceNodeClass {
 public:
 	ReferenceNodeClass(ros::NodeHandle& node){
@@ -77,7 +85,6 @@ public:
 		inputPos_.frame =6;
 		actual_frame = 6;
 		inputMmsStatus_.target_ref_frame = 6;
-		inputFrame_.target_ref_frame = 6;
 		
 		// STATE INITIALIZATION
 		currentState = ON_GROUND_NO_HOME;
@@ -93,7 +100,23 @@ public:
 		land = false;
 		counter_print = 0;
 		Dh_TO = 5000;
+		speed_wp_linear = 0;
+		speed_wp_yaw = 0;
 		
+		target_ned.x = 0;
+		target_ned.y = 0;
+		target_ned.alt_baro = 0;
+		target_ned.alt_sonar = 0;
+		target_ned.yaw = 0;
+		position_increments.dx = 0;
+		position_increments.dy = 0;
+		position_increments.dalt = 0;
+		position_increments.dyaw = 0;
+		target_wp_ned.x = 0;
+		target_wp_ned.y = 0;
+		target_wp_ned.alt = 0;
+		target_wp_ned.yaw = 0;
+
 		//GRID
 		d_grid = 0;
 		received_grid_cmd = false;
@@ -145,6 +168,23 @@ public:
 		double X;
 		double Y;
 		double Z;
+	};
+
+	class pos_NE_ALT{
+	public:
+		double x;
+		double y;
+		double alt;
+		double yaw;
+	};
+
+	class pos_target_ned{
+	public:
+		double x;
+		double y;
+		double alt_baro;
+		double alt_sonar;
+		double yaw;
 	};
 
 	ECEF End_Point;
@@ -200,14 +240,46 @@ public:
 		inputSonar_.distance = msg -> distance;
 	}
 
-	void get_current_position()
+	void set_current_position_as_ref()       //TODO maybe change with target_ned
 	{
-		outputRef_.Latitude = inputPos_.Latitude;
-		outputRef_.Longitude = inputPos_.Longitude;
-		outputRef_.AltitudeRelative = inputPos_.Altitude;
-		outputRef_.Yawangle = inputPos_.YawAngle;//*3.14/100/360;
-		outputRef_.Mode = 0;
-		ROS_INFO("REF: CURRENT POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f", inputPos_.Latitude, inputPos_.Longitude, inputPos_.Altitude, inputPos_.YawAngle);
+		double temp_x, temp_y;
+		get_pos_NED_from_WGS84 (&temp_x, &temp_y, inputPos_.Latitude/10000000.0f, inputPos_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+		target_ned.x = temp_x;
+		target_ned.y = temp_y;
+		target_ned.alt_baro = inputPos_.Altitude;
+		target_ned.alt_sonar = inputSonar_.distance;
+	}
+
+	void set_increments_zero(){
+		position_increments.dx = 0;
+		position_increments.dy = 0;
+		position_increments.dalt = 0;
+		position_increments.dyaw = 0;
+	}
+
+	void calculate_increments(pos_NE_ALT new_target, pos_target_ned old_target, double speed, double speed_yaw, int frame){
+		//TODO separate speed vertical and lateral? now hardcoded vertical speed of 1m/s
+		double distance = sqrt(pow(new_target.x-old_target.x,2)+pow(new_target.y-old_target.y,2));
+		double distance_x = sqrt(pow(new_target.x-old_target.x,2));
+		double distance_y = sqrt(pow(new_target.y-old_target.y,2));
+		double speed_x = speed*distance_x/distance;
+		double speed_y = speed*distance_y/distance;
+		double speed_z = 1.0;
+
+		position_increments.dx = speed_x/rate * sign(new_target.x-old_target.x);
+		position_increments.dy = speed_y/rate * sign(new_target.y-old_target.y);
+		if (frame == 6){
+			position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_baro);
+		} else if (frame == 11){
+			position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_sonar);
+		}
+		position_increments.dyaw = speed_yaw/rate * sign(new_target.yaw-old_target.yaw);
+	}
+
+	int sign(double x){
+		if (x > 0) return 1;
+		if (x < 0) return -1;
+		return 0;
 	}
 
 	void readMmsStatusMessage(const mms_msgs::MMS_status::ConstPtr& msg)
@@ -221,12 +293,9 @@ public:
 
 	void readFrameMessage(const frame::Ref_system::ConstPtr& msg)
 	{
-		inputFrame_.actual_ref_frame=msg->actual_ref_frame;
-		inputFrame_.target_ref_frame=msg->target_ref_frame;
 		// ROS_INFO("REFERENCE: Ref_system received");
-		actual_frame = inputFrame_.actual_ref_frame;
-		target_frame = inputFrame_.target_ref_frame;
-        //new_frame = true;
+		actual_frame = msg->actual_ref_frame;
+		target_frame = msg->target_ref_frame;
 	}
 
 	//void readPositionMessage(const mavros::Global_position_int::ConstPtr& msg)
@@ -289,30 +358,28 @@ public:
         inputCmd_.frame  = msg -> frame;
         inputCmd_.seq  = msg -> seq;
 
-        // new_cmd = true;
-
-		/*Target_Position_.Latitude = inputCmd_.param5;
-		Target_Position_.Longitude = inputCmd_.param6;
-		Target_Position_.AltitudeRelative = inputCmd_.param7;
-		Target_Position_.Yawangle = inputCmd_.param4;*/
-
-		//6 = MAV_FRAME_GLOBAL_ALT_INT
-		//11 = MAV_FRAME_GLOBAL_TERRAIN_ALT_INT
-
 		switch(inputCmd_.command)
 		{
 			case 16:  // MAV_CMD_NAV_WAYPOINT
 			{
 				// ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT");
 				// ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %f - %f - %f - %f",inputCmd_.param5,inputCmd_.param6,inputCmd_.param7,inputCmd_.param4);
-				target_.Latitude = (int)(inputCmd_.param5*10000000.0f);
-				target_.Longitude = (int)(inputCmd_.param6*10000000.0f);
-				target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
-				target_.Yawangle = inputCmd_.param4;
-				target_.frame = inputCmd_.frame;
+				target_wp.Latitude = (int)(inputCmd_.param5*10000000.0f);
+				target_wp.Longitude = (int)(inputCmd_.param6*10000000.0f);
+				target_wp.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
+				target_wp.Yawangle = inputCmd_.param4;
+				target_wp.frame = inputCmd_.frame;
+				double temp_x, temp_y;
+				get_pos_NED_from_WGS84 (&temp_x, &temp_y, target_wp.Latitude/10000000.0f, target_wp.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+				target_wp_ned.x = temp_x;
+				target_wp_ned.y = temp_y;
+				target_wp_ned.alt = target_wp.AltitudeRelative;
+				target_wp_ned.yaw = target_wp.Yawangle;
+				speed_wp_linear = inputCmd_.param1;
+				speed_wp_yaw = 1;  //TODO check hardcoded!!!
 				outputDist_.seq = inputCmd_.seq;
-				ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",target_.Latitude,target_.Longitude,target_.AltitudeRelative,target_.Yawangle,target_.frame);
-				// target_.Mode = 0;
+				ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",target_wp.Latitude,target_wp.Longitude,target_wp.AltitudeRelative,target_wp.Yawangle,target_wp.frame);
+				// target_wp.Mode = 0;
 			} break;
 			case 160:    //GRID_START
 			{
@@ -419,23 +486,43 @@ public:
 
 	void Reference_Handle()
 	{
+		//Generates the initial reference for sonar as soon as a sonar measurement is available.
+		//The increments are generated based on this initial reference.
+		if (actual_frame == 6 && inputSonar_.distance > 0){       //in BARO mode but reading sonar
+			target_ned.alt_sonar = inputSonar_.distance;     //put as temp altitude for sonar target the actual altitude from ground
+		} else if (inputSonar_.distance <= 0){
+			target_ned.alt_sonar = 0;
+		}
+
+
 		if (currentState != oldState)
 		{
 			new_state = true;
-			new_frame = true;
 			oldState = currentState;
 			ROS_INFO("REF: NEW MMS STATE");
 		}
-		if (inputFrame_.actual_ref_frame != oldFrame_.actual_ref_frame || inputFrame_.target_ref_frame != oldFrame_.target_ref_frame)
+
+		//------------- DEPRECATED -------------
+		if (actual_frame != oldFrame_.actual_ref_frame || target_frame != oldFrame_.target_ref_frame)
 		{
 			new_frame = true;
-			oldFrame_ = inputFrame_;
+			oldFrame_.actual_ref_frame = actual_frame;
+			oldFrame_.target_ref_frame = target_frame;
 			ROS_INFO("REF: NEW FRAME");
 		}
+		//---------------------------------------
+
+
+		set_increments_zero();  //reset increments
 
 		switch(currentState){
 			case ON_GROUND_NO_HOME:
-				if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
+				if (new_state){
+					ROS_INFO("REF: ON_GROUND_NO_HOME");
+					new_state = false;
+					set_current_position_as_ref();
+				}
+				/*if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == target_frame) // CHOERENCE CHECK
 				{
 					//ROS_INFO("REF: FRAME COHERENCE OK");
 					if (new_frame == true)
@@ -446,12 +533,10 @@ public:
 							ROS_INFO("REF: ON_GROUND_NO_HOME");
 							new_state = false;
 
-							get_current_position();
+							set_current_position_as_ref();
 							outputRef_.frame = actual_frame;
 							tempRef_ = outputRef_;
 							tempRelAlt = inputGlobPosInt_.alt;
-							//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
-							//pubToReference_.publish(outputRef_);
 							ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
 						}
 
@@ -492,7 +577,7 @@ public:
 				{
 					ROS_INFO("REF: FRAME COHERENCE NOT OK");
 				}
-				break;
+				break;*/
 
 			case SETTING_HOME:
 				if (new_state == true)
@@ -508,317 +593,64 @@ public:
 					Home_.hdg = inputGlobPosInt_.hdg;
 					pubHome_.publish(Home_);
 				}
-				if (new_frame == true)
-				{
-					new_frame = false;
-				}
-				/*if (new_pos == true)
-				{
-					new_pos = false;
-				}*/
 				break;
 
 			case ON_GROUND_DISARMED:
-				if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
-				{
-					//ROS_INFO("REF: FRAME COHERENCE OK");
-					if (new_frame == true)
-					{
-						//ROS_INFO("REF: NEW_FRAME");
-						if (new_state == true)
-						{
-							ROS_INFO("REF: ON_GROUND_DISARMED");
-							new_state = false;
-
-							get_current_position();
-							outputRef_.frame = actual_frame;
-							tempRef_ = outputRef_;
-							tempRelAlt = inputGlobPosInt_.alt;
-							//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
-							//pubToReference_.publish(outputRef_);
-							ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
-						}
-
-						new_frame = false;
-
-						if (actual_frame == 6 && target_frame == 6) // 6 = barometer
-						{
-							outputRef_ = tempRef_;
-							outputRef_.AltitudeRelative = tempRef_.AltitudeRelative-5000-1;
-							outputRef_.frame = actual_frame;
-							ROS_INFO("REF->NAV: ON_GROUND BARO");
-							pubToReference_.publish(outputRef_);
-						}
-						if (actual_frame == 11 && target_frame == 11) // 11 = sonar
-						{
-							outputRef_ = tempRef_;
-							outputRef_.AltitudeRelative = tempRef_.AltitudeRelative-5000-2;
-							outputRef_.frame = actual_frame;
-							ROS_INFO("REF->NAV: ON_GROUND SONAR");
-							pubToReference_.publish(outputRef_);
-						}
-						if (actual_frame == 6 && target_frame == 11)
-						{
-							outputRef_ = tempRef_;
-							outputRef_.AltitudeRelative = tempRelAlt-5000-3;
-							outputRef_.frame = actual_frame;
-							ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-							pubToReference_.publish(outputRef_);
-						}
-						if (actual_frame == 11 && target_frame == 6)
-						{
-							ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-							ROS_INFO("REF: NO REFERENCE PUBLISHED");
-						}
-					}
-				}
-				else
-				{
-					ROS_INFO("REF: FRAME COHERENCE NOT OK");
+				if (new_state){
+					ROS_INFO("REF: ON_GROUND_NO_HOME");
+					new_state = false;
+					set_current_position_as_ref();
+					position_increments.dalt = -5000;
+					//target_ned.alt -= 5000;    //give a reference below 5 meters to avoid un-intentional take-off because of noise on baro
 				}
 				break;
 
 			case ARMING:
-				if (new_state == true)
-				{
+				if (new_state == true){
 					ROS_INFO("REF: ARMING");
 					new_state = false;
 				}
-				/*if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
-							{
-								if (new_frame == true)
-								{
-									if (new_state == true)
-									{
-										new_state = false;
-
-										get_current_position();
-										outputRef_.frame = actual_frame;
-										tempRef_ = outputRef_;
-										tempRelAlt = inputGlobPosInt_.alt;  // 
-										//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
-										//pubToReference_.publish(outputRef_);
-										ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
-									}
-
-									new_frame = false;
-
-									if (actual_frame == 6 && target_frame == 6) // 6 = barometer
-									{
-										outputRef_.AltitudeRelative = tempRef_.AltitudeRelative-5000-1;
-										outputRef_.frame = actual_frame;
-										ROS_INFO("REF->NAV: ON_GROUND BARO");
-										pubToReference_.publish(outputRef_);
-									}
-									if (actual_frame == 11 && target_frame == 11) // 11 = sonar
-									{
-										outputRef_.AltitudeRelative = tempRef_.AltitudeRelative-5000-2;
-										outputRef_.frame = actual_frame;
-										ROS_INFO("REF->NAV: ON_GROUND SONAR");
-										pubToReference_.publish(outputRef_);
-									}
-									if (actual_frame == 6 && target_frame == 11)
-									{
-										outputRef_.AltitudeRelative = tempRelAlt-5000-3;
-										outputRef_.frame = actual_frame;
-										ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-										pubToReference_.publish(outputRef_);
-									}
-									if (actual_frame == 11 && target_frame == 6)
-									{
-										ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-										ROS_INFO("REF: NO REFERENCE PUBLISHED");
-									}
-								}
-							}*/
 				break;
 
 			case DISARMING:
-				if (new_state == true)
-				{
+				if (new_state == true){
 					ROS_INFO("REF: DISARMING");
 					new_state = false;
 				}
-
-				/*if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
-							{
-								if (new_frame == true)
-								{
-									if (new_state == true)
-									{
-										new_state = false;
-
-										get_current_position();
-										outputRef_.frame = actual_frame;
-										tempRef_ = outputRef_;
-										tempRelAlt = inputGlobPosInt_.alt;//
-										//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
-										//pubToReference_.publish(outputRef_);
-										ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
-									}
-
-									new_frame = false;
-
-									if (actual_frame == 6 && target_frame == 6) // 6 = barometer
-									{
-										outputRef_.AltitudeRelative = tempRef_.AltitudeRelative-5000-1;
-										outputRef_.frame = actual_frame;
-										ROS_INFO("REF->NAV: ON_GROUND BARO");
-										pubToReference_.publish(outputRef_);
-									}
-									if (actual_frame == 11 && target_frame == 11) // 11 = sonar
-									{
-										outputRef_.AltitudeRelative = tempRef_.AltitudeRelative-5000-2;
-										outputRef_.frame = actual_frame;
-										ROS_INFO("REF->NAV: ON_GROUND SONAR");
-										pubToReference_.publish(outputRef_);
-									}
-									if (actual_frame == 6 && target_frame == 11)
-									{
-										outputRef_.AltitudeRelative = tempRelAlt-5000-3;
-										outputRef_.frame = actual_frame;
-										ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-										pubToReference_.publish(outputRef_);
-									}
-									if (actual_frame == 11 && target_frame == 6)
-									{
-										ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-										ROS_INFO("REF: NO REFERENCE PUBLISHED");
-									}
-								}
-							}*/
 				break;
 
 			case ON_GROUND_ARMED:
-				if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
-							{
-								if (new_frame == true)
-								{
-									if (new_state == true)
-									{
-										ROS_INFO("REF: ON_GROUND_ARMED");
-										new_state = false;
-
-										get_current_position();
-										outputRef_.frame = actual_frame;
-										tempRef_ = outputRef_;
-										tempRelAlt = inputGlobPosInt_.alt;
-										//outputRef_.AltitudeRelative -= 5000;//outputRef_.AltitudeRelative-5000;
-										//pubToReference_.publish(outputRef_);
-										ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
-									}
-
-									new_frame = false;
-
-									if (actual_frame == 6 && target_frame == 6) // 6 = barometer
-									{
-										outputRef_ = tempRef_;
-										outputRef_.AltitudeRelative = tempRef_.AltitudeRelative-5000-1;
-										outputRef_.frame = actual_frame;
-										ROS_INFO("REF->NAV: ON_GROUND BARO");
-										pubToReference_.publish(outputRef_);
-									}
-									if (actual_frame == 11 && target_frame == 11) // 11 = sonar
-									{
-										outputRef_ = tempRef_;
-										outputRef_.AltitudeRelative = tempRef_.AltitudeRelative-5000-2;
-										outputRef_.frame = actual_frame;
-										ROS_INFO("REF->NAV: ON_GROUND SONAR");
-										pubToReference_.publish(outputRef_);
-									}
-									if (actual_frame == 6 && target_frame == 11)
-									{
-										outputRef_ = tempRef_;
-										outputRef_.AltitudeRelative = tempRelAlt-5000-3;
-										outputRef_.frame = actual_frame;
-										ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-										pubToReference_.publish(outputRef_);
-									}
-									if (actual_frame == 11 && target_frame == 6)
-									{
-										ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-										ROS_INFO("REF: NO REFERENCE PUBLISHED");
-									}
-								}
-							}
+				if (new_state == true){
+					ROS_INFO("REF: ON_GROUND_ARMED");
+					new_state = false;
+				}
 				break;
 			
 
 			case PERFORMING_TAKEOFF:
-				if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
+				if (new_state == true){
+					ROS_INFO("REF: PERFORMING_TAKEOFF");
+					new_state = false;
+					position_increments.dalt = Dh_TO;
+				}
+				if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == target_frame) // CHOERENCE CHECK
 				{
-					if (new_state == true)
-					{
-						ROS_INFO("REF: PERFORMING_TAKEOFF");
-						new_state = false;
-						get_current_position();
-						outputRef_.frame = actual_frame;
-						tempRef_ = outputRef_;
-						tempRelAlt = inputGlobPosInt_.alt;
-						ROS_INFO("REF->NAV: REFERENCE = TAKEOFF");
-					}
-					if (new_frame == true)
-					{
-						new_frame = false;
-
-						if (actual_frame == 6 && target_frame == 6) // 6 = barometer
-						{
-							outputRef_ = tempRef_;
-							outputRef_.AltitudeRelative = tempRef_.AltitudeRelative+Dh_TO+1;
-							tempRef_ = outputRef_;       //MIC ADDED
-							outputRef_.frame = actual_frame;
-							ROS_INFO("REF->NAV: TAKEOFF BARO");
-							pubToReference_.publish(outputRef_);
-						}
-						if (actual_frame == 11 && target_frame == 11) // 11 = sonar
-						{
-							outputRef_ = tempRef_;
-							outputRef_.AltitudeRelative = Dh_TO+2;
-							tempRef_ = outputRef_;		//MIC ADDED
-							outputRef_.frame = actual_frame;
-							ROS_INFO("REF->NAV: TAKEOFF SONAR");
-							pubToReference_.publish(outputRef_);
-						}
-						if (actual_frame == 6 && target_frame == 11)
-						{
-							outputRef_ = tempRef_;
-							outputRef_.AltitudeRelative = tempRelAlt+Dh_TO+3;
-							tempRef_ = outputRef_;		//MIC ADDED
-							outputRef_.frame = actual_frame;
-							ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-							pubToReference_.publish(outputRef_);
-						}
-						if (actual_frame == 11 && target_frame == 6)
-						{
-							ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-							ROS_INFO("REF: NO REFERENCE PUBLISHED");
-						}
-					}
-					distance();
+					distance();                                      //TODO move this outside switch
 					outputDist_.error_pos = error_to_t.error_pos;
 					outputDist_.error_ang = error_to_t.error_ang;
 					outputDist_.error_alt = error_to_t.error_alt;
-					outputDist_.command = 22; // TAKEOFF
+					outputDist_.command = 22; // TAKEOFF                //TODO this should remain here??
 					pubToDistance_.publish(outputDist_);
 				}
 				break;
 
 			case IN_FLIGHT:
-				if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
+				if (new_state == true){
+					ROS_INFO("REF: IN_FLIGHT");
+					new_state = false;
+				}
+				/*if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == target_frame) // CHOERENCE CHECK
 				{
-					if (new_state == true)
-					{
-						ROS_INFO("REF: IN_FLIGHT");
-						new_state = false;
-						// comment these lines to avoid the drone stops when the distance is inside the allowed error sphere
-						// comment these lines to make the published reference equal to the last valid one
-						/* get_current_position(); 
-						outputRef_.frame = actual_frame;
-						tempRef_ = outputRef_;
-						tempRelAlt = inputGlobPosInt_.alt;*/
-						ROS_INFO("REF->NAV: REFERENCE = IN_FLIGHT");
-					}
-
 					if (new_frame == true)
 					{
 						new_frame = false;
@@ -849,10 +681,10 @@ public:
 							ROS_INFO("REF: NO REFERENCE PUBLISHED");
 						}
 					}
-				}
+				}*/
 				break;
 
-			case GRID:
+			case GRID:          //TODO remake with actual increments policy
 				{
 					if (new_state == true)
 					{
@@ -953,78 +785,20 @@ public:
 				}
 			break;
 
-			case PERFORMING_GO_TO:
-				if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
+			case PERFORMING_GO_TO:       //TODO add case when target is sonar but too high
+				if (new_state == true){
+					ROS_INFO("REF: PERFORMING_GO_TO");
+					new_state = false;
+				}
+				calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
+
+				if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == target_frame) // CHOERENCE CHECK
 				{
-					if (new_state == true)
-					{
-						ROS_INFO("REF: PERFORMING_GO_TO");
-						new_state = false;
-
-						/*outputRef_.Latitude = 123; // ONLY FOR TEST
-						outputRef_.Longitude = 123;// ONLY FOR TEST
-						outputRef_.AltitudeRelative = 1230;// ONLY FOR TEST
-						outputRef_.Yawangle = 123;// ONLY FOR TEST
-						outputRef_.Mode = 123;// ONLY FOR TEST
-						outputRef_.frame = target_frame;// ONLY FOR TEST*/
-
-						// get_current_position();
-						tempRef_ = target_;
-						// tempRelAlt = inputGlobPosInt_.alt;//
-						ROS_INFO("REF->NAV: REFERENCE = TARGET WAYPOINT");
-					}
-					if (new_frame == true)
-					{
-						new_frame = false;
-
-						if (actual_frame == 6 && target_frame == 6) // 6 = barometer
-						{
-							outputRef_ = tempRef_;
-							outputRef_.frame = actual_frame;
-							// tempRef_.frame = actual_frame;
-							pubToReference_.publish(outputRef_);// as it is
-							ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
-							land = false;
-							ROS_INFO("REF->NAV: WAYPOINT BARO");
-						}
-						if (actual_frame == 11 && target_frame == 11) // 11 = sonar
-						{
-							outputRef_ = tempRef_;
-							outputRef_.frame = actual_frame;
-							// tempRef_.frame = actual_frame;
-							pubToReference_.publish(outputRef_);// as it is
-							ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
-							land = false;
-							ROS_INFO("REF->NAV: WAYPOINT SONAR");
-						}
-						if (actual_frame == 6 && target_frame == 11)
-						{
-							outputRef_ = tempRef_;
-							outputRef_.frame = actual_frame;
-							//tempRef_.frame = actual_frame;
-							outputRef_.AltitudeRelative = inputGlobPosInt_.alt;
-							ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-							pubToReference_.publish(outputRef_);
-							ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",outputRef_.Latitude,outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle,outputRef_.frame);
-							land = true;
-						}
-						if (actual_frame == 11 && target_frame == 6)
-						{
-							ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-							ROS_INFO("REF: NO REFERENCE PUBLISHED");
-							land = false;
-						}
-					}
-					if (land == true)
-					{
-						outputRef_.AltitudeRelative -= 80;
-						pubToReference_.publish(outputRef_);
-					}
-					distance();
+					distance();		//TODO move this outside switch
 					outputDist_.error_pos = error_to_t.error_pos;
 					outputDist_.error_ang = error_to_t.error_ang;
 					outputDist_.error_alt = error_to_t.error_alt;
-					outputDist_.command = 16; // WAYPOINT
+					outputDist_.command = 16; // WAYPOINT			//TODO this should remain here
 					pubToDistance_.publish(outputDist_);
 				}
 			break;
@@ -1136,7 +910,7 @@ public:
 						}
 						break;
 				}
-				//Publish references in WGS84
+				//Publish references in WGS84    //TODO remove this...references are published later for all states
 				double temp_lat, temp_lon;
 				get_pos_WGS84_from_NED (&temp_lat, &temp_lon, (leashing_target_ned_.x+leashing_offset_ned_.x_offset), (leashing_target_ned_.y+leashing_offset_ned_.y_offset), Home_.lat/10000000.0f, Home_.lon/10000000.0f);
 				outputRef_.Latitude = temp_lat*10000000.0f;
@@ -1153,55 +927,23 @@ public:
 				leashing_status_.vertical_distance = leashing_offset_ned_.z_offset;
 				leashing_status_.yaw = yaw_leashing;
 				pubLeashingStatus_.publish(leashing_status_);  //TODO maybe modify this to include failures
+
+				//Leashing is overwriting and not using increments  //TODO check if making uniform with increments
+				target_ned.x = leashing_target_ned_.x+leashing_offset_ned_.x_offset;
+				target_ned.y = leashing_target_ned_.y+leashing_offset_ned_.y_offset;
+				target_ned.alt_baro = leashing_target_ned_.z+leashing_offset_ned_.z_offset;
+				//TODO sonar alt??
+				target_ned.yaw = yaw_leashing;
 				break;
 			
 			case PERFORMING_LANDING:
-				if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == inputFrame_.target_ref_frame) // CHOERENCE CHECK
-				{
-					if (new_state == true)
-					{
-							ROS_INFO("REF: PERFORMING_LANDING");
-							new_state = false;
-							get_current_position();                      //this is needed because I can send the land command before last WP or target is reached
-							outputRef_.frame = actual_frame;
-							tempRef_ = outputRef_;
-							tempRelAlt = inputGlobPosInt_.alt;
-							ROS_INFO("REF->NAV: REFERENCE = VERT. LAND SPEED");
-					}
-					if (new_frame == true)
-					{
-							new_frame = false;
-
-							if (actual_frame == 6 && target_frame == 6) // 6 = barometer
-							{
-								outputRef_.frame = actual_frame;// as it is
-							}
-							if (actual_frame == 11 && target_frame == 11) // 11 = sonar
-							{
-								outputRef_.frame = actual_frame;// as it is
-							}
-							if (actual_frame == 6 && target_frame == 11)
-							{
-								outputRef_.frame = actual_frame;
-								outputRef_.AltitudeRelative = tempRelAlt;
-								ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-							}
-							if (actual_frame == 11 && target_frame == 6)
-							{
-								ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-								ROS_INFO("REF: NO REFERENCE PUBLISHED");
-							}
-					}
-					outputRef_.AltitudeRelative -= 80; // 8 cm @ frequency --> with rate=10 it means 80cm/s
-					tempRelAlt -= 80;
-					pubToReference_.publish(outputRef_);
-					distance();
-					outputDist_.error_pos = error_to_t.error_pos;
-					outputDist_.error_ang = error_to_t.error_ang;
-					outputDist_.error_alt = error_to_t.error_alt;
-					outputDist_.command = 21; // LAND
-					pubToDistance_.publish(outputDist_);
+				if (new_state == true){
+						ROS_INFO("REF: PERFORMING_LANDING");
+						new_state = false;
+						set_current_position_as_ref();                      //this is needed because I can send the land command before last WP or target is reached
 				}
+				position_increments.dalt = -80;    //80cm/s
+				outputDist_.command = 21; // LAND
 				break;
 			
 			case MANUAL_FLIGHT:
@@ -1209,10 +951,6 @@ public:
 					{
 						ROS_INFO("REF: MANUAL_FLIGHT");
 						new_state = false;
-					}
-					if (new_frame == true)
-					{
-						new_frame = false;
 					}
 				break;
 			
@@ -1222,16 +960,30 @@ public:
 						ROS_INFO("REF: PAUSED");
 						new_state = false;
 					}
-					if (new_frame == true)
-					{
-						new_frame = false;
-					}
-				//TODO manual velocity control here
-				get_current_position();
-				pubToReference_.publish(outputRef_);
-				//TODO frame stuff
-				break;
+					//TODO manual velocity control here
+					set_current_position_as_ref();
+					break;
 		}
+		//switch end-->calculate new targets ned
+		target_ned.x += position_increments.dx;        //TODO make a unique class with dx,dy,alt_baro,alt_sonar,dyaw...too wasted memory and code this way
+		target_ned.y += position_increments.dy;
+		target_ned.alt_baro += position_increments.dalt;
+		target_ned.alt_sonar += position_increments.dalt;
+		target_ned.yaw += position_increments.dyaw;
+		//calculate new target and publish
+		double temp_lat, temp_lon;
+		get_pos_WGS84_from_NED (&temp_lat, &temp_lon, target_ned.x, target_ned.y, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+		outputRef_.Latitude = temp_lat;
+		outputRef_.Longitude = temp_lon;
+		outputRef_.Yawangle = target_ned.yaw;
+		if (actual_frame == 6){   //publish baro
+			outputRef_.AltitudeRelative = target_ned.alt_baro;
+			outputRef_.frame = 6;
+		} else if (actual_frame == 11){   //publish sonar
+			outputRef_.AltitudeRelative = target_ned.alt_sonar;
+			outputRef_.frame = 11;
+		}
+		pubToReference_.publish(outputRef_);
 }
 
 void run() {
@@ -1274,11 +1026,11 @@ mavros::Global_position_int inputGlobPosInt_;
 mavros::Sonar inputSonar_;
 mms_msgs::Cmd inputCmd_;
 mms_msgs::MMS_status inputMmsStatus_;
-frame::Ref_system inputFrame_;
+//frame::Ref_system inputFrame_;
 frame::Ref_system oldFrame_;
 
 guidance_node_amsl::Reference outputRef_;
-guidance_node_amsl::Reference target_;     
+guidance_node_amsl::Reference target_wp;
 
 reference::Distance outputDist_;
 
@@ -1314,7 +1066,6 @@ static const int  MAX_VERTEX_GRID = 10;
 // STATE INITIALIZATION
 int currentState;
 int oldState;
-// int lastARMState = ON_GROUND_DISARMED;
 int target_frame;
 int actual_frame;
 int tempRelAlt;
@@ -1324,6 +1075,12 @@ bool new_state;
 bool new_frame;
 bool land;
 uint16_t counter_print;
+float speed_wp_linear;
+float speed_wp_yaw;
+
+pos_target_ned target_ned;
+pos_NE_ALT target_wp_ned;
+delta_movements_ned position_increments;
 
 //GRID RELATED
 float d_grid;
