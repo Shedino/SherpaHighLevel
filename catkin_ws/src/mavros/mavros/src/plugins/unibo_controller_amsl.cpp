@@ -36,7 +36,11 @@ public:
 		RC1_trim_(1),
 		RC2_trim_(1),
 		RC3_trim_(1),
-		RC4_trim_(1)
+		RC4_trim_(1),
+		RC1_dz_(10),
+		RC2_dz_(10),
+		RC3_dz_(12),
+		RC4_dz_(10)
 	{};
 
 	void initialize(UAS &uas_)
@@ -104,6 +108,10 @@ private:
 	double RC2_trim_;
 	double RC3_trim_;
 	double RC4_trim_;
+	double RC1_dz_;
+	double RC2_dz_;
+	double RC3_dz_;
+	double RC4_dz_;
 
 	ros::Publisher position_pub;
 	ros::Subscriber directive_sub;
@@ -377,7 +385,7 @@ private:
 		if(!safetyOn){
 			
 		    if (nodeHandle.getParam("mavros/unibo_controller/trim_RC1", RC1_trim_)){
-			//ROS_INFO("RC1_trim: %.3f",RC1_trim_);
+		    	//ROS_INFO("RC1_trim: %.3f",RC1_trim_);
 			}
 			if (nodeHandle.getParam("mavros/unibo_controller/trim_RC2", RC2_trim_)){
 				//ROS_INFO("RC2_trim: %.3f",RC2_trim_);
@@ -404,10 +412,35 @@ private:
 			}
 			uint16_t v_psi_RC = (uint16_t)400.0f*(msg->yawRate)/v_psi_max + RC4_trim_;		//New: 400 + 1520; Old:  500 + 1500
 
-			velocity_.channels[0]=vy_RC;
-			velocity_.channels[1]=vx_RC;
-			velocity_.channels[2]=vz_RC;
-			velocity_.channels[3]=v_psi_RC;
+			velocity_.channels[0] = vy_RC;
+			velocity_.channels[1] = vx_RC;
+			velocity_.channels[2] = vz_RC;
+			velocity_.channels[3] = v_psi_RC;
+			if (velocity_.channels[0] > RC1_trim_){
+				velocity_.channels[0] += RC1_dz_;
+			}
+			if (velocity_.channels[0] < RC1_trim_){
+				velocity_.channels[0] -= RC1_dz_;
+			}
+			if (velocity_.channels[1] > RC2_trim_){
+				velocity_.channels[1] += RC2_dz_;
+			}
+			if (velocity_.channels[1] < RC2_trim_){
+				velocity_.channels[1] -= RC2_dz_;
+			}
+			if (velocity_.channels[2] > RC3_trim_){
+				velocity_.channels[2] += RC3_dz_;
+			}
+			if (velocity_.channels[2] < RC3_trim_){
+				velocity_.channels[2] -= RC3_dz_;
+			}
+			if (velocity_.channels[3] > RC4_trim_){
+				velocity_.channels[3] += RC4_dz_;
+			}
+			if (velocity_.channels[3] < RC4_trim_){
+				velocity_.channels[3] -= RC4_dz_;
+			}
+			ROS_INFO("RC: %d - %d - %d - %d", velocity_.channels[0], velocity_.channels[1], velocity_.channels[2], velocity_.channels[3]);
 
 
 		}

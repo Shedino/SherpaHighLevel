@@ -191,6 +191,7 @@ private:
 		guidanceClass.Model_GS_U.Control_Param[6]= (float) param[6]; //deadzone NE
 		guidanceClass.Model_GS_U.Control_Param[7]= (float) param[7]; //deadzone D
 		guidanceClass.Model_GS_U.Control_Param[8]= (float) param[8]; //gain integral D
+		//ROS_INFO("Params: %f - %f - %f - %f", param[6], param[7], param[3], param[4]);
 
 		//Delta-time, needed by the integral
 		guidanceClass.Model_GS_U.dt = ((float)1.0f)/rate;
