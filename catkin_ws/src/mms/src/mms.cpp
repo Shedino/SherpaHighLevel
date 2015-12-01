@@ -159,8 +159,8 @@ public:
 		inputCmd_.param5  = msg -> param5;
 		inputCmd_.param6  = msg -> param6;
 		inputCmd_.param7  = msg -> param7;
-        	inputCmd_.frame  = msg -> frame;
-        	inputCmd_.seq  = msg -> seq;
+		inputCmd_.frame  = msg -> frame;
+		inputCmd_.seq  = msg -> seq;
 
         ROS_INFO("MMS: CMD_RECEIVED %d. Sequence: %d", inputCmd_.command, inputCmd_.seq);
 
@@ -173,7 +173,7 @@ public:
 				ROS_INFO("MMS: CMD_ALTITUDE = %f",inputCmd_.param7);
 				ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
 
-				if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11 && inputCmd_.param7 > 0.0f && inputCmd_.param7 < 3.0f && inputSonar_.distance != -1))
+				if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11 && inputCmd_.param7 > 0.3f && inputCmd_.param7 < 3.0f && inputSonar_.distance > 0))
 					{
 						target_frame = inputCmd_.frame;
 						seq_number = inputCmd_.seq;
@@ -247,14 +247,12 @@ public:
 				ROS_INFO("MMS: CMD_DH_TO = %d",Dh_TO);
 				ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
 
-				if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11 && Dh_TO > 0 && Dh_TO < 3000 && inputSonar_.distance != -1))
+				if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11 && Dh_TO > 300 && Dh_TO <= 3000 && inputSonar_.distance > 0))
 				{
 					target_frame = inputCmd_.frame;
 					seq_number = inputCmd_.seq;
 					TAKEOFF = true;
-				}
-				else
-				{
+				} else {
 					outputAckMission_.mission_item_reached = false;
 					outputAckMission_.seq = seq_number;
 					outputAckMission_.mav_mission_accepted = false;

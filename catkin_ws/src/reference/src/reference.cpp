@@ -75,15 +75,14 @@ public:
 		outputRef_.Longitude = 0;
 		outputRef_.AltitudeRelative = 0;
 		outputRef_.Yawangle = 0;
-		outputRef_.Mode = 100;
+		outputRef_.Mode = 0;
 		outputRef_.frame = 6;
 
 		// Initializing the
 		oldFrame_.actual_ref_frame = 6;
 		oldFrame_.target_ref_frame = 6;
 
-		inputPos_.frame =6;
-		actual_frame = 6;
+		inputPos_.frame = 6;
 		inputMmsStatus_.target_ref_frame = 6;
 		
 		// STATE INITIALIZATION
@@ -244,10 +243,13 @@ public:
 	{
 		double temp_x, temp_y;
 		get_pos_NED_from_WGS84 (&temp_x, &temp_y, inputPos_.Latitude/10000000.0f, inputPos_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+		target_wp_ned.x = temp_x;
 		target_ned.x = temp_x;
+		target_wp_ned.y = temp_y;
 		target_ned.y = temp_y;
-		target_ned.alt_baro = inputPos_.Altitude;
-		target_ned.alt_sonar = inputSonar_.distance;
+		target_wp_ned.alt = inputPos_.Altitude / 1000.0f;
+		target_ned.alt_baro = inputPos_.Altitude / 1000.0f;
+		target_ned.alt_sonar = inputSonar_.distance / 1000.0f;
 	}
 
 	void set_increments_zero(){
@@ -262,18 +264,28 @@ public:
 		double distance = sqrt(pow(new_target.x-old_target.x,2)+pow(new_target.y-old_target.y,2));
 		double distance_x = sqrt(pow(new_target.x-old_target.x,2));
 		double distance_y = sqrt(pow(new_target.y-old_target.y,2));
-		double speed_x = speed*distance_x/distance;
-		double speed_y = speed*distance_y/distance;
-		double speed_z = 1.0;
+		double speed_x;
+		double speed_y;
+		double speed_z;
+		if (distance > 0.05){
+			speed_x = speed*distance_x/distance;
+			speed_y = speed*distance_y/distance;
+		} else {
+			speed_x = 0;
+			speed_y = 0;
+		}
 
 		position_increments.dx = speed_x/rate * sign(new_target.x-old_target.x);
 		position_increments.dy = speed_y/rate * sign(new_target.y-old_target.y);
 		if (frame == 6){
+			speed_z = 1.0;       //TODO check hardcoded
 			position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_baro);
 		} else if (frame == 11){
+			speed_z = 0.4;       //TODO check hardcoded
 			position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_sonar);
 		}
 		position_increments.dyaw = speed_yaw/rate * sign(new_target.yaw-old_target.yaw);
+		//ROS_INFO("REF: INC: %f - %f - %f - %f", speed_z, new_target.alt, old_target.alt_baro, new_target.alt-old_target.alt_baro);
 	}
 
 	int sign(double x){
@@ -373,9 +385,10 @@ public:
 				get_pos_NED_from_WGS84 (&temp_x, &temp_y, target_wp.Latitude/10000000.0f, target_wp.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
 				target_wp_ned.x = temp_x;
 				target_wp_ned.y = temp_y;
-				target_wp_ned.alt = target_wp.AltitudeRelative;
+				target_wp_ned.alt = target_wp.AltitudeRelative / 1000.0f;  //meters
 				target_wp_ned.yaw = target_wp.Yawangle;
 				speed_wp_linear = inputCmd_.param1;
+				if (speed_wp_linear==0) speed_wp_linear = 2.0;
 				speed_wp_yaw = 1;  //TODO check hardcoded!!!
 				outputDist_.seq = inputCmd_.seq;
 				ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",target_wp.Latitude,target_wp.Longitude,target_wp.AltitudeRelative,target_wp.Yawangle,target_wp.frame);
@@ -427,13 +440,9 @@ public:
 			case 22:  // MAV_CMD_NAV_TAKEOFF
 			{
 				ROS_INFO("REF: MAV_CMD_NAV_TAKEOFF");
-				outputRef_.Latitude = (int)(inputCmd_.param5*10000000.0f);
-				outputRef_.Longitude = (int)(inputCmd_.param6*10000000.0f);
-				outputRef_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
-				outputRef_.Yawangle = inputCmd_.param4;
 				outputRef_.frame = inputCmd_.frame;
 				outputDist_.seq = inputCmd_.seq;
-				Dh_TO = outputRef_.AltitudeRelative;
+				Dh_TO = (int)(inputCmd_.param7*1000.0f);
 			}break;
 			/*		case 115: // MAV_CMD_CONDITION_YAW
 			{
@@ -486,12 +495,20 @@ public:
 
 	void Reference_Handle()
 	{
-		//Generates the initial reference for sonar as soon as a sonar measurement is available.
-		//The increments are generated based on this initial reference.
-		if (actual_frame == 6 && inputSonar_.distance > 0){       //in BARO mode but reading sonar
-			target_ned.alt_sonar = inputSonar_.distance;     //put as temp altitude for sonar target the actual altitude from ground
-		} else if (inputSonar_.distance <= 0){
-			target_ned.alt_sonar = 0;
+		if (actual_frame != oldFrame_.actual_ref_frame)
+		{
+			if (actual_frame == 11 && oldFrame_.actual_ref_frame == 6){   //switched from baro to sonar
+				//Generates the initial reference for sonar as soon as a sonar measurement is available.
+				//The increments are generated based on this initial reference.
+				target_ned.alt_sonar = inputSonar_.distance / 1000.0f;     //put as temp altitude for sonar target the actual altitude from ground
+				ROS_INFO("REF: GOT SONAR: %f", target_ned.alt_sonar);
+			} else {
+				target_ned.alt_sonar = 0;      //reset when we loose sonar or the frame is not sonar anymore
+			}
+			new_frame = true;
+			oldFrame_.actual_ref_frame = actual_frame;
+			oldFrame_.target_ref_frame = target_frame;  //TODO check used??
+			ROS_INFO("REF: NEW FRAME");
 		}
 
 
@@ -502,17 +519,6 @@ public:
 			ROS_INFO("REF: NEW MMS STATE");
 		}
 
-		//------------- DEPRECATED -------------
-		if (actual_frame != oldFrame_.actual_ref_frame || target_frame != oldFrame_.target_ref_frame)
-		{
-			new_frame = true;
-			oldFrame_.actual_ref_frame = actual_frame;
-			oldFrame_.target_ref_frame = target_frame;
-			ROS_INFO("REF: NEW FRAME");
-		}
-		//---------------------------------------
-
-
 		set_increments_zero();  //reset increments
 
 		switch(currentState){
@@ -522,62 +528,7 @@ public:
 					new_state = false;
 					set_current_position_as_ref();
 				}
-				/*if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == target_frame) // CHOERENCE CHECK
-				{
-					//ROS_INFO("REF: FRAME COHERENCE OK");
-					if (new_frame == true)
-					{
-						//ROS_INFO("REF: NEW_FRAME");
-						if (new_state == true)
-						{
-							ROS_INFO("REF: ON_GROUND_NO_HOME");
-							new_state = false;
-
-							set_current_position_as_ref();
-							outputRef_.frame = actual_frame;
-							tempRef_ = outputRef_;
-							tempRelAlt = inputGlobPosInt_.alt;
-							ROS_INFO("REF->NAV: REFERENCE = ON_GROUND");
-						}
-
-						new_frame = false;
-
-						if (actual_frame == 6 && target_frame == 6) // 6 = barometer
-						{
-							outputRef_ = tempRef_;
-							outputRef_.AltitudeRelative = tempRef_.AltitudeRelative-5000-1;
-							outputRef_.frame = actual_frame;
-							ROS_INFO("REF->NAV: ON_GROUND BARO");
-							pubToReference_.publish(outputRef_);
-						}
-						if (actual_frame == 11 && target_frame == 11) // 11 = sonar
-						{
-							outputRef_ = tempRef_;
-							outputRef_.AltitudeRelative = tempRef_.AltitudeRelative-5000-2;
-							outputRef_.frame = actual_frame;
-							ROS_INFO("REF->NAV: ON_GROUND SONAR");
-							pubToReference_.publish(outputRef_);
-						}
-						if (actual_frame == 6 && target_frame == 11)
-						{
-							outputRef_ = tempRef_;
-							outputRef_.AltitudeRelative = tempRelAlt-5000-3;
-							outputRef_.frame = actual_frame;
-							ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-							pubToReference_.publish(outputRef_);
-						}
-						if (actual_frame == 11 && target_frame == 6)
-						{
-							ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-							ROS_INFO("REF: NO REFERENCE PUBLISHED");
-						}
-					}
-				}
-				else
-				{
-					ROS_INFO("REF: FRAME COHERENCE NOT OK");
-				}
-				break;*/
+				break;
 
 			case SETTING_HOME:
 				if (new_state == true)
@@ -600,7 +551,7 @@ public:
 					ROS_INFO("REF: ON_GROUND_NO_HOME");
 					new_state = false;
 					set_current_position_as_ref();
-					position_increments.dalt = -5000;
+					position_increments.dalt = -5;	//give a reference below 5 meters to avoid un-intentional take-off because of noise on baro
 					//target_ned.alt -= 5000;    //give a reference below 5 meters to avoid un-intentional take-off because of noise on baro
 				}
 				break;
@@ -631,17 +582,13 @@ public:
 				if (new_state == true){
 					ROS_INFO("REF: PERFORMING_TAKEOFF");
 					new_state = false;
-					position_increments.dalt = Dh_TO;
+					set_current_position_as_ref();
+					position_increments.dalt = Dh_TO / 1000.0f;  //in meters always
+					target_wp_ned.alt += Dh_TO / 1000.0f;    //TODO I don't like this
+					speed_wp_linear = 1.5;
+					speed_wp_yaw = 0.1;
 				}
-				if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == target_frame) // CHOERENCE CHECK
-				{
-					distance();                                      //TODO move this outside switch
-					outputDist_.error_pos = error_to_t.error_pos;
-					outputDist_.error_ang = error_to_t.error_ang;
-					outputDist_.error_alt = error_to_t.error_alt;
-					outputDist_.command = 22; // TAKEOFF                //TODO this should remain here??
-					pubToDistance_.publish(outputDist_);
-				}
+				outputDist_.command = 22; // TAKEOFF                //TODO this should remain here??
 				break;
 
 			case IN_FLIGHT:
@@ -649,42 +596,14 @@ public:
 					ROS_INFO("REF: IN_FLIGHT");
 					new_state = false;
 				}
-				/*if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == target_frame) // CHOERENCE CHECK
-				{
-					if (new_frame == true)
-					{
-						new_frame = false;
-
-						if (actual_frame == 6 && target_frame == 6) // 6 = barometer
-						{
-							outputRef_ = tempRef_;
-							outputRef_.frame = actual_frame;
-							pubToReference_.publish(outputRef_);// as it is     
-						}
-						if (actual_frame == 11 && target_frame == 11) // 11 = sonar
-						{
-							outputRef_ = tempRef_;
-							outputRef_.frame = actual_frame;
-							pubToReference_.publish(outputRef_);// as it is		
-						}
-						if (actual_frame == 6 && target_frame == 11)
-						{
-							outputRef_ = tempRef_;
-							outputRef_.frame = actual_frame;
-							outputRef_.AltitudeRelative = tempRelAlt;
-							ROS_INFO("REF->NAV: WARNING! REF CONVERTED TO BARO");
-							pubToReference_.publish(outputRef_);				
-						}
-						if (actual_frame == 11 && target_frame == 6)
-						{
-							ROS_INFO("REF: !!! SYSTEM ERROR !!! actual = 11; target = 6");
-							ROS_INFO("REF: NO REFERENCE PUBLISHED");
-						}
-					}
-				}*/
+				//ROS_INFO("REF: WP_NED: %f, %f, %f - TARG_NED: %f, %f, %f", target_wp_ned.x, target_wp_ned.y, target_wp_ned.alt, target_ned.x, target_ned.y, target_ned.alt_baro);
+				calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
+				if (target_frame == 11 && actual_frame == 6){  //target in sonar but quad is too high
+					position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
+				}
 				break;
 
-			case GRID:          //TODO remake with actual increments policy
+			case GRID:          //TODO remake with actual increments policy  //TODO add case when target is sonar but too high
 				{
 					if (new_state == true)
 					{
@@ -785,31 +704,22 @@ public:
 				}
 			break;
 
-			case PERFORMING_GO_TO:       //TODO add case when target is sonar but too high
+			case PERFORMING_GO_TO:
 				if (new_state == true){
 					ROS_INFO("REF: PERFORMING_GO_TO");
 					new_state = false;
 				}
 				calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
-
-				if (inputPos_.frame == actual_frame && inputMmsStatus_.target_ref_frame == target_frame) // CHOERENCE CHECK
-				{
-					distance();		//TODO move this outside switch
-					outputDist_.error_pos = error_to_t.error_pos;
-					outputDist_.error_ang = error_to_t.error_ang;
-					outputDist_.error_alt = error_to_t.error_alt;
-					outputDist_.command = 16; // WAYPOINT			//TODO this should remain here
-					pubToDistance_.publish(outputDist_);
+				if (target_frame == 11 && actual_frame == 6){  //target in sonar but quad is too high
+					position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
 				}
+				outputDist_.command = 16; // WAYPOINT			//TODO this should remain here
 			break;
 
 			case LEASHING:
 				if (new_state == true){
 					ROS_INFO("REF: LEASHING");
 					new_state = false;
-				}
-				if (new_frame == true){
-					new_frame = false;
 				}
 				switch (leashing_status_.horizontal_control_mode){
 					case 0:	//HORIZONTAL_CONTROL_MODE_NONE
@@ -913,12 +823,12 @@ public:
 				//Publish references in WGS84    //TODO remove this...references are published later for all states
 				double temp_lat, temp_lon;
 				get_pos_WGS84_from_NED (&temp_lat, &temp_lon, (leashing_target_ned_.x+leashing_offset_ned_.x_offset), (leashing_target_ned_.y+leashing_offset_ned_.y_offset), Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-				outputRef_.Latitude = temp_lat*10000000.0f;
-				outputRef_.Longitude = temp_lon*10000000.0f;
-				outputRef_.AltitudeRelative = (leashing_target_ned_.z + leashing_offset_ned_.z_offset)*1000.0f;
-				outputRef_.Yawangle = yaw_leashing;
-				pubToReference_.publish(outputRef_);
-				tempRef_ = outputRef_;
+				//outputRef_.Latitude = temp_lat*10000000.0f;
+				//outputRef_.Longitude = temp_lon*10000000.0f;
+				//outputRef_.AltitudeRelative = (leashing_target_ned_.z + leashing_offset_ned_.z_offset)*1000.0f;
+				//outputRef_.Yawangle = yaw_leashing;
+				//pubToReference_.publish(outputRef_);
+				//tempRef_ = outputRef_;
 				//ROS_INFO("REF: LEASHING: %d - %f - %f - %f - %f", leashing_status_.horizontal_control_mode, leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset, leashing_offset_ned_.rho_offset, leashing_offset_ned_.psi_offset);
 				leashing_status_.horizontal_distance = leashing_offset_ned_.rho_offset;
 				leashing_status_.horizontal_heading = leashing_offset_ned_.psi_offset;
@@ -942,7 +852,7 @@ public:
 						new_state = false;
 						set_current_position_as_ref();                      //this is needed because I can send the land command before last WP or target is reached
 				}
-				position_increments.dalt = -80;    //80cm/s
+				position_increments.dalt = -0.08;    //80cm/s
 				outputDist_.command = 21; // LAND
 				break;
 			
@@ -964,26 +874,34 @@ public:
 					set_current_position_as_ref();
 					break;
 		}
-		//switch end-->calculate new targets ned
+		//-----switch end-->calculate new targets ned-----
 		target_ned.x += position_increments.dx;        //TODO make a unique class with dx,dy,alt_baro,alt_sonar,dyaw...too wasted memory and code this way
 		target_ned.y += position_increments.dy;
 		target_ned.alt_baro += position_increments.dalt;
 		target_ned.alt_sonar += position_increments.dalt;
 		target_ned.yaw += position_increments.dyaw;
-		//calculate new target and publish
+		//ROS_INFO("REF: Increments: %f, %f, %f", position_increments.dx, position_increments.dy, position_increments.dalt);
+		//ROS_INFO("REF: Targets NED: %f, %f, %f", target_ned.x, target_ned.y, target_ned.alt_baro);
+		//ROS_INFO("REF: Frame target: %d - Frame actual: %d", target_frame, actual_frame);
+		//------calculate new target and publish-----
 		double temp_lat, temp_lon;
 		get_pos_WGS84_from_NED (&temp_lat, &temp_lon, target_ned.x, target_ned.y, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-		outputRef_.Latitude = temp_lat;
-		outputRef_.Longitude = temp_lon;
+		outputRef_.Latitude = temp_lat*10000000.0f;
+		outputRef_.Longitude = temp_lon*10000000.0f;
 		outputRef_.Yawangle = target_ned.yaw;
 		if (actual_frame == 6){   //publish baro
-			outputRef_.AltitudeRelative = target_ned.alt_baro;
+			outputRef_.AltitudeRelative = target_ned.alt_baro * 1000.0f;
 			outputRef_.frame = 6;
 		} else if (actual_frame == 11){   //publish sonar
-			outputRef_.AltitudeRelative = target_ned.alt_sonar;
+			outputRef_.AltitudeRelative = target_ned.alt_sonar * 1000.0f;
 			outputRef_.frame = 11;
 		}
 		pubToReference_.publish(outputRef_);
+		distance();		//calculate distance to target
+		outputDist_.error_pos = error_to_t.error_pos;
+		outputDist_.error_ang = error_to_t.error_ang;
+		outputDist_.error_alt = error_to_t.error_alt;
+		pubToDistance_.publish(outputDist_);
 }
 
 void run() {
@@ -1078,8 +996,8 @@ uint16_t counter_print;
 float speed_wp_linear;
 float speed_wp_yaw;
 
-pos_target_ned target_ned;
-pos_NE_ALT target_wp_ned;
+pos_target_ned target_ned;	  //the (trajectory) target converted to output_ref and sent as target
+pos_NE_ALT target_wp_ned;     //the target we want to reach (seen as a waypoint, but a trajectory is built to reach it)
 delta_movements_ned position_increments;
 
 //GRID RELATED
