@@ -17,6 +17,9 @@
 #include "geographic_msgs/GeoPose.h"	 //leashing
 #include <wgs84_ned_lib/wgs84_ned_lib.h>       
 
+
+//TODO add check with terrain altitude
+
 double eps_WP = 400.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here MAKE PARAMETER SERVER
 double eps_alt = 400.0; // distance to the target altitude in millimeters
 double eps_YAW = 10.0; // distance to the target YAW position in deg
@@ -138,6 +141,7 @@ public:
 		N_WP = 0;      //OUTPUT
 		WP_completed_grid = 0;
 		waiting_for_WP_execution_grid = false;
+		grid_forward_wp = true;
 
 		//LEASHING
 		yaw_leashing = 0;
@@ -239,7 +243,7 @@ public:
 		inputSonar_.distance = msg -> distance;
 	}
 
-	void set_current_position_as_ref()       //TODO maybe change with target_ned
+	void set_current_position_as_ref()
 	{
 		double temp_x, temp_y;
 		get_pos_NED_from_WGS84 (&temp_x, &temp_y, inputPos_.Latitude/10000000.0f, inputPos_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
@@ -332,7 +336,8 @@ public:
 		inputGlobPosInt_.time_boot_ms = msg->time_boot_ms;
 	}
 	
-	void readLeashingTarget(const geographic_msgs::GeoPose::ConstPtr& msg){
+	void readLeashingTarget(const geographic_msgs::GeoPose::ConstPtr& msg)
+	{
 		leashing_target_ = *msg;
 		double temp_x, temp_y;
 		get_pos_NED_from_WGS84 (&temp_x, &temp_y, leashing_target_.position.latitude, leashing_target_.position.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
@@ -341,7 +346,8 @@ public:
 		leashing_target_ned_.z = leashing_target_.position.altitude;
 	}
 	
-	void readLeashingCommand(const reference::LeashingCommand::ConstPtr& msg){
+	void readLeashingCommand(const reference::LeashingCommand::ConstPtr& msg)
+	{
 		if (currentState == LEASHING) {
 			leashing_command_ = *msg;
 			
@@ -493,8 +499,7 @@ public:
 		}
 	}
 
-	void Reference_Handle()
-	{
+	void Reference_Handle(){
 		if (actual_frame != oldFrame_.actual_ref_frame)
 		{
 			if (actual_frame == 11 && oldFrame_.actual_ref_frame == 6){   //switched from baro to sonar
@@ -588,7 +593,7 @@ public:
 					speed_wp_linear = 1.5;
 					speed_wp_yaw = 0.1;
 				}
-				outputDist_.command = 22; // TAKEOFF                //TODO this should remain here??
+				outputDist_.command = 22; // TAKEOFF
 				break;
 
 			case IN_FLIGHT:
@@ -603,104 +608,105 @@ public:
 				}
 				break;
 
-			case GRID:          //TODO remake with actual increments policy  //TODO add case when target is sonar but too high
+			case GRID:
+				if (new_state == true)
 				{
-					if (new_state == true)
-					{
-						ROS_INFO("REF: GRID");
-						new_state = false;
-						pubToReference_.publish(tempRef_);    //used mainly to roll back from pause //TODO don't like this!!
-						//WP_completed_grid = 0;	//reset grid related variables
-						ROS_INFO("REF->NAV: REFERENCE = GRID");
+					ROS_INFO("REF: GRID");
+					new_state = false;
+					ROS_INFO("REF->NAV: REFERENCE = GRID");
+				}
+				//ROS_INFO("REF: GRID: Received_cmd %d - Waiting vertex %d", received_grid_cmd, waiting_for_vertex_grid);
+				if (received_grid_cmd && !waiting_for_vertex_grid){   //have received all vertexes
+					ROS_INFO("REF: GRID. Starting GRID alg. N. vertex: %d - Distance: %f", vertex_grid_n, d_grid);
+					for (int i = 0; i < vertex_grid_n; i++){
+						double temp_x = 0;
+						double temp_y = 0;
+						get_pos_NED_from_WGS84 (&temp_x, &temp_y, vertex_grid [i][0], vertex_grid [i][1], Home_.lat/10000000.0f, Home_.lon/10000000.0f);
+						vertex_grid [i][0] = temp_x;
+						vertex_grid [i][1] = temp_y;
+						//ROS_INFO("REF: GRID. Vertex %d: %f - %f", i+1, vertex_grid [i][0], vertex_grid [i][1]);
 					}
-					//ROS_INFO("REF: GRID: Received_cmd %d - Waiting vertex %d", received_grid_cmd, waiting_for_vertex_grid);
-					if (received_grid_cmd && !waiting_for_vertex_grid){   //have received all vertexes
-						ROS_INFO("REF: GRID. Starting GRID alg. N. vertex: %d - Distance: %f", vertex_grid_n, d_grid);
-						for (int i = 0; i < vertex_grid_n; i++){
-							double temp_x = 0;
-							double temp_y = 0;
-							get_pos_NED_from_WGS84 (&temp_x, &temp_y, vertex_grid [i][0], vertex_grid [i][1], Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-							vertex_grid [i][0] = temp_x;
-							vertex_grid [i][1] = temp_y;
-							//ROS_INFO("REF: GRID. Vertex %d: %f - %f", i+1, vertex_grid [i][0], vertex_grid [i][1]);
-						}
-						double temp_x_init = 0;
-						double temp_y_init = 0;
-						get_pos_NED_from_WGS84 (&temp_x_init, &temp_y_init, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f); //latest reference as initial point
-						initial_pos_grid[0] = temp_x_init;
-						initial_pos_grid[1] = temp_y_init;
-						WP_grid(vertex_grid, &vertex_grid_n, initial_pos_grid, d_grid, WP, &success_grid, &N_WP);      //CORE ALGORITHM
-						
-						double tot_distance = 0;
-						tot_distance += sqrt(pow(initial_pos_grid[0]-WP[1][0],2)+pow(initial_pos_grid[1]-WP[1][1],2));  //distance from intitial position to first WP
-						for (int i = 0; i<N_WP-1; i++){
-							tot_distance += sqrt(pow(WP[i][0]-WP[i+1][0],2)+pow(WP[i][1]-WP[i+1][1],2));     //sum of all distances between WPs
-						}
-						double grid_exec_time = tot_distance / speed_grid;                  
-						reference::Grid_info gridInfo;
-						gridInfo.success = success_grid;
-						gridInfo.N_WP = N_WP;
-						gridInfo.exec_time = grid_exec_time;
-						pubGridInfo_.publish(gridInfo);
-						received_grid_cmd = false;     //WP calculated. Now they need to be sent as reference
-						if (success_grid){
-							ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f - Exec time: %f - Distance: %f", success_grid, N_WP, speed_grid, height_grid, grid_exec_time, tot_distance);
-							/*ROS_INFO("REF: GRID! New vertex: %d", vertex_grid_n);
-							for (int i = 0; i < N_WP; i++){
-								ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP[i][0], WP[i][1]);
-							}*/
-							executing_grid = true;
-						}
+					double temp_x_init = 0;
+					double temp_y_init = 0;
+					get_pos_NED_from_WGS84 (&temp_x_init, &temp_y_init, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f); //latest reference as initial point
+					initial_pos_grid[0] = temp_x_init;
+					initial_pos_grid[1] = temp_y_init;
+					WP_grid(vertex_grid, &vertex_grid_n, initial_pos_grid, d_grid, WP, &success_grid, &N_WP);      //CORE ALGORITHM
+
+					double tot_distance = 0;
+					tot_distance += sqrt(pow(initial_pos_grid[0]-WP[1][0],2)+pow(initial_pos_grid[1]-WP[1][1],2));  //distance from intitial position to first WP
+					for (int i = 0; i<N_WP-1; i++){
+						tot_distance += sqrt(pow(WP[i][0]-WP[i+1][0],2)+pow(WP[i][1]-WP[i+1][1],2));     //sum of all distances between WPs
 					}
-					if (executing_grid){
-						if (WP_completed_grid<N_WP && !waiting_for_WP_execution_grid){           
-							waiting_for_WP_execution_grid = true;
-							double temp_ref_latitude;
-							double temp_ref_longitude;
-							get_pos_WGS84_from_NED (&temp_ref_latitude, &temp_ref_longitude, WP[WP_completed_grid][0], WP[WP_completed_grid][1], Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-							outputRef_.Latitude = (int)(temp_ref_latitude * 10000000.0f);
-							outputRef_.Longitude = (int)(temp_ref_longitude * 10000000.0f);
-							outputRef_.AltitudeRelative = height_grid * 1000.0f;  //yaw should be already the last target  //TODO maybe we can set yaw from mission, for example pointing in the direciton of flight
-							outputRef_.frame = actual_frame;                 //TODO check this with Nicola
-							ROS_INFO("REF->GRID: Sent a WP: %f - %f", WP[WP_completed_grid][0], WP[WP_completed_grid][1]);
-							pubToReference_.publish(outputRef_);
-							tempRef_ = outputRef_;
-						} else if (waiting_for_WP_execution_grid){
-							//Waiting for the execution of the WP
-							distance();
-							outputDist_.error_pos = error_to_t.error_pos;
-							outputDist_.error_ang = error_to_t.error_ang;
-							outputDist_.error_alt = error_to_t.error_alt;
-							outputDist_.command = 160; // GRID
-							pubToDistance_.publish(outputDist_);
-							if (outputDist_.error_pos < eps_WP && outputDist_.error_ang < eps_YAW && outputDist_.error_alt < eps_alt){
-								//WP reached
-								waiting_for_WP_execution_grid = false;
-								WP_completed_grid++;
-							}
-						} else if (WP_completed_grid==N_WP && !repeat_flag){ //completed grid and repeat_flag is off
-							//GRID execution ended. Return EVENT to MMS
-							ROS_INFO("REF->GRID: GRID COMPLETED!");
-							grid_ack_.grid_completed = true;
-							grid_ack_.completion_type = 1;      //success
-							pubGridAck_.publish(grid_ack_);
-							WP_completed_grid = 0;
-							executing_grid = false;
-						} else if (WP_completed_grid==N_WP && repeat_flag){  //completed grid but repeat_flag is on
-							//START GRID again until termination command
-							//TODO make the WP running in opposite way to save time!!
-							WP_completed_grid = 0;   //reset to first WP to start over
-							ROS_INFO("REF->GRID: Restarting GRID because repeat_flag");
+					double grid_exec_time = tot_distance / speed_grid;
+					reference::Grid_info gridInfo;
+					gridInfo.success = success_grid;
+					gridInfo.N_WP = N_WP;
+					gridInfo.exec_time = grid_exec_time;
+					pubGridInfo_.publish(gridInfo);
+					received_grid_cmd = false;     //WP calculated. Now they need to be sent as reference
+					if (success_grid){
+						ROS_INFO("REF: GRID! Success: %d - N. WP: %d - speed: %f - Height: %f - Exec time: %f - Distance: %f", success_grid, N_WP, speed_grid, height_grid, grid_exec_time, tot_distance);
+						/*ROS_INFO("REF: GRID! New vertex: %d", vertex_grid_n);
+						for (int i = 0; i < N_WP; i++){
+							ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP[i][0], WP[i][1]);
+						}*/
+						executing_grid = true;
+					}
+				}
+				if (executing_grid){   //grid calculated-->executing WP
+					if (WP_completed_grid<N_WP && WP_completed_grid>=0 && !waiting_for_WP_execution_grid){ //not finished all WP and reached last WP sent-->send new WP
+						waiting_for_WP_execution_grid = true;
+						target_wp_ned.x = WP[WP_completed_grid][0];
+						target_wp_ned.y = WP[WP_completed_grid][1];
+						target_wp_ned.alt = height_grid;  //meters
+						calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
+						if (target_frame == 11 && actual_frame == 6){  //target in sonar but quad is too high
+							position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
 						}
-					} else if (!success_grid){
-						//FAIL
-						ROS_INFO("REF->GRID: GRID Alg failed");
+						ROS_INFO("REF->GRID: Sent a WP: %f - %f", WP[WP_completed_grid][0], WP[WP_completed_grid][1]);
+					} else if (waiting_for_WP_execution_grid){
+						//Waiting for the execution of the WP
+						if (outputDist_.error_pos < eps_WP && outputDist_.error_ang < eps_YAW && outputDist_.error_alt < eps_alt){
+							//WP reached
+							waiting_for_WP_execution_grid = false;
+							if (grid_forward_wp) WP_completed_grid++;
+							else WP_completed_grid--;
+							break;
+						}
+						outputDist_.command = 160; // GRID
+						calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
+						if (target_frame == 11 && actual_frame == 6){  //target in sonar but quad is too high
+							position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
+						}
+					} else if (WP_completed_grid==N_WP && !repeat_flag){ //completed grid and repeat_flag is off
+						//GRID execution ended. Return EVENT to MMS
+						ROS_INFO("REF->GRID: GRID COMPLETED!");
 						grid_ack_.grid_completed = true;
-						grid_ack_.completion_type = 0;      //generic failure
+						grid_ack_.completion_type = 1;      //success
 						pubGridAck_.publish(grid_ack_);
 						WP_completed_grid = 0;
 						executing_grid = false;
+					} else if (((WP_completed_grid==N_WP && grid_forward_wp) || (WP_completed_grid<0 && !grid_forward_wp)) && repeat_flag){  //completed grid but repeat_flag is on
+						//START GRID again until termination command
+						if (grid_forward_wp){
+							WP_completed_grid = N_WP-1;   //reset to last WP to start over in reverse
+							grid_forward_wp = false;
+							ROS_INFO("REF->GRID: Restarting GRID reverse because repeat_flag");
+						} else{
+							WP_completed_grid = 0;   //reset to first WP to start over
+							grid_forward_wp = true;
+							ROS_INFO("REF->GRID: Restarting GRID forward because repeat_flag");
+						}
 					}
+				} else if (!success_grid){
+					//FAIL
+					ROS_INFO("REF->GRID: GRID Alg failed");
+					grid_ack_.grid_completed = true;
+					grid_ack_.completion_type = 0;      //generic failure
+					pubGridAck_.publish(grid_ack_);
+					WP_completed_grid = 0;
+					executing_grid = false;
 				}
 			break;
 
@@ -713,7 +719,7 @@ public:
 				if (target_frame == 11 && actual_frame == 6){  //target in sonar but quad is too high
 					position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
 				}
-				outputDist_.command = 16; // WAYPOINT			//TODO this should remain here
+				outputDist_.command = 16; // WAYPOINT
 			break;
 
 			case LEASHING:
@@ -777,7 +783,6 @@ public:
 				
 				switch (leashing_status_.vertical_control_mode){
 					case 0:		//VERTICAL_CONTROL_MODE_NONE
-
 						break;
 					case 1:		//VERTICAL_CONTROL_MODE_KEEP
 						//WHAT HERE?? TODO
@@ -786,7 +791,7 @@ public:
 						leashing_offset_ned_.z_offset = leashing_command_.vertical_distance;
 						break;
 					case 3:		//VERTICAL_CONTROL_MODE_VEL
-						leashing_offset_ned_.z_offset += leashing_command_.vertical_distance_vel * 0.1; //max speed 1 m/s  //TODO check hardcoded   //TODO add check with terrain altitude
+						leashing_offset_ned_.z_offset += leashing_command_.vertical_distance_vel * 0.1; //max speed 1 m/s  //TODO check hardcoded
 						break;
 				}
 				
@@ -840,10 +845,14 @@ public:
 
 				//Leashing is overwriting and not using increments  //TODO check if making uniform with increments
 				target_ned.x = leashing_target_ned_.x+leashing_offset_ned_.x_offset;
+				target_wp_ned.x = target_ned.x;
 				target_ned.y = leashing_target_ned_.y+leashing_offset_ned_.y_offset;
+				target_wp_ned.y = target_ned.y;
 				target_ned.alt_baro = leashing_target_ned_.z+leashing_offset_ned_.z_offset;
+				target_wp_ned.alt = target_ned.alt_baro;
 				//TODO sonar alt??
 				target_ned.yaw = yaw_leashing;
+				target_wp_ned.yaw = target_ned.yaw;    //target_wp_yaw is overwritten with latest target
 				break;
 			
 			case PERFORMING_LANDING:
@@ -902,132 +911,130 @@ public:
 		outputDist_.error_ang = error_to_t.error_ang;
 		outputDist_.error_alt = error_to_t.error_alt;
 		pubToDistance_.publish(outputDist_);
-}
-
-void run() {
-	ros::Rate loop_rate(rate);
-
-	while (ros::ok())
-	{
-		ROS_INFO_ONCE("REF: RUNNING");
-
-		Reference_Handle();
-		ros::spinOnce();
-
-		loop_rate.sleep();
 	}
-}
+
+	void run() {
+		ros::Rate loop_rate(rate);
+
+		while (ros::ok())
+		{
+			ROS_INFO_ONCE("REF: RUNNING");
+
+			Reference_Handle();
+			ros::spinOnce();
+
+			loop_rate.sleep();
+		}
+	}
 
 protected:
-/*state here*/
-ros::NodeHandle n_;
+	/*state here*/
+	ros::NodeHandle n_;
 
-ros::Subscriber subFromPosition_;
-ros::Subscriber subFromCmd_;
-ros::Subscriber subFromMmsStatus_;
-ros::Subscriber subFromSonar_;
-ros::Subscriber subFromFrame_;
-ros::Subscriber subFromGlobPosInt_;
-ros::Subscriber subLeashingTargetPosition_;
-ros::Subscriber subLeashingCommand_;
+	ros::Subscriber subFromPosition_;
+	ros::Subscriber subFromCmd_;
+	ros::Subscriber subFromMmsStatus_;
+	ros::Subscriber subFromSonar_;
+	ros::Subscriber subFromFrame_;
+	ros::Subscriber subFromGlobPosInt_;
+	ros::Subscriber subLeashingTargetPosition_;
+	ros::Subscriber subLeashingCommand_;
 
-ros::Publisher pubToReference_;
-ros::Publisher pubGridAck_;
-ros::Publisher pubToDistance_;
-ros::Publisher pubHome_;
-ros::Publisher pubGridInfo_;
-ros::Publisher pubLeashingStatus_;
+	ros::Publisher pubToReference_;
+	ros::Publisher pubGridAck_;
+	ros::Publisher pubToDistance_;
+	ros::Publisher pubHome_;
+	ros::Publisher pubGridInfo_;
+	ros::Publisher pubLeashingStatus_;
 
-guidance_node_amsl::Position_nav inputPos_;
-mavros::Global_position_int inputGlobPosInt_;
+	guidance_node_amsl::Position_nav inputPos_;
+	mavros::Global_position_int inputGlobPosInt_;
 
-mavros::Sonar inputSonar_;
-mms_msgs::Cmd inputCmd_;
-mms_msgs::MMS_status inputMmsStatus_;
-//frame::Ref_system inputFrame_;
-frame::Ref_system oldFrame_;
+	mavros::Sonar inputSonar_;
+	mms_msgs::Cmd inputCmd_;
+	mms_msgs::MMS_status inputMmsStatus_;
+	//frame::Ref_system inputFrame_;
+	frame::Ref_system oldFrame_;
 
-guidance_node_amsl::Reference outputRef_;
-guidance_node_amsl::Reference target_wp;
+	guidance_node_amsl::Reference outputRef_;
+	guidance_node_amsl::Reference target_wp;
 
-reference::Distance outputDist_;
+	reference::Distance outputDist_;
 
-guidance_node_amsl::Reference tempRef_;
-guidance_node_amsl::Reference waypointRef_;
-mavros::Global_position_int Home_;
+	guidance_node_amsl::Reference waypointRef_;
+	mavros::Global_position_int Home_;
 
-reference::LeashingCommand leashing_command_;   //leashing
-reference::LeashingStatus leashing_status_;    //leashing
-geographic_msgs::GeoPose leashing_target_;	 //leashing
+	reference::LeashingCommand leashing_command_;   //leashing
+	reference::LeashingStatus leashing_status_;    //leashing
+	geographic_msgs::GeoPose leashing_target_;	 //leashing
 
-// STATES DEFINITION
-static const int ON_GROUND_NO_HOME = 10;         //TODO make a .h to include in both reference and mms
-static const int SETTING_HOME = 20;
-static const int  ON_GROUND_DISARMED = 30;
-static const int  ARMING = 40;
-static const int  DISARMING = 45;
-static const int  ON_GROUND_ARMED = 50;
-//static const int  ON_GROUND_READY_TO_TAKEOFF = 60;
-static const int  PERFORMING_TAKEOFF = 70;
-static const int  IN_FLIGHT = 80;
-static const int  GRID = 90;
-//static const int  READY_TO_GO = 90;
-static const int  PERFORMING_GO_TO = 100;
-//static const int  READY_TO_LAND = 110;
-static const int  PERFORMING_LANDING = 120;
-static const int LEASHING = 140;
-static const int PAUSED = 150;
-static const int  MANUAL_FLIGHT = 1000;
+	// STATES DEFINITION
+	static const int ON_GROUND_NO_HOME = 10;         //TODO make a .h to include in both reference and mms
+	static const int SETTING_HOME = 20;
+	static const int  ON_GROUND_DISARMED = 30;
+	static const int  ARMING = 40;
+	static const int  DISARMING = 45;
+	static const int  ON_GROUND_ARMED = 50;
+	//static const int  ON_GROUND_READY_TO_TAKEOFF = 60;
+	static const int  PERFORMING_TAKEOFF = 70;
+	static const int  IN_FLIGHT = 80;
+	static const int  GRID = 90;
+	//static const int  READY_TO_GO = 90;
+	static const int  PERFORMING_GO_TO = 100;
+	//static const int  READY_TO_LAND = 110;
+	static const int  PERFORMING_LANDING = 120;
+	static const int LEASHING = 140;
+	static const int PAUSED = 150;
+	static const int  MANUAL_FLIGHT = 1000;
 
-static const int  MAX_VERTEX_GRID = 10;
+	static const int  MAX_VERTEX_GRID = 10;
 
-// STATE INITIALIZATION
-int currentState;
-int oldState;
-int target_frame;
-int actual_frame;
-int tempRelAlt;
+	// STATE INITIALIZATION
+	int currentState;
+	int oldState;
+	int target_frame;
+	int actual_frame;
+	int tempRelAlt;
 
-int rate;
-bool new_state;
-bool new_frame;
-bool land;
-uint16_t counter_print;
-float speed_wp_linear;
-float speed_wp_yaw;
+	int rate;
+	bool new_state;
+	bool new_frame;
+	bool land;
+	uint16_t counter_print;
+	float speed_wp_linear;
+	float speed_wp_yaw;
 
-pos_target_ned target_ned;	  //the (trajectory) target converted to output_ref and sent as target
-pos_NE_ALT target_wp_ned;     //the target we want to reach (seen as a waypoint, but a trajectory is built to reach it)
-delta_movements_ned position_increments;
+	pos_target_ned target_ned;	  //the (trajectory) target converted to output_ref and sent as target
+	pos_NE_ALT target_wp_ned;     //the target we want to reach (seen as a waypoint, but a trajectory is built to reach it)
+	delta_movements_ned position_increments;
 
-//GRID RELATED
-float d_grid;
-bool received_grid_cmd;
-bool waiting_for_vertex_grid;
-bool repeat_flag;
-int vertex_grid_n; 
-int received_vertexes_grid;
-float speed_grid;
-float height_grid;
-float **vertex_grid;
-float initial_pos_grid [2];
-bool success_grid;   //OUTPUT
-float **WP;        //OUTPUT
-int N_WP;      //OUTPUT
-int WP_completed_grid;
-bool waiting_for_WP_execution_grid;
-bool executing_grid;
-mms_msgs::Grid_ack grid_ack_;
+	//GRID RELATED
+	float d_grid;
+	bool received_grid_cmd;
+	bool waiting_for_vertex_grid;
+	bool repeat_flag;
+	int vertex_grid_n;
+	int received_vertexes_grid;
+	float speed_grid;
+	float height_grid;
+	float **vertex_grid;
+	float initial_pos_grid [2];
+	bool success_grid;   //OUTPUT
+	float **WP;        //OUTPUT
+	int N_WP;      //OUTPUT
+	int WP_completed_grid;
+	bool waiting_for_WP_execution_grid;
+	bool executing_grid;
+	bool grid_forward_wp;   //true if executing forward the list, false otherwise. For patrolling
+	mms_msgs::Grid_ack grid_ack_;
 
-//LEASHING RELATED
-leashing_target_ned leashing_target_ned_;
-leashing_offset_ned leashing_offset_ned_;
-double yaw_leashing;
-
+	//LEASHING RELATED
+	leashing_target_ned leashing_target_ned_;
+	leashing_offset_ned leashing_offset_ned_;
+	double yaw_leashing;
 
 private:
-
-int Dh_TO;
+	int Dh_TO;
 };
 
 int main(int argc, char **argv)
