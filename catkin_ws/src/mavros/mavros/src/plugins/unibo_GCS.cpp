@@ -8,6 +8,8 @@
 #include <mms_msgs/Sys_status.h>
 #include <mavros/Global_position_int.h>
 #include <mavros/ArtvaRead.h>
+#include <mavros/Safety.h>
+#include "qos_sensors_autopilot/Qos_sensors.h"
 #include <camera_handler_sherpa/Camera.h>
 #include <guidance_node_amsl/Position_nav.h>
 
@@ -27,6 +29,11 @@ public:
 	{
 		uas = &uas_;
 		
+		safety_.safety = true;
+		qos_sensors_.camera_present = false;
+		qos_sensors_.sonar_present = false;
+		qos_sensors_.artva_present = false;
+		qos_sensors_.laser_present = false;
 		
 		ack_sub = nodeHandle.subscribe("/ack_cmd", 10, &UniboGCSPlugin::ack_cmd_callback, this);
 		ack_mission_sub = nodeHandle.subscribe("/ack_mission", 10, &UniboGCSPlugin::ack_mission_callback, this);
@@ -35,7 +42,10 @@ public:
 		position_sub= nodeHandle.subscribe("/position_nav", 10, &UniboGCSPlugin::position_callback, this);
 		status_sub = nodeHandle.subscribe("/system_status", 10, &UniboGCSPlugin::status_callback, this);
 		ArtvaRead_sub = nodeHandle.subscribe("/artva_read",10,&UniboGCSPlugin::artva_callback,this);
-		ROS_INFO("ArtvaRead.msg subscribed here!");
+		safety_sub = nodeHandle.subscribe("/safety_odroid", 10, &UniboGCSPlugin::safety_callback, this);
+		qos_sensors_sub = nodeHandle.subscribe("/qos_sensors", 10, &UniboGCSPlugin::qos_sensors_callback, this);
+
+		//ROS_INFO("ArtvaRead.msg subscribed here!");
 
 		/*nodeHandle.param("guidance_node_amsl/param/sat_xy", v_xy_max, 3.0);
 		nodeHandle.param("guidance_node_amsl/param/sat_z", v_z_max, 1.5);
@@ -54,16 +64,22 @@ private:
 	ros::NodeHandle nodeHandle;
 	UAS *uas;
 
-	ros::Subscriber ack_sub;
-	ros::Subscriber ack_mission_sub;
 	ros::Publisher command_pub;
 	ros::Publisher	camera_pub;
 	ros::Subscriber	position_sub;
 	ros::Subscriber	status_sub;
 	ros::Subscriber ArtvaRead_sub;
+	ros::Subscriber ack_sub;
+	ros::Subscriber ack_mission_sub;
+	ros::Subscriber safety_sub;
+	ros::Subscriber qos_sensors_sub;
+
+	mavros::Safety safety_;
+	qos_sensors_autopilot::Qos_sensors qos_sensors_;
+
 	int ArtvaInd=0;
 	int ArtvaBufferMaxNum=20;
-    	int ArtvaBuffer[20][8];
+    int ArtvaBuffer[20][8];
 	int ArtvaLat=0;
 	int ArtvaLon=0;
 	float ArtvaYaw=0;
@@ -186,6 +202,14 @@ private:
 		ROS_INFO("Sent command ACK");
 	}
 	
+	void safety_callback(const mavros::Safety::ConstPtr msg_safety){
+		safety_ = *msg_safety;
+	}
+
+	void qos_sensors_callback(const qos_sensors_autopilot::Qos_sensors::ConstPtr msg_qos_sensors){
+		qos_sensors_ = *msg_qos_sensors;
+	}
+
 	void ack_mission_callback(const mms_msgs::Ack_mission::ConstPtr msg_ack_mission){
 		mavlink_message_t msg;		
 		if (msg_ack_mission->mission_item_reached){           //TODO maybe separate topics....bad implementation
@@ -226,7 +250,23 @@ private:
 	void status_callback(const mms_msgs::Sys_status::ConstPtr& msg){
 		mavlink_message_t msg_mav;
 		//ROS_INFO("Battery: %d",msg->voltage_battery);
-		mavlink_msg_sys_status_pack_chan(UAS_PACK_CHAN(uas), &msg_mav, 1, 1, 1, 500, msg->voltage_battery, 0, 50, 0, 0, 0, 0, 0, 0);           //only voltage battery is sent
+		int bitmask_sensors_present;
+		int bitmask_sensors_status;
+		int errors_count1;      //abused to send safety
+		bitmask_sensors_present = 0;
+		if (qos_sensors_.camera_present) bitmask_sensors_present += 1 << 7;  //2^7
+		if (qos_sensors_.laser_present) bitmask_sensors_present += 1 << 8;   //2^8
+		if (qos_sensors_.sonar_present) bitmask_sensors_present += 1 << 13;  //2^13
+		if (qos_sensors_.artva_present) bitmask_sensors_present += 1 << 22;
+		bitmask_sensors_status = 0;
+		if (qos_sensors_.camera_working) bitmask_sensors_status += 1 << 7;
+		if (qos_sensors_.laser_working) bitmask_sensors_status += 1 << 8;
+		if (qos_sensors_.sonar_working) bitmask_sensors_status += 1 << 13;
+		if (qos_sensors_.artva_working) bitmask_sensors_status += 1 << 22;
+		if (safety_.safety) errors_count1 = 1;
+		else errors_count1 = 0;
+		//onboard_control_sensors_present - onboard_control_sensors_enabled - onboard_control_sensors_health - load - voltage_battery - current_battery - battery_remaining - drop_rate_comm - errors_comm - errors_count1 - ....
+		mavlink_msg_sys_status_pack_chan(UAS_PACK_CHAN(uas), &msg_mav, bitmask_sensors_present, 1, bitmask_sensors_status, 500, msg->voltage_battery, 0, 50, 0, 0, errors_count1, 0, 0, 0);           //only voltage battery is sent
 		UAS_FCU(uas)->send_message(&msg_mav);	
 	}
 };
