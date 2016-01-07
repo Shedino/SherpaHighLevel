@@ -2,18 +2,20 @@ LIST OF TODOS FOR HIGH-LEVEL-SHERPA
 
 1) Leashing (Michele) --------------------------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED IN FLIGHT
 2) Grid (Michele)   ----------------------------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED IN FLIGHT
-3) Speed in WP (Michele)
+3) Speed in WP (Michele)  ----------------------------------------------  DONE in REFERENCE  ----  TODO in SIMULINK
 4) N photo and Delay (Michele)  ----------------------------------------  DONE  ----  TESTED
 5) Video/Photo dynamic FPS + dimension (Michele)  ----------------------  NOT FEASIBLE
 6) Better Landing (???)    ---------------------------------------------  ADDED RAW_IMU TOPIC  ---- 
 7) Ref in WGS84 + AMSL (Michele)        --------------------------------  DONE  ----  TESTED IN FLIGHT
 8) Librery WGS84<-->NED (Michele)       --------------------------------  DONE  ----  WORKING
 9) QoS sensors (Michele)                --------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED WITH REAL SENSORS
-10) Integration Delegation (Michele)    --------------------------------  90% DONE  ---- TESTED SOFTWARE  ----  TO BE TESTED IN FLIGHT  ----  TODO add leashing executor
-11) Uav_sim (All)                       --------------------------------  SIMPLE VERSION DONE
+10) Integration Delegation (Michele)    --------------------------------  90% DONE  ---- TESTED SOFTWARE  ----  TESTED IN FLIGHT
+11) Uav_sim (All)                       --------------------------------  SIMPLE VERSION+ DONE
 12) Fake GPS for VICON (Michele)        --------------------------------  DONE  ----  WORKING
 13) Forest Flight (???)
 14) MANUAL_FLIGHT and rollback (Michele)--------------------------------  DONE  ----  TESTED SOFTWARE  ----
 15) DCM integration
 16) Fake magnetometer
-17) Revamp Reference
+17) Revamp Reference   -------------------------------------------------  DONE  ----  TESTED SOFTWARE  ----
+18) Global Planner
+19) 
