@@ -49,6 +49,14 @@ public:
 	double dyaw;
 };
 
+class speed_ned{
+public:
+	double vx;
+	double vy;
+	double vz;
+	double vyaw;
+};
+
 class ReferenceNodeClass {
 public:
 	ReferenceNodeClass(ros::NodeHandle& node){
@@ -118,6 +126,10 @@ public:
 		target_wp_ned.y = 0;
 		target_wp_ned.alt = 0;
 		target_wp_ned.yaw = 0;
+		reference_speed.vx = 0;
+		reference_speed.vy = 0;
+		reference_speed.vz = 0;
+		reference_speed.vyaw = 0;
 
 		//GRID
 		d_grid = 0;
@@ -261,6 +273,10 @@ public:
 		position_increments.dy = 0;
 		position_increments.dalt = 0;
 		position_increments.dyaw = 0;
+		reference_speed.vx = 0;
+		reference_speed.vy = 0;
+		reference_speed.vz = 0;
+		reference_speed.vyaw = 0;
 	}
 
 	void calculate_increments(pos_NE_ALT new_target, pos_target_ned old_target, double speed, double speed_yaw, int frame){
@@ -289,6 +305,10 @@ public:
 			position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_sonar);
 		}
 		position_increments.dyaw = speed_yaw/rate * sign(new_target.yaw-old_target.yaw);
+		reference_speed.vx = speed_x;
+		reference_speed.vy = speed_y;
+		reference_speed.vz = -speed_z;
+		reference_speed.vyaw = speed_yaw;
 		//ROS_INFO("REF: INC: %f - %f - %f - %f", speed_z, new_target.alt, old_target.alt_baro, new_target.alt-old_target.alt_baro);
 	}
 
@@ -605,6 +625,7 @@ public:
 				calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
 				if (target_frame == 11 && actual_frame == 6){  //target in sonar but quad is too high
 					position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
+					reference_speed.vz = 0.8;
 				}
 				break;
 
@@ -663,6 +684,7 @@ public:
 						calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
 						if (target_frame == 11 && actual_frame == 6){  //target in sonar but quad is too high
 							position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
+							reference_speed.vz = 0.8;
 						}
 						ROS_INFO("REF->GRID: Sent a WP: %f - %f", WP[WP_completed_grid][0], WP[WP_completed_grid][1]);
 					} else if (waiting_for_WP_execution_grid){
@@ -678,6 +700,7 @@ public:
 						calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
 						if (target_frame == 11 && actual_frame == 6){  //target in sonar but quad is too high
 							position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
+							reference_speed.vz = 0.8;
 						}
 					} else if (WP_completed_grid==N_WP && !repeat_flag){ //completed grid and repeat_flag is off
 						//GRID execution ended. Return EVENT to MMS
@@ -718,6 +741,7 @@ public:
 				calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
 				if (target_frame == 11 && actual_frame == 6){  //target in sonar but quad is too high
 					position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
+					reference_speed.vz = 0.8;   //TODO check hardcoded
 				}
 				outputDist_.command = 16; // WAYPOINT
 			break;
@@ -754,12 +778,16 @@ public:
 						break;
 					case 4:	//HORIZONTAL_CONTROL_MODE_DISTANCE_HEADING_VEL
 						//ROS_INFO("REF: LEASHING DISTANCE HEADING: %f - %f", leashing_command_.horizontal_distance_vel, leashing_command_.horizontal_heading_vel);
-						leashing_offset_ned_.rho_offset += leashing_command_.horizontal_distance_vel * 0.2;  //max speed 2 m/s  //TODO check hardcoded
+						leashing_offset_ned_.rho_offset += leashing_command_.horizontal_distance_vel * 2 / rate;  //max speed 2 m/s  //TODO check hardcoded
 						if (leashing_offset_ned_.rho_offset < 0) leashing_offset_ned_.rho_offset = 0;   //cannot become negative
 						if (leashing_offset_ned_.rho_offset > 0.1){
-							leashing_offset_ned_.psi_offset += leashing_command_.horizontal_heading_vel * 0.2 / leashing_offset_ned_.rho_offset; //max tangential velocity 2 m/s -->normalized with rho //TODO check hardcoded
+							leashing_offset_ned_.psi_offset += leashing_command_.horizontal_heading_vel * 2 / rate / leashing_offset_ned_.rho_offset; //max tangential velocity 2 m/s -->normalized with rho //TODO check hardcoded
+							reference_speed.vx = leashing_command_.horizontal_distance_vel * 2 / rate * cos(leashing_offset_ned_.psi_offset) -  leashing_command_.horizontal_heading_vel * 0.2 * sin(leashing_offset_ned_.psi_offset);
+							reference_speed.vy = leashing_command_.horizontal_distance_vel * 2 / rate * sin(leashing_offset_ned_.psi_offset) +  leashing_command_.horizontal_heading_vel * 0.2 * cos(leashing_offset_ned_.psi_offset);
 						} else {
 							leashing_offset_ned_.psi_offset += 0;
+							reference_speed.vx = 0;
+							reference_speed.vy = 0;
 						}
 						if (leashing_offset_ned_.psi_offset >= 2*M_PI) leashing_offset_ned_.psi_offset -= 2*M_PI;    //reset every 2pi
 						if (leashing_offset_ned_.psi_offset <= -2*M_PI) leashing_offset_ned_.psi_offset += 2*M_PI;    //reset every 2pi
@@ -770,8 +798,10 @@ public:
 					case 5:		//HORIZONTAL_CONTROL_MODE_NORTH_EAST_VEL
 						//ROS_INFO("REF: LEASHING HORIZONTAL VEL NE");
 						//TODO add yaw of the command issuer (rescuer)
-						leashing_offset_ned_.x_offset += leashing_command_.distance_north_vel * 0.2;		//max speed 2 m/s  //TODO check hardcoded
-						leashing_offset_ned_.y_offset += leashing_command_.distance_east_vel * 0.2;
+						leashing_offset_ned_.x_offset += leashing_command_.distance_north_vel * 2 / rate;		//max speed 2 m/s  //TODO check hardcoded
+						leashing_offset_ned_.y_offset += leashing_command_.distance_east_vel * 2 / rate;
+						reference_speed.vx = leashing_command_.distance_north_vel * 2 / rate;
+						reference_speed.vy = leashing_command_.distance_east_vel * 2 / rate;
 						leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
 						if (leashing_offset_ned_.rho_offset > 0.1){
 							leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.y_offset,leashing_offset_ned_.x_offset);
@@ -791,7 +821,8 @@ public:
 						leashing_offset_ned_.z_offset = leashing_command_.vertical_distance;
 						break;
 					case 3:		//VERTICAL_CONTROL_MODE_VEL
-						leashing_offset_ned_.z_offset += leashing_command_.vertical_distance_vel * 0.1; //max speed 1 m/s  //TODO check hardcoded
+						leashing_offset_ned_.z_offset += leashing_command_.vertical_distance_vel * 1 / rate; //max speed 1 m/s  //TODO check hardcoded
+						reference_speed.vz = -leashing_command_.vertical_distance_vel * 1 / rate;
 						break;
 				}
 				
@@ -803,7 +834,8 @@ public:
 						yaw_leashing = leashing_command_.yaw;
 						break;
 					case 2:	//YAW_CONTROL_MODE_VEL
-						yaw_leashing += leashing_command_.yaw_vel * 0.3;   //3 rad/s as maximum rotational velocity //TODO check hardcoded
+						yaw_leashing += leashing_command_.yaw_vel * 3 / rate;   //3 rad/s as maximum rotational velocity //TODO check hardcoded
+						reference_speed.vyaw = leashing_command_.yaw_vel * 3 / rate;
 						break;
 					case 3:		//YAW_CONTROL_MODE_TOWARDS_POINT
 						double temp_point_x, temp_point_y;
@@ -861,7 +893,8 @@ public:
 						new_state = false;
 						set_current_position_as_ref();                      //this is needed because I can send the land command before last WP or target is reached
 				}
-				position_increments.dalt = -0.08;    //80cm/s
+				position_increments.dalt = -0.08;    //80cm/s  TODO hardcoded
+				reference_speed.vz = 0.8;
 				outputDist_.command = 21; // LAND
 				break;
 			
@@ -955,6 +988,8 @@ protected:
 	mms_msgs::MMS_status inputMmsStatus_;
 	//frame::Ref_system inputFrame_;
 	frame::Ref_system oldFrame_;
+
+	speed_ned reference_speed;
 
 	guidance_node_amsl::Reference outputRef_;
 	guidance_node_amsl::Reference target_wp;
