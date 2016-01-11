@@ -10,6 +10,7 @@
 #include "mms_msgs/MMS_status.h"// output
 #include <reference/Distance.h>// input
 #include <mavros/Safety.h>// input
+#include <reference/LeashingStatus.h>// input
 
 // STATES DEFINITION -> CREATE A DEDICATED LIBRARY = TODO
 #define ON_GROUND_NO_HOME 10
@@ -50,6 +51,7 @@ public:
 		subFromDistance_=n_.subscribe("/distance", 10, &MmsNodeClass::readDistanceMessage,this);
 		subFromGridAck_ = n_.subscribe("/grid_ack", 10, &MmsNodeClass::readGridAckMessage,this);
 		subSafety_ = n_.subscribe("/safety_odroid", 2, &MmsNodeClass::readSafetyMessage,this);
+		subLeashingStatus_ = n_.subscribe("/leashing_status", 10, &MmsNodeClass::readLeashingStatusMessage,this);
 		
 		// publishers
 		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
@@ -82,6 +84,7 @@ public:
 		SAFETY_OFF = false;
 		LEASHING_START = false;
 		LEASHING_END = false;
+		LEASHING_FAILURE = false;
 		PAUSE = false;
 		CONTINUE = false;
 
@@ -147,6 +150,10 @@ public:
 	{
 		// ROS_INFO("POSMIXER: SONAR_RECEIVED");
 		inputSonar_.distance = msg -> distance;
+	}
+
+	void readLeashingStatusMessage(const reference::LeashingStatus::ConstPtr& msg){
+		if (msg->failure > 0) LEASHING_FAILURE = true;
 	}
 
 	void readCmdMessage(const mms_msgs::Cmd::ConstPtr& msg)
@@ -327,6 +334,7 @@ public:
 		SAFETY_OFF = false;
 		LEASHING_START = false;
 		LEASHING_END = false;
+		LEASHING_FAILURE = false;
 		PAUSE = false;
 		CONTINUE = false;
 	}
@@ -1020,6 +1028,20 @@ public:
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = IN_FLIGHT");
 				}
+				if (LEASHING_FAILURE){
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ITEM_FAILED (LEASHING)");
+
+					currentState = IN_FLIGHT;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = IN_FLIGHT");
+				}
 				break;
 		}
 }
@@ -1065,6 +1087,8 @@ mms_msgs::Sys_status inputSysStatus_;
 ros::Subscriber subFromSonar_;
 mavros::Sonar inputSonar_;
 
+ros::Subscriber subLeashingStatus_;
+
 /*ros::Subscriber subFromReference_;
 guidance_node_amsl::Reference inputRef_;
 guidance_node_amsl::Reference target_;*/
@@ -1098,6 +1122,7 @@ bool SAFETY_ON;
 bool SAFETY_OFF;
 bool LEASHING_START;
 bool LEASHING_END;
+bool LEASHING_FAILURE;
 bool PAUSE;
 bool CONTINUE;
 // static bool CONDITION_YAW = false;

@@ -166,6 +166,7 @@ public:
 		leashing_status_.vertical_distance = 0;
 		leashing_status_.yaw_control_mode = 0;  //none
 		leashing_status_.yaw = 0;
+		leashing_status_.failure = 0;
 		//leashing_status_.yawpoint = ;   //TODO initialize better
 	}
 
@@ -485,6 +486,7 @@ public:
 			case 25: // MAV_CMD_NAV_FOLLOW (LEASHING)
 			{
 				if (inputCmd_.param1 == 1){
+					leashing_status_.failure = 0;
 					//initial offset
 					//we should have already the target, but better add sanity check
 					double temp_reference_x, temp_reference_y;
@@ -494,10 +496,11 @@ public:
 					leashing_offset_ned_.x_offset = temp_reference_x - temp_target_x;          //initial offset
 					leashing_offset_ned_.y_offset = temp_reference_y - temp_target_y;
 					leashing_offset_ned_.z_offset = outputRef_.AltitudeRelative/1000.0f - leashing_target_.position.altitude;
-					if (leashing_offset_ned_.x_offset > 10 || leashing_offset_ned_.y_offset > 10 || leashing_offset_ned_.z_offset > 15){   //target-wasp too far
-						//TODO maybe it is better to abort leashing
-						ROS_INFO("REF: LEASHING target-wasp too far");
-						leashing_offset_ned_.x_offset = 0;          //initial offset
+					if (leashing_offset_ned_.x_offset > MAX_INIT_DISTANCE_XY_LEASHING || leashing_offset_ned_.y_offset > MAX_INIT_DISTANCE_XY_LEASHING || leashing_offset_ned_.z_offset > MAX_INIT_DISTANCE_Z_LEASHING){   //target-wasp too far TODO check hardcoded paramenters
+						//TODO maybe it is better to abort leashing in MMS (can read leashing status)
+						leashing_status_.failure = 1;
+						ROS_INFO("REF: LEASHING target-wasp too far!");
+						leashing_offset_ned_.x_offset = 0;          //initial offset. NOT USED if aborted
 						leashing_offset_ned_.y_offset = 0;
 						leashing_offset_ned_.z_offset =	3;
 					}
@@ -857,7 +860,6 @@ public:
 						}
 						break;
 				}
-				//Publish references in WGS84    //TODO remove this...references are published later for all states
 				double temp_lat, temp_lon;
 				get_pos_WGS84_from_NED (&temp_lat, &temp_lon, (leashing_target_ned_.x+leashing_offset_ned_.x_offset), (leashing_target_ned_.y+leashing_offset_ned_.y_offset), Home_.lat/10000000.0f, Home_.lon/10000000.0f);
 				//outputRef_.Latitude = temp_lat*10000000.0f;
@@ -1002,25 +1004,27 @@ protected:
 	reference::LeashingCommand leashing_command_;   //leashing
 	reference::LeashingStatus leashing_status_;    //leashing
 	geographic_msgs::GeoPose leashing_target_;	 //leashing
+	static const int MAX_INIT_DISTANCE_XY_LEASHING = 15;
+	static const int MAX_INIT_DISTANCE_Z_LEASHING = 10;
 
 	// STATES DEFINITION
 	static const int ON_GROUND_NO_HOME = 10;         //TODO make a .h to include in both reference and mms
 	static const int SETTING_HOME = 20;
-	static const int  ON_GROUND_DISARMED = 30;
-	static const int  ARMING = 40;
-	static const int  DISARMING = 45;
-	static const int  ON_GROUND_ARMED = 50;
+	static const int ON_GROUND_DISARMED = 30;
+	static const int ARMING = 40;
+	static const int DISARMING = 45;
+	static const int ON_GROUND_ARMED = 50;
 	//static const int  ON_GROUND_READY_TO_TAKEOFF = 60;
-	static const int  PERFORMING_TAKEOFF = 70;
-	static const int  IN_FLIGHT = 80;
-	static const int  GRID = 90;
+	static const int PERFORMING_TAKEOFF = 70;
+	static const int IN_FLIGHT = 80;
+	static const int GRID = 90;
 	//static const int  READY_TO_GO = 90;
-	static const int  PERFORMING_GO_TO = 100;
+	static const int PERFORMING_GO_TO = 100;
 	//static const int  READY_TO_LAND = 110;
-	static const int  PERFORMING_LANDING = 120;
+	static const int PERFORMING_LANDING = 120;
 	static const int LEASHING = 140;
 	static const int PAUSED = 150;
-	static const int  MANUAL_FLIGHT = 1000;
+	static const int MANUAL_FLIGHT = 1000;
 
 	static const int  MAX_VERTEX_GRID = 10;
 
