@@ -296,20 +296,52 @@ public:
 			speed_y = 0;
 		}
 
-		position_increments.dx = speed_x/rate * sign(new_target.x-old_target.x);
-		position_increments.dy = speed_y/rate * sign(new_target.y-old_target.y);
-		if (frame == 6){
+		if (distance_x > speed_x/rate){
+			position_increments.dx = speed_x/rate * sign(new_target.x-old_target.x);
+			reference_speed.vx = speed_x;
+		} else {
+			position_increments.dx = 0;
+			reference_speed.vx = 0;
+		}
+		if (distance_y > speed_y/rate){
+			position_increments.dy = speed_y/rate * sign(new_target.y-old_target.y);
+			reference_speed.vy = speed_y;
+		} else {
+			position_increments.dy = 0;
+			reference_speed.vy = 0;
+		}
+
+		if (frame == 6){   //BARO
 			speed_z = 1.0;       //TODO check hardcoded
-			position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_baro);
+			double distance_z = sqrt(pow(new_target.alt-old_target.alt_baro,2));
+			if (distance_z > speed_z/rate){
+				position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_baro);
+				reference_speed.vz = -speed_z;
+			} else {
+				position_increments.dalt = 0;
+				reference_speed.vz = 0;
+			}
 		} else if (frame == 11){
 			speed_z = 0.4;       //TODO check hardcoded
-			position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_sonar);
+			double distance_z = sqrt(pow(new_target.alt-old_target.alt_sonar,2));
+			if (distance_z > speed_z/rate){
+				position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_sonar);
+				reference_speed.vz = -speed_z;
+			} else {
+				position_increments.dalt = 0;
+				reference_speed.vz = 0;
+			}
 		}
-		position_increments.dyaw = speed_yaw/rate * sign(new_target.yaw-old_target.yaw);
-		reference_speed.vx = speed_x;
-		reference_speed.vy = speed_y;
-		reference_speed.vz = -speed_z;
-		reference_speed.vyaw = speed_yaw;
+
+
+		if (sqrt(pow(new_target.yaw-old_target.yaw,2)) > speed_yaw/rate){
+			position_increments.dyaw = speed_yaw/rate * sign(new_target.yaw-old_target.yaw);
+			reference_speed.vyaw = speed_yaw;
+		} else {
+			position_increments.dyaw = 0;
+			reference_speed.vyaw = 0;
+		}
+
 		//ROS_INFO("REF: INC: %f - %f - %f - %f", speed_z, new_target.alt, old_target.alt_baro, new_target.alt-old_target.alt_baro);
 	}
 
@@ -416,7 +448,7 @@ public:
 				target_wp_ned.yaw = target_wp.Yawangle;
 				speed_wp_linear = inputCmd_.param1;
 				if (speed_wp_linear==0) speed_wp_linear = 2.0;
-				speed_wp_yaw = 1;  //TODO check hardcoded!!!
+				speed_wp_yaw = 0.5;  //TODO check hardcoded!!!
 				outputDist_.seq = inputCmd_.seq;
 				ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",target_wp.Latitude,target_wp.Longitude,target_wp.AltitudeRelative,target_wp.Yawangle,target_wp.frame);
 				// target_wp.Mode = 0;
@@ -940,6 +972,10 @@ public:
 			outputRef_.AltitudeRelative = target_ned.alt_sonar * 1000.0f;
 			outputRef_.frame = 11;
 		}
+		outputRef_.vx = reference_speed.vx;
+		outputRef_.vy = reference_speed.vy;
+		outputRef_.vz = reference_speed.vz;
+		outputRef_.vyaw = reference_speed.vyaw;
 		pubToReference_.publish(outputRef_);
 		distance();		//calculate distance to target
 		outputDist_.error_pos = error_to_t.error_pos;

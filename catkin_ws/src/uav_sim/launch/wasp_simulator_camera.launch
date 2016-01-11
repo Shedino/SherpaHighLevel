@@ -8,5 +8,7 @@
 	</include>
 	<include file="$(find guidance_node_amsl)/launch/node.launch">
 	</include>
+	<include file="$(find mavros)/launch/unibo_GCS.launch">
+	</include>
 	
 </launch>
