@@ -1,0 +1,5 @@
+<launch>
+
+	<node pkg="qos_sensors_autopilot" type="qos_node" name="qos_sensors_autopilot" output="screen">
+	</node>
+</launch>
