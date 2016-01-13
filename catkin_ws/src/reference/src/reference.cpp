@@ -298,14 +298,14 @@ public:
 
 		if (distance_x > speed_x/rate){
 			position_increments.dx = speed_x/rate * sign(new_target.x-old_target.x);
-			reference_speed.vx = speed_x;
+			reference_speed.vx = speed_x * sign(new_target.x-old_target.x);
 		} else {
 			position_increments.dx = 0;
 			reference_speed.vx = 0;
 		}
 		if (distance_y > speed_y/rate){
 			position_increments.dy = speed_y/rate * sign(new_target.y-old_target.y);
-			reference_speed.vy = speed_y;
+			reference_speed.vy = speed_y * sign(new_target.y-old_target.y);
 		} else {
 			position_increments.dy = 0;
 			reference_speed.vy = 0;
@@ -316,7 +316,7 @@ public:
 			double distance_z = sqrt(pow(new_target.alt-old_target.alt_baro,2));
 			if (distance_z > speed_z/rate){
 				position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_baro);
-				reference_speed.vz = -speed_z;
+				reference_speed.vz = -speed_z * sign(new_target.alt-old_target.alt_baro);
 			} else {
 				position_increments.dalt = 0;
 				reference_speed.vz = 0;
@@ -326,7 +326,7 @@ public:
 			double distance_z = sqrt(pow(new_target.alt-old_target.alt_sonar,2));
 			if (distance_z > speed_z/rate){
 				position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_sonar);
-				reference_speed.vz = -speed_z;
+				reference_speed.vz = -speed_z * sign(new_target.alt-old_target.alt_sonar);
 			} else {
 				position_increments.dalt = 0;
 				reference_speed.vz = 0;
@@ -336,7 +336,7 @@ public:
 
 		if (sqrt(pow(new_target.yaw-old_target.yaw,2)) > speed_yaw/rate){
 			position_increments.dyaw = speed_yaw/rate * sign(new_target.yaw-old_target.yaw);
-			reference_speed.vyaw = speed_yaw;
+			reference_speed.vyaw = speed_yaw * sign(new_target.yaw-old_target.yaw);
 		} else {
 			position_increments.dyaw = 0;
 			reference_speed.vyaw = 0;
@@ -817,8 +817,8 @@ public:
 						if (leashing_offset_ned_.rho_offset < 0) leashing_offset_ned_.rho_offset = 0;   //cannot become negative
 						if (leashing_offset_ned_.rho_offset > 0.1){
 							leashing_offset_ned_.psi_offset += leashing_command_.horizontal_heading_vel * 2 / rate / leashing_offset_ned_.rho_offset; //max tangential velocity 2 m/s -->normalized with rho //TODO check hardcoded
-							reference_speed.vx = leashing_command_.horizontal_distance_vel * 2 / rate * cos(leashing_offset_ned_.psi_offset) -  leashing_command_.horizontal_heading_vel * 0.2 * sin(leashing_offset_ned_.psi_offset);
-							reference_speed.vy = leashing_command_.horizontal_distance_vel * 2 / rate * sin(leashing_offset_ned_.psi_offset) +  leashing_command_.horizontal_heading_vel * 0.2 * cos(leashing_offset_ned_.psi_offset);
+							reference_speed.vx = leashing_command_.horizontal_distance_vel * 2 * cos(leashing_offset_ned_.psi_offset) -  leashing_command_.horizontal_heading_vel * 0.2 * sin(leashing_offset_ned_.psi_offset);
+							reference_speed.vy = leashing_command_.horizontal_distance_vel * 2 * sin(leashing_offset_ned_.psi_offset) +  leashing_command_.horizontal_heading_vel * 0.2 * cos(leashing_offset_ned_.psi_offset);
 						} else {
 							leashing_offset_ned_.psi_offset += 0;
 							reference_speed.vx = 0;
@@ -835,8 +835,8 @@ public:
 						//TODO add yaw of the command issuer (rescuer)
 						leashing_offset_ned_.x_offset += leashing_command_.distance_north_vel * 2 / rate;		//max speed 2 m/s  //TODO check hardcoded
 						leashing_offset_ned_.y_offset += leashing_command_.distance_east_vel * 2 / rate;
-						reference_speed.vx = leashing_command_.distance_north_vel * 2 / rate;
-						reference_speed.vy = leashing_command_.distance_east_vel * 2 / rate;
+						reference_speed.vx = leashing_command_.distance_north_vel * 2;
+						reference_speed.vy = leashing_command_.distance_east_vel * 2;
 						leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
 						if (leashing_offset_ned_.rho_offset > 0.1){
 							leashing_offset_ned_.psi_offset = atan2(leashing_offset_ned_.y_offset,leashing_offset_ned_.x_offset);
@@ -857,7 +857,7 @@ public:
 						break;
 					case 3:		//VERTICAL_CONTROL_MODE_VEL
 						leashing_offset_ned_.z_offset += leashing_command_.vertical_distance_vel * 1 / rate; //max speed 1 m/s  //TODO check hardcoded
-						reference_speed.vz = -leashing_command_.vertical_distance_vel * 1 / rate;
+						reference_speed.vz = -leashing_command_.vertical_distance_vel * 1;
 						break;
 				}
 				
@@ -870,7 +870,7 @@ public:
 						break;
 					case 2:	//YAW_CONTROL_MODE_VEL
 						yaw_leashing += leashing_command_.yaw_vel * 3 / rate;   //3 rad/s as maximum rotational velocity //TODO check hardcoded
-						reference_speed.vyaw = leashing_command_.yaw_vel * 3 / rate;
+						reference_speed.vyaw = leashing_command_.yaw_vel * 3;
 						break;
 					case 3:		//YAW_CONTROL_MODE_TOWARDS_POINT
 						double temp_point_x, temp_point_y;
