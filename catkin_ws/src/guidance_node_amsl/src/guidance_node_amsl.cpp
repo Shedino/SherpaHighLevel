@@ -70,12 +70,20 @@ public:
 			inputRef_.Longitude = position_nav_.Longitude + msg->Longitude;
 			inputRef_.AltitudeRelative = position_nav_.Altitude + msg->AltitudeRelative;
 			inputRef_.Yawangle = yaw_ + msg->Yawangle;
+			inputRef_.vx = msg->vx;
+			inputRef_.vy = msg->vy;
+			inputRef_.vz = msg->vz;
+			inputRef_.vyaw = msg->vyaw;
 		} else {
 			//absolute
 			inputRef_.Latitude = msg->Latitude;
 			inputRef_.Longitude = msg->Longitude;
 			inputRef_.AltitudeRelative = msg->AltitudeRelative;
 			inputRef_.Yawangle = msg->Yawangle;
+			inputRef_.vx = msg->vx;
+			inputRef_.vy = msg->vy;
+			inputRef_.vz = msg->vz;
+			inputRef_.vyaw = msg->vyaw;
 		}
 	}
 
@@ -180,6 +188,11 @@ private:
 		guidanceClass.Model_GS_U.Reference_Pos[2]=inputRef.AltitudeRelative;
 		guidanceClass.Model_GS_U.Reference_Yaw=inputRef.Yawangle;
 
+		guidanceClass.Model_GS_U.Reference_Speed[0] = inputRef.vx;
+		guidanceClass.Model_GS_U.Reference_Speed[1] = inputRef.vy;
+		guidanceClass.Model_GS_U.Reference_Speed[2] = inputRef.vz;
+		guidanceClass.Model_GS_U.Reference_Speed[3] = inputRef.vyaw;
+
 		//Saturation, gain and deadzones
 		//forced cast due to parameter server only storing double
 		guidanceClass.Model_GS_U.Control_Param[0]= (float) param[0]; //sat xy
@@ -203,7 +216,7 @@ private:
 		guidanceClass.Model_GS_U.Trigger = trigger_;       //if safety is 0, means ODROID on, so trigger
 
 		//DEBUG Test for AMSL offset or not
-		guidanceClass.Model_GS_U.Test = (float) debugParam;
+		//guidanceClass.Model_GS_U.Test = (float) debugParam;
 
 		//DEBUG
 		//if (counter_print >= 10){
@@ -219,15 +232,15 @@ private:
 
 	void getOutput(const Model_GSModelClass &guidanceClass, guidance_node_amsl::Directive *output) {
 
-		output->vxBody=guidanceClass.Model_GS_Y.FakeDirective[0];
-		output->vyBody=guidanceClass.Model_GS_Y.FakeDirective[1];
-		output->vzBody=guidanceClass.Model_GS_Y.FakeDirective[2];
-		output->yawRate=guidanceClass.Model_GS_Y.FakeDirective[3];
+		output->vxBody=guidanceClass.Model_GS_Y.BodySpeedInput[0];
+		output->vyBody=guidanceClass.Model_GS_Y.BodySpeedInput[1];
+		output->vzBody=guidanceClass.Model_GS_Y.BodySpeedInput[2];
+		output->yawRate=guidanceClass.Model_GS_Y.BodySpeedInput[3];
 		
 		if (counter_print >= 10){
 			ROS_INFO("Calc Matlab Direc: [vx:%f, vy:%f, vz:%f, yawRate:%f]",			//TODO uncomment
-							guidanceClass.Model_GS_Y.FakeDirective[0],guidanceClass.Model_GS_Y.FakeDirective[1],
-							guidanceClass.Model_GS_Y.FakeDirective[2],guidanceClass.Model_GS_Y.FakeDirective[3]);
+							guidanceClass.Model_GS_Y.BodySpeedInput[0],guidanceClass.Model_GS_Y.BodySpeedInput[1],
+							guidanceClass.Model_GS_Y.BodySpeedInput[2],guidanceClass.Model_GS_Y.BodySpeedInput[3]);
 		}
 	}
 };

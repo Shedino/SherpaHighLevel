@@ -3,9 +3,9 @@
  *
  * Code generation for model "Model_GS".
  *
- * Model version              : 1.187
- * Simulink Coder version : 8.6 (R2014a) 27-Dec-2013
- * C++ source code generated on : Mon May 18 14:41:54 2015
+ * Model version              : 1.186
+ * Simulink Coder version : 8.7 (R2014b) 08-Sep-2014
+ * C++ source code generated on : Tue Jan 12 18:24:49 2016
  *
  * Target selection: grt.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping
@@ -43,6 +43,16 @@
 # define rtmGetStopRequested(rtm)      ((void*) 0)
 #endif
 
+/* Block signals for system '<Root>/Int32 to Double' */
+typedef struct {
+  real_T y[3];                         /* '<Root>/Int32 to Double' */
+} B_Int32toDouble_Model_GS_T;
+
+/* Block signals for system '<Root>/Scaling WGS' */
+typedef struct {
+  real_T WGS_scaled[3];                /* '<Root>/Scaling WGS' */
+} B_ScalingWGS_Model_GS_T;
+
 /* Block signals for system '<S21>/ ECEF to NED' */
 typedef struct {
   real_T N;                            /* '<S21>/ ECEF to NED' */
@@ -64,7 +74,6 @@ typedef struct {
 typedef struct {
   B_singletodouble1_Model_GS_T sf_uint16todouble2;/* '<Root>/uint16 to double2' */
   B_singletodouble1_Model_GS_T sf_uint16todouble1;/* '<Root>/uint16 to double1' */
-  B_singletodouble1_Model_GS_T sf_singletodouble2;/* '<Root>/single to double2' */
   B_singletodouble1_Model_GS_T sf_singletodouble1;/* '<Root>/single to double1' */
   B_MATLABFunctionWGS84TOECEF_M_T sf_MATLABFunctionWGS84TOECEF_d;/* '<S12>/MATLAB Function WGS84 TO ECEF' */
   B_MATLABFunctionWGS84TOECEF_M_T sf_MATLABFunctionWGS84TOECEF;/* '<S25>/MATLAB Function WGS84 TO ECEF' */
@@ -72,34 +81,35 @@ typedef struct {
   B_MATLABFunctionWGS84TOECEF_M_T sf_MATLABFunctionWGS84TOECEF_j;/* '<S11>/MATLAB Function WGS84 TO ECEF' */
   B_MATLABFunctionWGS84TOECEF_M_T sf_MATLABFunctionWGS84TOECEF_e;/* '<S21>/MATLAB Function WGS84 TO ECEF' */
   B_ECEFtoNED_Model_GS_T sf_ECEFtoNED_e;/* '<S21>/ ECEF to NED' */
+  B_ScalingWGS_Model_GS_T sf_ScalingWGS1;/* '<Root>/Scaling WGS1' */
+  B_ScalingWGS_Model_GS_T sf_ScalingWGS;/* '<Root>/Scaling WGS' */
+  B_Int32toDouble_Model_GS_T sf_Int32toDouble6;/* '<Root>/Int32 to Double6' */
+  B_Int32toDouble_Model_GS_T sf_Int32toDouble;/* '<Root>/Int32 to Double' */
 } B_Model_GS_T;
 
 /* Block states (auto storage) for system '<Root>' */
 typedef struct {
   real_T Memory_PreviousInput[3];      /* '<S5>/Memory' */
-  real_T Sum1;                         /* '<Root>/Scaling WGS2' */
-  real_T counter;                      /* '<Root>/Scaling WGS2' */
-  real_T AMSL;                         /* '<Root>/Scaling WGS2' */
   real_T k;                            /* '<Root>/Edge detector' */
   real_T u_D_I;                        /* '<Root>/Control Law NED' */
 } DW_Model_GS_T;
 
 /* External inputs (root inport signals with auto storage) */
 typedef struct {
-  int32_T Actual_Pos[4];               /* '<Root>/Actual_Pos ' */
+  int32_T Actual_Pos[3];               /* '<Root>/Actual_Pos ' */
   real32_T Actual_Yaw;                 /* '<Root>/Actual_Yaw' */
   boolean_T Trigger;                   /* '<Root>/Trigger' */
   int32_T Reference_Pos[3];            /* '<Root>/Reference_Pos ' */
+  real32_T Reference_Speed[4];         /* '<Root>/Reference_Speed' */
   real32_T Reference_Yaw;              /* '<Root>/Reference_Yaw' */
   uint32_T Time;                       /* '<Root>/Time' */
   real32_T Control_Param[9];           /* '<Root>/Control_Param' */
   real32_T dt;                         /* '<Root>/dt' */
-  real32_T Test;                       /* '<Root>/Test' */
 } ExtU_Model_GS_T;
 
 /* External outputs (root outports fed by signals with auto storage) */
 typedef struct {
-  real32_T FakeDirective[4];           /* '<Root>/FakeDirective' */
+  real32_T BodySpeedInput[4];          /* '<Root>/BodySpeedInput' */
 } ExtY_Model_GS_T;
 
 /* Parameters (auto storage) */
@@ -193,8 +203,8 @@ class Model_GSModelClass {
  * '<S6>'   : 'Model_GS/Int32 to Double'
  * '<S7>'   : 'Model_GS/Int32 to Double6'
  * '<S8>'   : 'Model_GS/NED2BODY'
- * '<S9>'   : 'Model_GS/Scaling WGS2'
- * '<S10>'  : 'Model_GS/Scaling WGS3'
+ * '<S9>'   : 'Model_GS/Scaling WGS'
+ * '<S10>'  : 'Model_GS/Scaling WGS1'
  * '<S11>'  : 'Model_GS/WGS2NED1'
  * '<S12>'  : 'Model_GS/WGS2NED2'
  * '<S13>'  : 'Model_GS/Yaw_Check'

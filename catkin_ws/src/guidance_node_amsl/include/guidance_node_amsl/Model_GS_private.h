@@ -3,9 +3,9 @@
  *
  * Code generation for model "Model_GS".
  *
- * Model version              : 1.187
- * Simulink Coder version : 8.6 (R2014a) 27-Dec-2013
- * C++ source code generated on : Mon May 18 14:41:54 2015
+ * Model version              : 1.186
+ * Simulink Coder version : 8.7 (R2014b) 08-Sep-2014
+ * C++ source code generated on : Tue Jan 12 18:24:49 2016
  *
  * Target selection: grt.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping
@@ -17,10 +17,11 @@
 #define RTW_HEADER_Model_GS_private_h_
 #include "rtwtypes.h"
 #include "multiword_types.h"
-#ifndef __RTWTYPES_H__
-#error This file requires rtwtypes.h to be included
-#endif                                 /* __RTWTYPES_H__ */
 
+extern void Model_GS_Int32toDouble(const int32_T rtu_u[3],
+  B_Int32toDouble_Model_GS_T *localB);
+extern void Model_GS_ScalingWGS(const real_T rtu_WGS[3], B_ScalingWGS_Model_GS_T
+  *localB);
 extern void Model_GS_ECEFtoNED(const real_T rtu_WGS_home[3], const real_T
   rtu_ECEF_in[3], const real_T rtu_ECEF_home[3], B_ECEFtoNED_Model_GS_T *localB);
 extern void Model_MATLABFunctionWGS84TOECEF(const real_T rtu_WGS[3],
