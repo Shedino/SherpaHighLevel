@@ -11,8 +11,10 @@
 #include <reference/Distance.h>// input
 #include <mavros/Safety.h>// input
 #include <reference/LeashingStatus.h>// input
+#include <qos_sensors_autopilot/Qos_sensors.h>// input
 
 // STATES DEFINITION -> CREATE A DEDICATED LIBRARY = TODO
+//TODO make this static const int
 #define ON_GROUND_NO_HOME 10
 #define SETTING_HOME 20
 #define ON_GROUND_DISARMED 30
@@ -29,6 +31,8 @@
 #define LEASHING 140
 #define PAUSED 150
 #define MANUAL_FLIGHT 1000
+#define FRAME_BARO 6
+#define FRAME_SONAR 11
 
 
 double PI = 3.1416; // pi
@@ -52,6 +56,7 @@ public:
 		subFromGridAck_ = n_.subscribe("/grid_ack", 10, &MmsNodeClass::readGridAckMessage,this);
 		subSafety_ = n_.subscribe("/safety_odroid", 2, &MmsNodeClass::readSafetyMessage,this);
 		subLeashingStatus_ = n_.subscribe("/leashing_status", 10, &MmsNodeClass::readLeashingStatusMessage,this);
+		subQos_sensors_ = n_.subscribe("/qos_sensors", 10, &MmsNodeClass::readQosSensorsMessage,this);
 		
 		// publishers
 		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
@@ -69,7 +74,7 @@ public:
 
 		//Initializing outputMmsStatus_
 		outputMmsStatus_.mms_state = ON_GROUND_NO_HOME;
-		outputMmsStatus_.target_ref_frame = 6;
+		outputMmsStatus_.target_ref_frame = FRAME_BARO;
 		
 		//Initializing states
 		SET_HOME = false;
@@ -91,7 +96,7 @@ public:
 		//Init something
 		currentState = ON_GROUND_NO_HOME;
 		previousState = ON_GROUND_NO_HOME;
-		target_frame = 6;
+		target_frame = FRAME_BARO;
 		rate = 10;
 		uint16_t counter_ = 0;
 		counter_print = 0;
@@ -156,8 +161,13 @@ public:
 		if (msg->failure > 0) LEASHING_FAILURE = true;
 	}
 
+	void readQosSensorsMessage(const qos_sensors_autopilot::Qos_sensors::ConstPtr& msg){
+		Qos_sensors_ = *msg;
+	}
+
 	void readCmdMessage(const mms_msgs::Cmd::ConstPtr& msg)
 	{
+		//TODO sostituire con inputCmd_ = *msg  ??
 		inputCmd_.command = msg -> command;
 		inputCmd_.param1  = msg -> param1;
 		inputCmd_.param2  = msg -> param2;
@@ -180,7 +190,7 @@ public:
 				ROS_INFO("MMS: CMD_ALTITUDE = %f",inputCmd_.param7);
 				ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
 
-				if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11 && inputCmd_.param7 > 0.3f && inputCmd_.param7 < 3.0f && inputSonar_.distance > 0))
+				if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && inputCmd_.param7 > 0.3f && inputCmd_.param7 < 3.0f && Qos_sensors_.sonar_present && Qos_sensors_.sonar_working))
 					{
 						target_frame = inputCmd_.frame;
 						seq_number = inputCmd_.seq;
@@ -195,7 +205,7 @@ public:
 						ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
 
 						inputCmd_.command = 0; // 0 = NOT USED it's used to disable the switch-case structure
-						target_frame = 6;
+						target_frame = FRAME_BARO;
 						WAYPOINT = false;
 					}
 
@@ -205,7 +215,7 @@ public:
 				ROS_INFO("MMS: CMD_GRID. Params: %f - %f - %f - %f",inputCmd_.param1,inputCmd_.param2,inputCmd_.param3,inputCmd_.param4);
 				ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
 
-				if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11))       //TODO add more sanity check maybe
+				if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR))       //TODO add more sanity check maybe
 					{
 						target_frame = inputCmd_.frame;
 						seq_number = inputCmd_.seq;
@@ -220,7 +230,7 @@ public:
 						ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
 
 						inputCmd_.command = 0; // 0 = NOT USED it's used to disable the switch-case structure
-						target_frame = 6;
+						target_frame = FRAME_BARO;
 						GRID_EVENT = false;
 					}
 
@@ -229,7 +239,7 @@ public:
 			{
 				ROS_INFO("MMS: CMD_LAND");
 				ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
-				if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11 && inputSonar_.distance != -1))
+				if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && inputSonar_.distance != -1))
 				{
 					target_frame = inputCmd_.frame;
 					seq_number = inputCmd_.seq;
@@ -242,7 +252,7 @@ public:
 					outputAckMission_.mav_mission_accepted = false;
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
-					target_frame = 6;
+					target_frame = FRAME_BARO;
 					LAND = false;
 				}
 			}break;
@@ -254,7 +264,7 @@ public:
 				ROS_INFO("MMS: CMD_DH_TO = %d",Dh_TO);
 				ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
 
-				if ((inputCmd_.frame == 6) || (inputCmd_.frame == 11 && Dh_TO > 300 && Dh_TO <= 3000 && inputSonar_.distance > 0))
+				if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && Dh_TO > 300 && Dh_TO <= 3000 && inputSonar_.distance > 0))
 				{
 					target_frame = inputCmd_.frame;
 					seq_number = inputCmd_.seq;
@@ -265,7 +275,7 @@ public:
 					outputAckMission_.mav_mission_accepted = false;
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
-					target_frame = 6;
+					target_frame = FRAME_BARO;
 					TAKEOFF = false;
 				}
 			}break;
@@ -347,7 +357,7 @@ public:
 
 			case ON_GROUND_NO_HOME:
 				outputMmsStatus_.mms_state = currentState;
-				outputMmsStatus_.target_ref_frame = 6;//inputCmd_.frame;
+				outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
 				pubToMmsStatus_.publish(outputMmsStatus_);
 				ROS_INFO_ONCE("MMS->REF: CURRENT_STATE = ON_GROUND_NO_HOME");
 				
@@ -363,7 +373,7 @@ public:
 
 					currentState = ON_GROUND_NO_HOME;
 					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = 6;//inputCmd_.frame;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_NO_HOME");
 					break;
@@ -378,7 +388,7 @@ public:
 					set_events_false();
 					currentState = SETTING_HOME;
 					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = 6;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = SETTING_HOME");
 					break;
@@ -407,7 +417,7 @@ public:
 
 				currentState = ON_GROUND_DISARMED;
 				outputMmsStatus_.mms_state = currentState;
-				outputMmsStatus_.target_ref_frame = 6;
+				outputMmsStatus_.target_ref_frame = FRAME_BARO;
 				pubToMmsStatus_.publish(outputMmsStatus_);
 				ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_DISARMED");
 				break;
@@ -428,7 +438,7 @@ public:
 					counter_ = 0;     //start timing to rearm
 					currentState = ARMING;
 					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = 6;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = ARMING");
 					break;
@@ -445,7 +455,7 @@ public:
 
 					currentState = SETTING_HOME;
 					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = 6;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = SETTING_HOME");
 					break;
@@ -483,7 +493,7 @@ public:
 
 					currentState = DISARMING;
 					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = 6;//inputCmd_.frame;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = DISARMING");
 					counter_ = 0;     //start timing to rearm
@@ -497,7 +507,7 @@ public:
 
 					currentState = ON_GROUND_ARMED;
 					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = 6;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_ARMED");
 					break;
@@ -506,7 +516,7 @@ public:
 				{
 					currentState = ON_GROUND_DISARMED;
 					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = 6;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS: ARMING FAILED");
 					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_DISARMED");
@@ -538,7 +548,7 @@ public:
 
 					currentState = ON_GROUND_DISARMED;
 					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = 6;//inputCmd_.frame;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_DISARMED");
 					break;
@@ -547,7 +557,7 @@ public:
 				{
 					currentState = ON_GROUND_ARMED;
 					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = 6;//inputCmd_.frame;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					LAND = true;
 					ROS_INFO("MMS: DISARMING FAILED");
@@ -585,7 +595,7 @@ public:
 
 					currentState = DISARMING;
 					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = 6;//inputCmd_.frame;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = DISARMING");
 					counter_ = 0;     //start timing to rearm
@@ -603,7 +613,7 @@ public:
 
 					currentState = PERFORMING_TAKEOFF;// ON_GROUND_READY_TO_TAKEOFF; // with this modification the state that needs the MISSION_START is excluded
 					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = 6;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_TAKEOFF");//READY_TO_TAKEOFF");
 					break;
@@ -964,7 +974,7 @@ public:
 
 						currentState = ON_GROUND_ARMED;
 						outputMmsStatus_.mms_state = currentState;
-						outputMmsStatus_.target_ref_frame = 6;
+						outputMmsStatus_.target_ref_frame = FRAME_BARO;
 						pubToMmsStatus_.publish(outputMmsStatus_);
 						ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_ARMED");
 					}*/
@@ -1088,6 +1098,9 @@ ros::Subscriber subFromSonar_;
 mavros::Sonar inputSonar_;
 
 ros::Subscriber subLeashingStatus_;
+
+ros::Subscriber subQos_sensors_;
+qos_sensors_autopilot::Qos_sensors Qos_sensors_;
 
 /*ros::Subscriber subFromReference_;
 guidance_node_amsl::Reference inputRef_;

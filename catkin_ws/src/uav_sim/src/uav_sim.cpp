@@ -281,7 +281,7 @@ public:
 		pubGeopose_.publish(geopose_);
 		
 		pubToSystStatus_.publish(sys_status_);
-		if (globPosInt_.relative_alt <= 3000)
+		if (globPosInt_.relative_alt <= 3000 && globPosInt_.relative_alt >= 0)
 			sonar_.distance = globPosInt_.relative_alt;
 		else
 			sonar_.distance = 0;
