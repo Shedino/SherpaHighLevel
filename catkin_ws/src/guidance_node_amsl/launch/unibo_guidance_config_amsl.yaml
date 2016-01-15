@@ -14,7 +14,7 @@ param/gain_D: 0.27
 param/gain_yaw: 0.11
 param/deadzone_NE: 0.0
 param/deadzone_D: 0.0
-param/gain_integralDown: 0.001
+param/gain_integralDown: 0.0
 
 #reference
 # at ingegneria

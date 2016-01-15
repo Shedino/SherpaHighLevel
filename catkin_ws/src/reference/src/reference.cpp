@@ -187,7 +187,7 @@ public:
 		double yaw;
 	};
 
-	void distance() // e_to_tartget &error_to_t, // guidance_node_amsl::Reference Target_Position, guidance_node_amsl::Position Current_Position
+	void distance()
 	{
 		static double error_x;
 		static double error_y;
@@ -196,41 +196,18 @@ public:
 		static double error_yaw;
 		//double temp_x_ref, temp_y_ref;
 		double temp_x_pos, temp_y_pos;
-		//static double alt;
 
-		//alt = (double)outputRef_.AltitudeRelative/1000.0f; //meters
-		//get_pos_NED_from_WGS84 (&temp_x_ref, &temp_y_ref, target_wp_ned.Latitude/10000000.0f, target_wp_ned.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-		//End_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(outputRef_.Latitude/10000000.0f*PI/180.0f)*sin(outputRef_.Latitude/10000000.0f*PI/180.0f));
-		//End_Point.X=(End_Point.Ne+alt)*cos(outputRef_.Latitude/10000000.0f*PI/180.0f)*cos(outputRef_.Longitude/10000000.0f*PI/180.0f);
-		//End_Point.Y=(End_Point.Ne+alt)*cos(outputRef_.Latitude/10000000.0f*PI/180.0f)*sin(outputRef_.Longitude/10000000.0f*PI/180.0f);
-		//End_Point.Z=(End_Point.Ne*(1.0f-0.08181919f*0.08181919f)+alt)*sin(outputRef_.Latitude*1e-7f*PI/180.0f);
-		//End_Point.Z = (double)outputRef_.AltitudeRelative;     //millimiters
-        //ROS_INFO("ne, %f, endp_x, %f, endp_y, %f ,endp_z, %f", End_Point.Ne,End_Point.X, End_Point.Y,End_Point.Z);
-
-		//alt = (double)inputPos_.Altitude/1000.0f;//AltitudeAMSL*1e-3;
 		get_pos_NED_from_WGS84 (&temp_x_pos, &temp_y_pos, inputPos_.Latitude/10000000.0f, inputPos_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-		//Starting_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f));
-		//Starting_Point.X=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*cos(inputPos_.Longitude/10000000.0f*PI/180);
-		//Starting_Point.Y=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Longitude/10000000.0f*PI/180);
-		//Starting_Point.Z=(Starting_Point.Ne*(1.0f-0.08181919f*0.08181919f)+alt)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f);
-		//Starting_Point.Z = (double)inputPos_.Altitude;		//MIC brutal! buahaha
-		//ROS_INFO("ne, %f, sp_x, %f, sp_y, %f ,sp_z, %f, alt %d", Starting_Point.Ne,Starting_Point.X, Starting_Point.Y,Starting_Point.Z,inputPos_.Altitude);
 
-		//error_x = End_Point.X - Starting_Point.X; //outputRef_.Latitude - inputPos_.Latitude;
-		//error_y = End_Point.Y - Starting_Point.Y; //outputRef_.Longitude - inputPos_.Longitude;
-		//error_z = End_Point.Z - Starting_Point.Z; //outputRef_.AltitudeRelative - (inputPos_.Altitude);
 		error_x = target_wp_ned.x - temp_x_pos;
 		error_y = target_wp_ned.y - temp_y_pos;
 		error_z = target_wp_ned.alt*1000.0f - inputPos_.Altitude; //mm
 		//ROS_INFO("error_x, %f, error_y, %f ,error_z, %f", error_x,error_y, error_z);
-
 		error_yaw = target_wp_ned.yaw - inputPos_.YawAngle;  //radians
+
 		outputDist_.error_pos = 1000.0f*sqrt(error_x*error_x + error_y*error_y);  //mm;
 		outputDist_.error_ang = 180.0f/PI*sqrt(error_yaw*error_yaw); //degree
 		outputDist_.error_alt = sqrt(error_z*error_z);
-		//error_to_t.error_pos = 1000.0f*sqrt(error_x*error_x + error_y*error_y);  //mm
-		//error_to_t.error_ang = 180.0f/PI*sqrt(error_yaw*error_yaw); //degree
-		//error_to_t.error_alt = sqrt(error_z*error_z);      //mm
         //ROS_INFO("DISTANCE TO TARGET")
 
 		counter_print++;
@@ -455,7 +432,13 @@ public:
 				vertex_grid_n = inputCmd_.param4;
 				repeat_flag = inputCmd_.param7 == 1 ? true : false;
 				outputDist_.seq = inputCmd_.seq;
-				//TODO add sanity checks (max vertexes, min vertexes, positive speed and height, ...)
+				//TODO hardcoded parameters
+				if (height_grid < 0.5 || d_grid < 0.5 || d_grid > 30 || vertex_grid_n < 3 || vertex_grid_n > 20 || speed_grid <= 0 || speed_grid > 4){
+					//grid params failure
+					grid_ack_.grid_completed = false;
+					grid_ack_.completion_type = 2;      //failure in parameters input
+					pubGridAck_.publish(grid_ack_);
+				}
 			}break;
 			case 161:    //GRID_VERTEX
 			{
@@ -707,6 +690,10 @@ public:
 							ROS_INFO("REF: GRID! WP %d: %.2f - %.2f", i, WP[i][0], WP[i][1]);
 						}*/
 						executing_grid = true;
+					} else {
+						grid_ack_.grid_completed = false;
+						grid_ack_.completion_type = 4;      //alg. failed to find WPs
+						pubGridAck_.publish(grid_ack_);
 					}
 				}
 				if (executing_grid){   //grid calculated-->executing WP

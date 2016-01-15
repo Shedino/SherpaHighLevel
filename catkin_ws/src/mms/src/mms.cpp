@@ -192,7 +192,11 @@ public:
 				ROS_INFO("MMS: CMD_ALTITUDE = %f",inputCmd_.param7);
 				ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
 
-				if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && inputCmd_.param7 > 0.3f && inputCmd_.param7 < 3.0f && Qos_sensors_.sonar_present && Qos_sensors_.sonar_working))
+				double temp_max_speed;
+				nodeHandle.getParam("/guidance_node_amsl/param/sat_xy", temp_max_speed);
+				temp_max_speed = sqrt(pow(temp_max_speed,2));
+				//conditions to accept waypoint: frame baro && speed (param1) less than max speed OR frame sonar and sonar working and altitude less than sonar range
+				if (((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && inputCmd_.param7 > 0.3f && inputCmd_.param7 < 3.0f && Qos_sensors_.sonar_present && Qos_sensors_.sonar_working)) && inputCmd_.param1 < temp_max_speed)
 					{
 						target_frame = inputCmd_.frame;
 						seq_number = inputCmd_.seq;
