@@ -62,6 +62,8 @@ public:
 		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
 		pubToArm_=n_.advertise<mms_msgs::Arm>("/arm", 10);
 		pubToMmsStatus_=n_.advertise<mms_msgs::MMS_status>("/mms_status", 10);
+		pubCmd_ = n_.advertise<mms_msgs::Cmd>("/cmd_from_mms", 10);
+
 
 		//Initializing outputAckMission_
 		outputAckMission_.mission_item_reached = false;
@@ -195,6 +197,7 @@ public:
 						target_frame = inputCmd_.frame;
 						seq_number = inputCmd_.seq;
 						WAYPOINT = true;
+						pubCmd_.publish(inputCmd_);  //cmd passed to reference
 					}
 					else
 					{
@@ -210,6 +213,7 @@ public:
 					}
 
 			} break;
+
 			case 160:  // GRID
 			{
 				ROS_INFO("MMS: CMD_GRID. Params: %f - %f - %f - %f",inputCmd_.param1,inputCmd_.param2,inputCmd_.param3,inputCmd_.param4);
@@ -220,6 +224,7 @@ public:
 						target_frame = inputCmd_.frame;
 						seq_number = inputCmd_.seq;
 						GRID_EVENT = true;
+						pubCmd_.publish(inputCmd_);  //cmd passed to reference
 					}
 					else
 					{
@@ -235,6 +240,13 @@ public:
 					}
 
 			} break;
+
+			case 161:  // GRID VERTEX
+			{
+				pubCmd_.publish(inputCmd_);  //cmd passed to reference
+
+			} break;
+
 			case 21:  // MAV_CMD_NAV_LAND
 			{
 				ROS_INFO("MMS: CMD_LAND");
@@ -244,6 +256,7 @@ public:
 					target_frame = inputCmd_.frame;
 					seq_number = inputCmd_.seq;
 					LAND = true;
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
 				}
 				else
 				{
@@ -256,6 +269,7 @@ public:
 					LAND = false;
 				}
 			}break;
+
 			case 22:  // MAV_CMD_NAV_TAKEOFF
 			{
 				ROS_INFO("MMS: CMD_TAKEOFF");
@@ -269,6 +283,7 @@ public:
 					target_frame = inputCmd_.frame;
 					seq_number = inputCmd_.seq;
 					TAKEOFF = true;
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
 				} else {
 					outputAckMission_.mission_item_reached = false;
 					outputAckMission_.seq = seq_number;
@@ -284,23 +299,28 @@ public:
 			{
 				ROS_INFO("MMS: CMD_SET_HOME");
 				SET_HOME = true;
-
+				pubCmd_.publish(inputCmd_);  //cmd passed to reference
 				seq_number = inputCmd_.seq;
 			}break;
+
 			case 300: // MAV_CMD_MISSION_START
 			{
 				ROS_INFO("MMS: CMD_MISSION_START");
 				MISSION_START = true;
+				pubCmd_.publish(inputCmd_);  //cmd passed to reference
 			}break;
+
 			case 25:  // MAV_CMD_NAV_FOLLOW (LEASHING)
 			{
 				//seq_number = inputCmd_.seq;
 				if (inputCmd_.param1 == 1){
 					LEASHING_START = true;
 					ROS_INFO("MMS: CMD_LEASHING_START");
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
 				} else if (inputCmd_.param1 == 0){
 					LEASHING_END = true;
 					ROS_INFO("MMS: CMD_LEASHING_STOP");
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
 				} else {
 					outputAckMission_.mission_item_reached = false;
 					outputAckMission_.seq = seq_number;
@@ -310,15 +330,18 @@ public:
 				}
 				
 			}break;
+
 			case 252:  // MAV_CMD_OVERRIDE_GOTO (PAUSE/CONTINUE)
 			{
 				//seq_number = inputCmd_.seq;
 				if (inputCmd_.param1 == 0){          //PAUSE
 					PAUSE = true;
 					ROS_INFO("MMS: CMD_PAUSE");
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
 				} else if (inputCmd_.param1 == 1){		//CONTINUE
 					CONTINUE = true;
 					ROS_INFO("MMS: CMD_CONTINUE");
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
 				} else {
 					outputAckMission_.mission_item_reached = false;
 					outputAckMission_.seq = seq_number;
@@ -925,10 +948,11 @@ public:
 					break;
 				}
 
+				//ROS_INFO("-------------- command %d --- seq %d ---  seq2: %d  ------", inputDist_.command, seq_number, inputDist_.seq);
 				if (inputDist_.command == 16  && seq_number == inputDist_.seq)
 				{
 					ROS_INFO_ONCE("MMS: REACHING THE WAYPOINT TARGET");
-					//ROS_INFO("MMS: Distances: %.3f - %.3f - %.3f", inputDist_.error_pos, inputDist_.error_ang, inputDist_.error_alt);
+					//ROS_INFO("----------MMS: Distances: %.3f - %.3f - %.3f", inputDist_.error_pos, inputDist_.error_ang, inputDist_.error_alt);
 					if (inputDist_.error_pos < eps_WP && inputDist_.error_ang < eps_YAW && inputDist_.error_alt < eps_alt)
 					{
 						set_events_false();
@@ -1112,6 +1136,8 @@ reference::Distance inputDist_;
 // Publishers
 ros::Publisher pubToAckMission_;
 mms_msgs::Ack_mission outputAckMission_;
+
+ros::Publisher pubCmd_;
 
 ros::Publisher pubToArm_;
 mms_msgs::Arm outputArm_;

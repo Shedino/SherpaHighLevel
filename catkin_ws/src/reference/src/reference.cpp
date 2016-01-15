@@ -66,7 +66,7 @@ public:
 		//subscribers
 		subFromPosition_ = n_.subscribe("/position_nav", 10, &ReferenceNodeClass::readPositionMessage,this);
 		subFromGlobPosInt_ = n_.subscribe("/global_position_int", 10, &ReferenceNodeClass::readGlobalPosIntMessage,this);
-		subFromCmd_ = n_.subscribe("/sent_command", 10, &ReferenceNodeClass::readCmdMessage,this);     //excluding command verifier
+		subFromCmd_ = n_.subscribe("/cmd_from_mms", 10, &ReferenceNodeClass::readCmdMessage,this);     //filtered by mms
         subFromSonar_ = n_.subscribe("/sonar", 10, &ReferenceNodeClass::readSonarMessage,this);
 		subFromMmsStatus_ = n_.subscribe("/mms_status", 10, &ReferenceNodeClass::readMmsStatusMessage,this);
 		subFromFrame_ = n_.subscribe("/ref_system", 10, &ReferenceNodeClass::readFrameMessage,this);
@@ -453,7 +453,8 @@ public:
 				d_grid = inputCmd_.param2;
 				height_grid = inputCmd_.param3;
 				vertex_grid_n = inputCmd_.param4;
-				repeat_flag = inputCmd_.param7 == 1 ? true : false; 
+				repeat_flag = inputCmd_.param7 == 1 ? true : false;
+				outputDist_.seq = inputCmd_.seq;
 				//TODO add sanity checks (max vertexes, min vertexes, positive speed and height, ...)
 			}break;
 			case 161:    //GRID_VERTEX
@@ -482,12 +483,14 @@ public:
 					}
 				}
 			}break;
+
 			case 21:  // MAV_CMD_NAV_LAND
 			{
 				ROS_INFO("REF: MAV_CMD_DO_NAV_LAND");
 				outputRef_.frame = inputCmd_.frame;
 				outputDist_.seq = inputCmd_.seq;
 			}break;
+
 			case 22:  // MAV_CMD_NAV_TAKEOFF
 			{
 				ROS_INFO("REF: MAV_CMD_NAV_TAKEOFF");
@@ -495,18 +498,22 @@ public:
 				outputDist_.seq = inputCmd_.seq;
 				Dh_TO = (int)(inputCmd_.param7*1000.0f);
 			}break;
+
 			/*		case 115: // MAV_CMD_CONDITION_YAW
 			{
 				CONDITION_YAW = true;
 			}break;*/
+
 			case 179: // MAV_CMD_DO_SET_HOME
 			{
 				ROS_INFO("REF: MAV_CMD_DO_SET_HOME");
 			}break;
+
 			case 300: // MAV_CMD_MISSION_START
 			{
 				ROS_INFO("REF: MAV_CMD_MISSION_START");
 			}break;
+
 			case 25: // MAV_CMD_NAV_FOLLOW (LEASHING)
 			{
 				if (inputCmd_.param1 == 1){
@@ -908,14 +915,14 @@ public:
 
 				//Leashing is overwriting and not using increments  //TODO check if making uniform with increments
 				target_ned.x = leashing_target_ned_.x+leashing_offset_ned_.x_offset;
-				target_wp_ned.x = target_ned.x;
+				//target_wp_ned.x = target_ned.x;
 				target_ned.y = leashing_target_ned_.y+leashing_offset_ned_.y_offset;
-				target_wp_ned.y = target_ned.y;
+				//target_wp_ned.y = target_ned.y;
 				target_ned.alt_baro = leashing_target_ned_.z+leashing_offset_ned_.z_offset;
-				target_wp_ned.alt = target_ned.alt_baro;
+				//target_wp_ned.alt = target_ned.alt_baro;
 				//TODO sonar alt??
 				target_ned.yaw = yaw_leashing;
-				target_wp_ned.yaw = target_ned.yaw;    //target_wp_yaw is overwritten with latest target
+				//target_wp_ned.yaw = target_ned.yaw;    //target_wp_yaw is overwritten with latest target
 				break;
 			
 			case PERFORMING_LANDING:
