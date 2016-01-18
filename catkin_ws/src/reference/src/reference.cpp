@@ -432,13 +432,13 @@ public:
 				vertex_grid_n = inputCmd_.param4;
 				repeat_flag = inputCmd_.param7 == 1 ? true : false;
 				outputDist_.seq = inputCmd_.seq;
-				//TODO hardcoded parameters
-				if (height_grid < 0.5 || d_grid < 0.5 || d_grid > 30 || vertex_grid_n < 3 || vertex_grid_n > 20 || speed_grid <= 0 || speed_grid > 4){
+				//Sanity check made in mms
+				/*if (height_grid < 0.5 || d_grid < 0.5 || d_grid > 30 || vertex_grid_n < 3 || vertex_grid_n > 20 || speed_grid <= 0 || speed_grid > 4){
 					//grid params failure
 					grid_ack_.grid_completed = false;
 					grid_ack_.completion_type = 2;      //failure in parameters input
 					pubGridAck_.publish(grid_ack_);
-				}
+				}*/
 			}break;
 			case 161:    //GRID_VERTEX
 			{

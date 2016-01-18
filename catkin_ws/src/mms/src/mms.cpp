@@ -63,7 +63,7 @@ public:
 		pubToArm_=n_.advertise<mms_msgs::Arm>("/arm", 10);
 		pubToMmsStatus_=n_.advertise<mms_msgs::MMS_status>("/mms_status", 10);
 		pubCmd_ = n_.advertise<mms_msgs::Cmd>("/cmd_from_mms", 10);
-
+		pubGridAck_ = n_.advertise<mms_msgs::Grid_ack>("/grid_ack",10);
 
 		//Initializing outputAckMission_
 		outputAckMission_.mission_item_reached = false;
@@ -209,7 +209,7 @@ public:
 						outputAckMission_.seq = seq_number;
 						outputAckMission_.mav_mission_accepted = false;
 						pubToAckMission_.publish(outputAckMission_);
-						ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
+						ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");   //TODO we can discriminate the failure motivations for feedback
 
 						inputCmd_.command = 0; // 0 = NOT USED it's used to disable the switch-case structure
 						target_frame = FRAME_BARO;
@@ -223,32 +223,41 @@ public:
 				ROS_INFO("MMS: CMD_GRID. Params: %f - %f - %f - %f",inputCmd_.param1,inputCmd_.param2,inputCmd_.param3,inputCmd_.param4);
 				ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
 
-				if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR))       //TODO add more sanity check maybe
-					{
-						target_frame = inputCmd_.frame;
-						seq_number = inputCmd_.seq;
-						GRID_EVENT = true;
-						pubCmd_.publish(inputCmd_);  //cmd passed to reference
-					}
-					else
-					{
-						outputAckMission_.mission_item_reached = false;
-						outputAckMission_.seq = seq_number;
-						outputAckMission_.mav_mission_accepted = false;
-						pubToAckMission_.publish(outputAckMission_);
-						ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
-
-						inputCmd_.command = 0; // 0 = NOT USED it's used to disable the switch-case structure
-						target_frame = FRAME_BARO;
-						GRID_EVENT = false;
-					}
+				bool grid_correct_frame = (inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR);
+				bool grid_correct_parameters = (inputCmd_.param3 >= 0.5) ||
+										  (inputCmd_.param2 >= 0.5) ||
+										  (inputCmd_.param2 <= 30) ||
+										  (inputCmd_.param4 >= 3) ||
+										  (inputCmd_.param4 <= 20) ||
+										  (inputCmd_.param1 > 0) ||
+										  (inputCmd_.param1 <= 4);
+				// inputCmd_.param3 = height, inputCmd_.param2 = d, inputCmd_.param4 = vertex, inputCmd_.param1 = speed
+				if (grid_correct_frame && grid_correct_parameters){       //TODO add more sanity check maybe
+					target_frame = inputCmd_.frame;
+					seq_number = inputCmd_.seq;
+					GRID_EVENT = true;
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
+				} else {
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = seq_number;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED: GRID");
+					inputCmd_.command = 0; // 0 = NOT USED it's used to disable the switch-case structure
+					target_frame = FRAME_BARO;
+					GRID_EVENT = false;
+					Grid_ack_.grid_completed = 0;
+					Grid_ack_.completion_type = 2;      //failure in parameters input
+					pubGridAck_.publish(Grid_ack_);
+				}
 
 			} break;
 
 			case 161:  // GRID VERTEX
 			{
-				pubCmd_.publish(inputCmd_);  //cmd passed to reference
-
+				if (GRID_EVENT){
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference if in GRID state
+				}
 			} break;
 
 			case 21:  // MAV_CMD_NAV_LAND
@@ -1114,6 +1123,7 @@ ros::Subscriber subFromAckArm_;
 mms_msgs::Ack_arm inputAckArm_;
 
 ros::Subscriber subFromGridAck_;
+ros::Publisher pubGridAck_;
 mms_msgs::Grid_ack Grid_ack_;
 
 ros::Subscriber subSafety_;
@@ -1152,7 +1162,7 @@ mms_msgs::Arm outputArm_;
 ros::Publisher pubToMmsStatus_;
 mms_msgs::MMS_status outputMmsStatus_;
 
-// INPUTS GCS -> MMS
+// INPUTS GCS -> MMS (state machine events)
 bool SET_HOME;
 bool TAKEOFF;
 bool LAND;
