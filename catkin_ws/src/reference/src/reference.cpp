@@ -235,6 +235,8 @@ public:
 		target_wp_ned.alt = inputPos_.Altitude / 1000.0f;
 		target_ned.alt_baro = inputPos_.Altitude / 1000.0f;
 		target_ned.alt_sonar = inputSonar_.distance / 1000.0f;
+		target_wp_ned.yaw = inputPos_.YawAngle;
+		target_ned.yaw = inputPos_.YawAngle;
 	}
 
 	void set_increments_zero(){
