@@ -3,9 +3,9 @@
  *
  * Code generation for model "Model_GS".
  *
- * Model version              : 1.186
+ * Model version              : 1.199
  * Simulink Coder version : 8.7 (R2014b) 08-Sep-2014
- * C++ source code generated on : Tue Jan 12 18:24:49 2016
+ * C++ source code generated on : Wed Feb 03 10:38:35 2016
  *
  * Target selection: grt.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping
@@ -43,6 +43,11 @@
 # define rtmGetStopRequested(rtm)      ((void*) 0)
 #endif
 
+/* Block signals for system '<Root>/Any2[-pi;pi]' */
+typedef struct {
+  real_T output;                       /* '<Root>/Any2[-pi;pi]' */
+} B_Any2pipi_Model_GS_T;
+
 /* Block signals for system '<Root>/Int32 to Double' */
 typedef struct {
   real_T y[3];                         /* '<Root>/Int32 to Double' */
@@ -53,16 +58,16 @@ typedef struct {
   real_T WGS_scaled[3];                /* '<Root>/Scaling WGS' */
 } B_ScalingWGS_Model_GS_T;
 
-/* Block signals for system '<S21>/ ECEF to NED' */
+/* Block signals for system '<S22>/ ECEF to NED' */
 typedef struct {
-  real_T N;                            /* '<S21>/ ECEF to NED' */
-  real_T E;                            /* '<S21>/ ECEF to NED' */
-  real_T D;                            /* '<S21>/ ECEF to NED' */
+  real_T N;                            /* '<S22>/ ECEF to NED' */
+  real_T E;                            /* '<S22>/ ECEF to NED' */
+  real_T D;                            /* '<S22>/ ECEF to NED' */
 } B_ECEFtoNED_Model_GS_T;
 
-/* Block signals for system '<S21>/MATLAB Function WGS84 TO ECEF' */
+/* Block signals for system '<S22>/MATLAB Function WGS84 TO ECEF' */
 typedef struct {
-  real_T ECEF[3];                      /* '<S21>/MATLAB Function WGS84 TO ECEF' */
+  real_T ECEF[3];                      /* '<S22>/MATLAB Function WGS84 TO ECEF' */
 } B_MATLABFunctionWGS84TOECEF_M_T;
 
 /* Block signals for system '<Root>/single to double1' */
@@ -75,21 +80,23 @@ typedef struct {
   B_singletodouble1_Model_GS_T sf_uint16todouble2;/* '<Root>/uint16 to double2' */
   B_singletodouble1_Model_GS_T sf_uint16todouble1;/* '<Root>/uint16 to double1' */
   B_singletodouble1_Model_GS_T sf_singletodouble1;/* '<Root>/single to double1' */
-  B_MATLABFunctionWGS84TOECEF_M_T sf_MATLABFunctionWGS84TOECEF_d;/* '<S12>/MATLAB Function WGS84 TO ECEF' */
-  B_MATLABFunctionWGS84TOECEF_M_T sf_MATLABFunctionWGS84TOECEF;/* '<S25>/MATLAB Function WGS84 TO ECEF' */
-  B_ECEFtoNED_Model_GS_T sf_ECEFtoNED; /* '<S25>/ ECEF to NED' */
-  B_MATLABFunctionWGS84TOECEF_M_T sf_MATLABFunctionWGS84TOECEF_j;/* '<S11>/MATLAB Function WGS84 TO ECEF' */
-  B_MATLABFunctionWGS84TOECEF_M_T sf_MATLABFunctionWGS84TOECEF_e;/* '<S21>/MATLAB Function WGS84 TO ECEF' */
-  B_ECEFtoNED_Model_GS_T sf_ECEFtoNED_e;/* '<S21>/ ECEF to NED' */
+  B_MATLABFunctionWGS84TOECEF_M_T sf_MATLABFunctionWGS84TOECEF_d;/* '<S14>/MATLAB Function WGS84 TO ECEF' */
+  B_MATLABFunctionWGS84TOECEF_M_T sf_MATLABFunctionWGS84TOECEF;/* '<S26>/MATLAB Function WGS84 TO ECEF' */
+  B_ECEFtoNED_Model_GS_T sf_ECEFtoNED; /* '<S26>/ ECEF to NED' */
+  B_MATLABFunctionWGS84TOECEF_M_T sf_MATLABFunctionWGS84TOECEF_j;/* '<S13>/MATLAB Function WGS84 TO ECEF' */
+  B_MATLABFunctionWGS84TOECEF_M_T sf_MATLABFunctionWGS84TOECEF_e;/* '<S22>/MATLAB Function WGS84 TO ECEF' */
+  B_ECEFtoNED_Model_GS_T sf_ECEFtoNED_e;/* '<S22>/ ECEF to NED' */
   B_ScalingWGS_Model_GS_T sf_ScalingWGS1;/* '<Root>/Scaling WGS1' */
   B_ScalingWGS_Model_GS_T sf_ScalingWGS;/* '<Root>/Scaling WGS' */
   B_Int32toDouble_Model_GS_T sf_Int32toDouble6;/* '<Root>/Int32 to Double6' */
   B_Int32toDouble_Model_GS_T sf_Int32toDouble;/* '<Root>/Int32 to Double' */
+  B_Any2pipi_Model_GS_T sf_Any2pipi1;  /* '<Root>/Any2[-pi;pi]1' */
+  B_Any2pipi_Model_GS_T sf_Any2pipi;   /* '<Root>/Any2[-pi;pi]' */
 } B_Model_GS_T;
 
 /* Block states (auto storage) for system '<Root>' */
 typedef struct {
-  real_T Memory_PreviousInput[3];      /* '<S5>/Memory' */
+  real_T Memory_PreviousInput[3];      /* '<S7>/Memory' */
   real_T k;                            /* '<Root>/Edge detector' */
   real_T u_D_I;                        /* '<Root>/Control Law NED' */
 } DW_Model_GS_T;
@@ -115,7 +122,7 @@ typedef struct {
 /* Parameters (auto storage) */
 struct P_Model_GS_T_ {
   real_T Memory_X0[3];                 /* Expression: [0 0 0]
-                                        * Referenced by: '<S5>/Memory'
+                                        * Referenced by: '<S7>/Memory'
                                         */
 };
 
@@ -195,33 +202,34 @@ class Model_GSModelClass {
  * Here is the system hierarchy for this model
  *
  * '<Root>' : 'Model_GS'
- * '<S1>'   : 'Model_GS/Body Saturation'
- * '<S2>'   : 'Model_GS/Control Law NED'
- * '<S3>'   : 'Model_GS/Double to Single'
- * '<S4>'   : 'Model_GS/Edge detector'
- * '<S5>'   : 'Model_GS/Home'
- * '<S6>'   : 'Model_GS/Int32 to Double'
- * '<S7>'   : 'Model_GS/Int32 to Double6'
- * '<S8>'   : 'Model_GS/NED2BODY'
- * '<S9>'   : 'Model_GS/Scaling WGS'
- * '<S10>'  : 'Model_GS/Scaling WGS1'
- * '<S11>'  : 'Model_GS/WGS2NED1'
- * '<S12>'  : 'Model_GS/WGS2NED2'
- * '<S13>'  : 'Model_GS/Yaw_Check'
- * '<S14>'  : 'Model_GS/single to double1'
- * '<S15>'  : 'Model_GS/single to double2'
- * '<S16>'  : 'Model_GS/single to double7'
- * '<S17>'  : 'Model_GS/uint16 to double1'
- * '<S18>'  : 'Model_GS/uint16 to double2'
- * '<S19>'  : 'Model_GS/uint32 to double'
- * '<S20>'  : 'Model_GS/Home/trigger'
- * '<S21>'  : 'Model_GS/WGS2NED1/ECEF2NED'
- * '<S22>'  : 'Model_GS/WGS2NED1/MATLAB Function WGS84 TO ECEF'
- * '<S23>'  : 'Model_GS/WGS2NED1/ECEF2NED/ ECEF to NED'
- * '<S24>'  : 'Model_GS/WGS2NED1/ECEF2NED/MATLAB Function WGS84 TO ECEF'
- * '<S25>'  : 'Model_GS/WGS2NED2/ECEF2NED'
- * '<S26>'  : 'Model_GS/WGS2NED2/MATLAB Function WGS84 TO ECEF'
- * '<S27>'  : 'Model_GS/WGS2NED2/ECEF2NED/ ECEF to NED'
- * '<S28>'  : 'Model_GS/WGS2NED2/ECEF2NED/MATLAB Function WGS84 TO ECEF'
+ * '<S1>'   : 'Model_GS/Any2[-pi;pi]'
+ * '<S2>'   : 'Model_GS/Any2[-pi;pi]1'
+ * '<S3>'   : 'Model_GS/Body Saturation'
+ * '<S4>'   : 'Model_GS/Control Law NED'
+ * '<S5>'   : 'Model_GS/Double to Single'
+ * '<S6>'   : 'Model_GS/Edge detector'
+ * '<S7>'   : 'Model_GS/Home'
+ * '<S8>'   : 'Model_GS/Int32 to Double'
+ * '<S9>'   : 'Model_GS/Int32 to Double6'
+ * '<S10>'  : 'Model_GS/NED2BODY'
+ * '<S11>'  : 'Model_GS/Scaling WGS'
+ * '<S12>'  : 'Model_GS/Scaling WGS1'
+ * '<S13>'  : 'Model_GS/WGS2NED1'
+ * '<S14>'  : 'Model_GS/WGS2NED2'
+ * '<S15>'  : 'Model_GS/single to double1'
+ * '<S16>'  : 'Model_GS/single to double2'
+ * '<S17>'  : 'Model_GS/single to double7'
+ * '<S18>'  : 'Model_GS/uint16 to double1'
+ * '<S19>'  : 'Model_GS/uint16 to double2'
+ * '<S20>'  : 'Model_GS/uint32 to double'
+ * '<S21>'  : 'Model_GS/Home/trigger'
+ * '<S22>'  : 'Model_GS/WGS2NED1/ECEF2NED'
+ * '<S23>'  : 'Model_GS/WGS2NED1/MATLAB Function WGS84 TO ECEF'
+ * '<S24>'  : 'Model_GS/WGS2NED1/ECEF2NED/ ECEF to NED'
+ * '<S25>'  : 'Model_GS/WGS2NED1/ECEF2NED/MATLAB Function WGS84 TO ECEF'
+ * '<S26>'  : 'Model_GS/WGS2NED2/ECEF2NED'
+ * '<S27>'  : 'Model_GS/WGS2NED2/MATLAB Function WGS84 TO ECEF'
+ * '<S28>'  : 'Model_GS/WGS2NED2/ECEF2NED/ ECEF to NED'
+ * '<S29>'  : 'Model_GS/WGS2NED2/ECEF2NED/MATLAB Function WGS84 TO ECEF'
  */
 #endif                                 /* RTW_HEADER_Model_GS_h_ */

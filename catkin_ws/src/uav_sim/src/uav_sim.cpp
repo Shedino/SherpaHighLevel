@@ -253,6 +253,13 @@ public:
 				break;
 		}
 		
+		if (position_ned_.yaw<0){    //reset yaw between [0;2pi] to be complaint with APM
+			position_ned_.yaw = 2*M_PI;
+		}
+		if (position_ned_.yaw>2*M_PI){
+			position_ned_.yaw = 0;
+		}
+
 		double temp_ref_latitude;
 		double temp_ref_longitude;
 		get_pos_WGS84_from_NED (&temp_ref_latitude, &temp_ref_longitude, position_ned_.x, position_ned_.y, home_lat/10000000.0f, home_lon/10000000.0f);

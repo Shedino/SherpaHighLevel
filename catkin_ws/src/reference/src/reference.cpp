@@ -417,6 +417,15 @@ public:
 				target_wp_ned.y = temp_y;
 				target_wp_ned.alt = target_wp.AltitudeRelative / 1000.0f;  //meters
 				target_wp_ned.yaw = target_wp.Yawangle;
+				if ((target_wp.Yawangle - target_ned.yaw) > M_PI){    //select the closest yaw target
+					target_wp_ned.yaw = target_wp.Yawangle - 2*M_PI;
+					target_wp.Yawangle = target_wp.Yawangle - 2*M_PI;
+				}
+				if ((target_wp.Yawangle - target_ned.yaw) < -M_PI){	//select the closest yaw target
+					target_wp_ned.yaw = target_wp.Yawangle + 2*M_PI;
+					target_wp.Yawangle = target_wp.Yawangle + 2*M_PI;
+				}
+				//ROS_INFO("REF: YAW!!!! %f - %f",target_wp_ned.yaw,target_wp.Yawangle);
 				speed_wp_linear = inputCmd_.param1;
 				if (speed_wp_linear==0) speed_wp_linear = 2.0;
 				speed_wp_yaw = 0.5;  //TODO check hardcoded!!!
@@ -641,7 +650,7 @@ public:
 					new_state = false;
 				}
 				//ROS_INFO("REF: WP_NED: %f, %f, %f - TARG_NED: %f, %f, %f", target_wp_ned.x, target_wp_ned.y, target_wp_ned.alt, target_ned.x, target_ned.y, target_ned.alt_baro);
-				(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
+				calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
 				if (target_frame == 11 && actual_frame == 6){  //target in sonar but quad is too high
 					position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
 					reference_speed.vz = 0.8;
