@@ -21,6 +21,7 @@ static char dest_video[50];
 static int video_count = 0; 
 static int photo_taken_counter = 0;
 static int FPS = 20;         //TODO not hardcoded  
+static int image_count = 0;
 cv::VideoWriter video;
 ros::Publisher camera_pub;
 //ros::Publisher ack_pub;
@@ -60,7 +61,6 @@ class CameraHandler
   
 	void command_handler(const mms_msgs::Cmd::ConstPtr& msg){
 		if (msg->command == 2000){      //MAV_CMD_IMAGE_START_CAPTURE = 2000
-			camera_topic.take_pic = true;
 			if (!taking_photos){                                
 				seq_photo = msg->seq;
 				taking_photos = true;
@@ -82,7 +82,6 @@ class CameraHandler
 				mission_pub.publish(outputAckMission_);
 			}
 		} else if (msg->command == 2500){	//MAV_CMD_VIDEO_START_CAPTURE = 2500
-			camera_topic.take_vid = true;
 			seq_video = msg->seq;
 			if (!take_video){
 				seq_video = msg->seq;
@@ -110,7 +109,6 @@ class CameraHandler
 				//ACK?
 			}
 		} else if (msg->command == 2501){		//MAV_CMD_VIDEO_STOP_CAPTURE = 2501
-			camera_topic.take_vid = false;
 			seq_video = msg->seq;
 			if (take_video){
 				//mission ack
@@ -128,13 +126,6 @@ class CameraHandler
 			}
 		}
 	}
-
-	/*void trigger_image_video(const camera_handler_sherpa::Camera::ConstPtr& msg){
-		camera_topic.take_pic = msg->take_pic;
-		camera_topic.take_vid = msg->take_vid;
-		if (msg->take_vid && !take_video) startVideo();
-		else if (!msg->take_vid && take_video) stopVideo();
-	}*/
 
 	void startVideo()
 	{
@@ -162,8 +153,12 @@ class CameraHandler
 		std::ifstream  src(dest_video, std::ios::binary);
 		sprintf(dest_video,"/home/odroid/Photo_Mission/video_%d.mpg",video_count);
 		std::ofstream  dst(dest_video,   std::ios::binary);
-		dst << src.rdbuf();
+		dst << src.rdbuf();		//move video from /Video_Mission to /Photo_Mission
 		
+		camera_topic.taken_photo = false;
+		camera_topic.taken_video = true;
+		camera_topic.N_video_taken = video_count;
+		camera_pub.publish(camera_topic);    //publish that a video is taken
 		video_count++;
 		//remove("C:\\Temp\\somefile.txt");
 		
@@ -172,10 +167,6 @@ class CameraHandler
 		outputAckMission_.mission_item_reached = true; //item reached: end stop recording
 		outputAckMission_.mav_mission_accepted = false;   //need to send only item reached
 		mission_pub.publish(outputAckMission_);
-		//outputAckCmd_.mission_item_reached = true;
-		//outputAckCmd_.mav_mission_accepted = false;
-		//outputAckCmd_.mav_cmd_id = 2501;         //MAV_CMD_VIDEO_STOP_CAPTURE
-		//ack_pub.publish(outputAckCmd_);
 	}
 
 	~CameraHandler()
@@ -202,14 +193,16 @@ class CameraHandler
 			_counter_frames = 0;
 			ROS_INFO("CAMERA HANDLER: taking picture %d", photo_taken_counter+1);
 			// Save Image
-			static int image_count = 0;
 			static char dest_img[50];                        
 			sprintf(dest_img,"/home/odroid/Photo_Mission/image_%d.jpg",image_count);
 			ROS_ASSERT( cv::imwrite(dest_img,  cv_ptr->image));
-			image_count++;
 			photo_taken_counter++;
-			//camera_topic.take_pic = false;
-			//camera_pub.publish(camera_topic);
+
+			camera_topic.taken_photo = true;
+			camera_topic.taken_video = false;
+			camera_topic.N_photo_taken = image_count;
+			camera_pub.publish(camera_topic);
+			image_count++;
 		
 			if (photo_taken_counter == _N_photo){   //in case _N_photo = 0 this will never enter so unlimited photos
 				//mission ack because photo mission is finished
@@ -234,7 +227,7 @@ class CameraHandler
 	float _delay_seconds;
 	int _N_photo;
 	int _counter_frames;           
-	int _compare_frames;            
+	int _compare_frames;
 };
 
 int main(int argc, char** argv)
