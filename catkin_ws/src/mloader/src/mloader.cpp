@@ -42,6 +42,11 @@ public:
 		outputCmd_.param6 = 0;
 		outputCmd_.param7 = 0;
 
+		current_mission_item = 1;
+		rate = 10;
+		MISSION_ACCEPTED = false;
+		MISSION_ITEM_REACHED = false;
+		currentState = NO_MISSION_LOADED;
 	}
 
 	void readMission(const mloader::Mission::ConstPtr& msg)
@@ -209,27 +214,17 @@ protected:
 
 	ros::Publisher pubToCmd_;
 	mms_msgs::Cmd outputCmd_;
-	
-	// INPUTS GCS -> MLOADER
-	// bool MISSION_COUNT = false;
-	// bool MISSION_CLEAR_ALL = false;
-	// bool MISSION_START = false;
-	
-	
+
 	//ROS_INFO("MLOADER_CURRENT_STATE: NO_MISSION_LOADED");
 
-	
-	// int N=1; // number of mission items
-
-	//int mission_item_number = 0; // set 0 as default      LASCIARE COMMENTATO
-	int current_mission_item = 1; // set 1 as default
-	int rate = 10;
+	int current_mission_item;
+	int rate;
 	// INPUTS MMS -> MLOADER
-	bool MISSION_ACCEPTED = false;
-	bool MISSION_ITEM_REACHED = false;
+	bool MISSION_ACCEPTED;
+	bool MISSION_ITEM_REACHED;
 
 	// STATE INITIALIZATION
-	int currentState = NO_MISSION_LOADED;
+	int currentState;
 
 // private:
 };
