@@ -26,6 +26,7 @@ public:
 		inputRefSystem_.actual_ref_frame = 6;
 		new_frame = false;
 		old_frame = 0;
+		rate = 10;
 	}
 
 	void readPositionMessage(const mavros::Global_position_int::ConstPtr& msg)
@@ -134,7 +135,7 @@ protected:
 	ros::Publisher pubToPosNav_;
 	guidance_node_amsl::Position_nav outputPosNav_;
 
-	int rate = 10;
+	int rate;
 	bool new_frame;
 	int old_frame;
 };

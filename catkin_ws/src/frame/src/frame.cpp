@@ -9,15 +9,8 @@ class FrameNodeClass
 
 public:
 
-//	int rate = 10;
-	int actual_frame = 6;
-	int old_frame = 0;
-	int old_target_frame = 0;
-	bool new_frame = false;
-
 	FrameNodeClass(ros::NodeHandle& node)
-{
-
+	{
 		n_=node;
 
 		//subscribers
@@ -26,7 +19,12 @@ public:
 
 		// publishers
 		pubToRefSystem_=n_.advertise<frame::Ref_system>("/ref_system", 10);
-}
+
+		actual_frame = 6;
+		old_frame = 0;
+		old_target_frame = 0;
+		new_frame = false;
+	}
 
 
 	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
@@ -143,11 +141,10 @@ protected:
 
 	frame::Ref_system outputRefSystem_;
 
-//	int rate = 10;
-/*	int actual_frame = 6;
-	int old_frame = 0;
-	int old_target_frame = 0;
-	bool new_frame = false;*/
+	int actual_frame;
+	int old_frame;
+	int old_target_frame;
+	bool new_frame;
 
 	// private:
 };

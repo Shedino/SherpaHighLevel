@@ -46,6 +46,12 @@ public:
 		qos_sensors_sub = nodeHandle.subscribe("/qos_sensors", 10, &UniboGCSPlugin::qos_sensors_callback, this);
 
 		//ROS_INFO("ArtvaRead.msg subscribed here!");
+		//INITIALIZE ARTVA STUFF
+		ArtvaInd = 0;
+		ArtvaBufferMaxNum = 20;
+		ArtvaLat = 0;
+		ArtvaLon = 0;
+		ArtvaYaw = 0;
 
 		/*nodeHandle.param("guidance_node_amsl/param/sat_xy", v_xy_max, 3.0);
 		nodeHandle.param("guidance_node_amsl/param/sat_z", v_z_max, 1.5);
@@ -77,12 +83,12 @@ private:
 	mavros::Safety safety_;
 	qos_sensors_autopilot::Qos_sensors qos_sensors_;
 
-	int ArtvaInd=0;
-	int ArtvaBufferMaxNum=20;
+	int ArtvaInd;
+	int ArtvaBufferMaxNum;
     int ArtvaBuffer[20][8];
-	int ArtvaLat=0;
-	int ArtvaLon=0;
-	float ArtvaYaw=0;
+	int ArtvaLat;
+	int ArtvaLon;
+	float ArtvaYaw;
 //	int ArtvaAlt=0;
 	
 	void artva_callback(const mavros::ArtvaRead::ConstPtr& msg){
