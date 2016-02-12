@@ -49,7 +49,7 @@ class CameraHandler
 		command_sub = nh_.subscribe("/sent_command", 10, &CameraHandler::command_handler, this);
 
 		//image_pub_ = it_.advertise("/camera_handler/output_video", 1);      //only if we have to modify images and publish again
-		camera_pub = nh_.advertise<camera_handler_sherpa::Camera>("/camera_trigger", 20);
+		camera_pub = nh_.advertise<camera_handler_sherpa::Camera>("/camera_published", 20);
 		//ack_pub = nh_.advertise<mms_msgs::Ack_cmd>("/ack_cmd", 10);
 		mission_pub = nh_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
 
