@@ -10,7 +10,7 @@ from geographic_msgs.msg import GeoPoint
 from geometry_msgs.msg import Quaternion
 from camera_handler_sherpa.msg import Camera
 
-agentName = "wasp0"
+agentName = "0"
 counter = 0 #runs at 10hz
 cameraTopic_ = Camera()
 geopose_ = GeoPose()

@@ -18,6 +18,7 @@
 #include <mms_msgs/Ack_arm.h>
 #include <mms_msgs/Arm.h>
 #include <mms_msgs/Sys_status.h>
+#include <tf/transform_datatypes.h>
 
 #define SONAR_THRESHOLD 300          //maximum centimetres of a reliable sonar reading
 namespace mavplugin {
@@ -236,6 +237,9 @@ private:
 			global_pos_.hdg = (int)((attitude.yaw+6.28)*180/3.14*100);   //attitude comes in +-pi but hdg is 0..359.99 deg. Adding 2*pi to attitude if negative.
 		}
 
+		quaternion_ = tf::createQuaternionMsgFromRollPitchYaw(attitude_msg.roll,attitude_msg.pitch,attitude_msg.yaw);
+		geopose_.orientation = quaternion_;
+
 		//position_pub.publish(position_msg);       //already published when received position_int
 		attitude_pub.publish(attitude_msg);
 	}
@@ -245,11 +249,11 @@ private:
 		mavlink_attitude_quaternion_t attitude;
 		mavlink_msg_attitude_quaternion_decode(msg, &attitude);
 		
-		quaternion_.x = attitude.q1;
-		quaternion_.y = attitude.q2;
-		quaternion_.z = attitude.q3;
-		quaternion_.w = attitude.q4;
-		geopose_.orientation = quaternion_;
+		/*quaternion_.x = attitude.q2;
+		quaternion_.y = attitude.q3;
+		quaternion_.z = attitude.q4;
+		quaternion_.w = attitude.q1;
+		geopose_.orientation = quaternion_;*/
 	}
 
 	void handle_heartbeat(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
