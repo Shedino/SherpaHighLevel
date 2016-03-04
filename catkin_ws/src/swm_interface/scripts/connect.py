@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys
-sys.path.append('/home/odroid/pySWM')
+sys.path.append('/home/odroid/DCM/ubx_robotscenegraph/examples/sherpa/mission_scripts')
 import math
 import rospy
 import tf
@@ -26,7 +26,11 @@ def updateGeopose(data):
 
 def updateCamera(data):
     cameraTopic_ = data
-    swm.run('add picture wasp_%s www.test.com %.7f %.7f %.2f %.2f %.4f %.4f %.4f' % (agentName, geopoint_.GeoPoint.latitude, geopoint_.GeoPoint.longitude, geopoint_.GeoPoint.altitude, quaternion_.Quaternion.x, quaternion_.Quaternion.y, quaternion_.Quaternion.z, quaternion_.Quaternion.w))
+    if data.taken_photo:
+        swm.run('add picture wasp_%s %s %.7f %.7f %.2f %.2f %.4f %.4f %.4f' % (agentName, data.path_photo, geopoint_.GeoPoint.latitude, geopoint_.GeoPoint.longitude, geopoint_.GeoPoint.altitude, quaternion_.Quaternion.x, quaternion_.Quaternion.y, quaternion_.Quaternion.z, quaternion_.Quaternion.w))
+    if data.taken_video:
+        #missing add video on SWM
+        swm.run('add picture wasp_%s %s %.7f %.7f %.2f %.2f %.4f %.4f %.4f' % (agentName, data.path_video, geopoint_.GeoPoint.latitude, geopoint_.GeoPoint.longitude, geopoint_.GeoPoint.altitude, quaternion_.Quaternion.x, quaternion_.Quaternion.y, quaternion_.Quaternion.z, quaternion_.Quaternion.w))
     
 if __name__ == '__main__':
     try:

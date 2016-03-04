@@ -158,6 +158,7 @@ class CameraHandler
 		camera_topic.taken_photo = false;
 		camera_topic.taken_video = true;
 		camera_topic.N_video_taken = video_count;
+		camera_topic.path_video = dest_video;
 		camera_pub.publish(camera_topic);    //publish that a video is taken
 		video_count++;
 		//remove("C:\\Temp\\somefile.txt");
@@ -201,6 +202,7 @@ class CameraHandler
 			camera_topic.taken_photo = true;
 			camera_topic.taken_video = false;
 			camera_topic.N_photo_taken = image_count;
+			camera_topic.path_photo = dest_img;
 			camera_pub.publish(camera_topic);
 			image_count++;
 		
