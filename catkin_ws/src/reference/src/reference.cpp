@@ -20,8 +20,8 @@
 
 //TODO add check with terrain altitude
 
-double eps_WP = 400.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here MAKE PARAMETER SERVER
-double eps_alt = 400.0; // distance to the target altitude in millimeters
+double eps_WP = 2000.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here MAKE PARAMETER SERVER
+double eps_alt = 1500.0; // distance to the target altitude in millimeters
 double eps_YAW = 10.0; // distance to the target YAW position in deg
 
 double PI = 3.1416; // pi

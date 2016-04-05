@@ -37,9 +37,9 @@
 
 double PI = 3.1416; // pi
 double eps_LAND = 10000.0; // distance to the target LAND position in millimeter
-double eps_WP = 400.0; // distance to the target WAYPOINT position in millimeters           //TODO no hardcoded
-double eps_TO = 400.0; // distance to the target TAKEOFF position in millimeters
-double eps_alt = 400.0; // distance to the target altitude in millimeters
+double eps_WP = 2000.0; // distance to the target WAYPOINT position in millimeters           //TODO no hardcoded and maybe dependent to HDOP
+//double eps_TO = 400.0; // distance to the target TAKEOFF position in millimeters
+double eps_alt = 1500.0; // distance to the target altitude in millimeters
 double eps_YAW = 10.0; // distance to the target YAW position in deg
 
 class MmsNodeClass {
@@ -704,7 +704,7 @@ public:
 				{
 					ROS_INFO_ONCE("MMS: REACHING THE TAKEOFF TARGET");
 					//ROS_INFO("MMS: Distances: %.3f - %.3f - %.3f", inputDist_.error_pos, inputDist_.error_ang, inputDist_.error_alt);
-					if (inputDist_.error_pos < eps_TO && inputDist_.error_ang < eps_YAW && inputDist_.error_alt < eps_alt)
+					if (inputDist_.error_ang < eps_YAW && inputDist_.error_alt < eps_alt)
 					{
 						set_events_false();
 
@@ -1198,12 +1198,6 @@ int currentState;
 int previousState;      //used when rolling back to previous state from MANUAL_FLIGHT
 // int lastARMState = ON_GROUND_DISARMED;
 int target_frame;
-
-// ERRORS DEFINITION
-// float err; // current distance to the target position in millimeters
-/*int eps_LAND = 100; // target distance to the LAND position in millimeter
-int eps_WP = 100; // target distance to the WAYPOINT position in millimeters
-int eps_TO = 100; // target distance to the TAKEOFF position in millimeters*/
 
 int rate;
 
