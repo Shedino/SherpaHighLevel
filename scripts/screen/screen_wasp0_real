@@ -28,6 +28,10 @@ screen 5
 title "Wasp Camera Handler"
 stuff "sleep 10; rosrun camera_handler_sherpa camera_handler_sherpa __ns:=/wasp0\015"
 
+screen 6
+title "SWM interface"
+stuff "sleep 3; rosrun swm_interface connect.py\015"
+
 screen 7
 title "tst0"
 stuff "sleep 10; roslaunch lrs_sherpa tstwasp0.launch\015"

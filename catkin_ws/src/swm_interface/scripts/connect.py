@@ -13,9 +13,9 @@ from camera_handler_sherpa.msg import Camera
 agentName = "0"
 counter = 0 #runs at 10hz
 cameraTopic_ = Camera()
-geopose_ = GeoPose()
-geopoint_ = GeoPoint()
-quaternion_ = Quaternion()
+geopoint_ = GeoPoint(0,0,0)
+quaternion_ = Quaternion(0,0,0,1)
+geopose_ = GeoPose(geopoint_,quaternion_)
 
 def updateGeopose(data):
     global geopoint_
