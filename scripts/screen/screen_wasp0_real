@@ -17,33 +17,41 @@ screen 2
 title "interaction"
 
 screen 3
-title "Guidance"
-stuff "sleep 10; roslaunch guidance_node_amsl node.launch __ns:=/wasp0\015"
+title "Mavros"
+stuff "sleep 10; roslaunch mavros uniboAMSLUSB.launch\015"
 
 screen 4
-title "Wasp Camera Usb"
-stuff "sleep 10; rosrun usb_cam usb_cam_node __ns:=/wasp0\015"
+title "Mavros rate"
+stuff "sleep 20; rosrun mavros mavsys rate --all 10\015"
 
 screen 5
+title "Wasp Camera Usb"
+stuff "sleep 5; rosrun usb_cam usb_cam_node __ns:=/wasp0\015"
+
+screen 6
 title "Wasp Camera Handler"
 stuff "sleep 10; rosrun camera_handler_sherpa camera_handler_sherpa __ns:=/wasp0\015"
 
-screen 6
+screen 7
 title "SWM interface"
 stuff "sleep 3; rosrun swm_interface connect.py\015"
 
-screen 7
+screen 8
 title "tst0"
 stuff "sleep 10; roslaunch lrs_sherpa tstwasp0.launch\015"
 
-screen 8
+screen 9
 title "Delegation"
 stuff "sleep 10; roslaunch lrs_sherpa delegation.launch __ns:=/wasp0\015"
 
-screen 9
+screen 10
 title "roszyre"
 stuff "sleep 10; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp0 _forward_unit_info:=1\015"
 
-screen 10
+screen 11
 title "proxy"
 stuff "rosrun lrs_sherpa_proxy proxy __ns:=/wasp0 _long_name:=http://unibo.it/wasp0\015"
+
+screen 12
+title "SWM"
+stuff "sleep 10; cd DCM/ubx_robotscenegraph; ./swm_launch.sh\015"
