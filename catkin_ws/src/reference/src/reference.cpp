@@ -428,7 +428,7 @@ public:
 				//ROS_INFO("REF: YAW!!!! %f - %f",target_wp_ned.yaw,target_wp.Yawangle);
 				speed_wp_linear = inputCmd_.param1;
 				if (speed_wp_linear==0) speed_wp_linear = 2.0;
-				speed_wp_yaw = 0.5;  //TODO check hardcoded!!!
+				speed_wp_yaw = 0.3;  //TODO check hardcoded!!!
 				outputDist_.seq = inputCmd_.seq;
 				ROS_INFO("REF: MAV_CMD_DO_NAV_WAYPOINT. Params: %d - %d - %d - %f - %d",target_wp.Latitude,target_wp.Longitude,target_wp.AltitudeRelative,target_wp.Yawangle,target_wp.frame);
 				// target_wp.Mode = 0;

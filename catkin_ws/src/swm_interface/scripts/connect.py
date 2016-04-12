@@ -43,8 +43,9 @@ if __name__ == '__main__':
         while not rospy.is_shutdown():
             counter += 1
             #currentQuaternion = tf.transformations.quaternion_from_euler(currentRoll, currentPitch, currentYaw, "sxyz")
-            if counter>20:
+            if counter>30:
             	swm.run('set wasp %s geopose %.7f %.7f %.2f %.2f %.4f %.4f %.4f' % (agentName, geopoint_.latitude, geopoint_.longitude, geopoint_.altitude, quaternion_.x, quaternion_.y, quaternion_.z, quaternion_.w))
+            	print "\n", swm.getGeopose("wasp_0"), "\n"
             	print "[swm_interface]: the current geopose of the wasp was published %.7f %.7f %.2f" % (geopoint_.latitude, geopoint_.longitude, geopoint_.altitude)
             	counter = 0
             rate.sleep()

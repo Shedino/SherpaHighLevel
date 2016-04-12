@@ -27,6 +27,8 @@ public:
 		new_frame = false;
 		old_frame = 0;
 		rate = 10;
+		use_global_altitude = false; //true-->use global altitude from GPS, relative from baro otherwise
+
 	}
 
 	void readPositionMessage(const mavros::Global_position_int::ConstPtr& msg)
@@ -71,11 +73,12 @@ public:
 		}
 		else if (inputRefSystem_.actual_ref_frame == 6)
 		{
-			outputPosNav_.Latitude =inputPos_.lat ;
-			outputPosNav_.Longitude =inputPos_.lon ;
-			//outputPosNav_.Altitude =inputPos_.relative_alt;
-			outputPosNav_.Altitude =inputPos_.alt;               //changed to use absolute alt  
-			outputPosNav_.Timestamp =inputPos_.time_boot_ms;
+			outputPosNav_.Latitude = inputPos_.lat;
+			outputPosNav_.Longitude = inputPos_.lon;
+			outputPosNav_.Altitude = inputPos_.alt;
+			if (use_global_altitude) outputPosNav_.Altitude = inputPos_.alt;     //use absolute alt
+			else outputPosNav_.Altitude = inputPos_.relative_alt + 1580000;  //TODO check using champoluc altitude
+			outputPosNav_.Timestamp = inputPos_.time_boot_ms;
 			outputPosNav_.YawAngle = inputPos_.hdg*3.14/180/100;
 			outputPosNav_.frame = inputRefSystem_.actual_ref_frame;
 		}
@@ -138,6 +141,8 @@ protected:
 	int rate;
 	bool new_frame;
 	int old_frame;
+	bool use_global_altitude;
+
 };
 
 int main(int argc, char **argv)

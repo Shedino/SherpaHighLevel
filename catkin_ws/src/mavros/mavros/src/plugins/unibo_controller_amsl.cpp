@@ -62,7 +62,7 @@ public:
 		artva_pub = nodeHandle.advertise<mavros::ArtvaRead>("/artva_read", 10);
 		safety_pub = nodeHandle.advertise<mavros::Safety>("/safety_odroid", 10);
 		imu_pub = nodeHandle.advertise<mavros::Raw_imu>("/imu", 10);
-		pubGeopose_ = nodeHandle.advertise<geographic_msgs::GeoPose>("geopose",10);
+		pubGeopose_ = nodeHandle.advertise<geographic_msgs::GeoPose>("/geopose",10);
 
 
 

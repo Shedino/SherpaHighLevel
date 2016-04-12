@@ -9,5 +9,7 @@
 	</include>
 	<include file="$(find reference)/launch/node.launch">
 	</include>
+	<include file="$(find qos_sensors_autopilot)/launch/node.launch">
+	</include>
 	
 </launch>
