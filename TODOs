@@ -2,20 +2,21 @@ LIST OF TODOS FOR HIGH-LEVEL-SHERPA
 
 1) Leashing (Michele) --------------------------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED IN FLIGHT
 2) Grid (Michele)   ----------------------------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED IN FLIGHT
-3) Speed in WP (Michele)  ----------------------------------------------  DONE  ----  WORKING
-4) N photo and Delay (Michele)  ----------------------------------------  DONE  ----  WORKING
-5) Video/Photo dynamic FPS + dimension (Michele)  ----------------------  NOT FEASIBLE
-6) Better Landing (???)    ---------------------------------------------  ADDED RAW_IMU TOPIC  ---- 
-7) Ref in WGS84 + AMSL (Michele)        --------------------------------  DONE  ----  WORKING
-8) Librery WGS84<-->NED (Michele)       --------------------------------  DONE  ----  WORKING
-9) QoS sensors (Michele)                --------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED WITH REAL SENSORS
-10) Integration Delegation (Michele)    --------------------------------  90% DONE  ---- TESTED SOFTWARE  ----  TESTED IN FLIGHT
-11) Uav_sim (All)                       --------------------------------  DONE  ----  TO MAKE BETTER
-12) Fake GPS for VICON (Michele)        --------------------------------  DONE  ----  WORKING
-13) Forest Flight (???)
-14) MANUAL_FLIGHT and rollback (Michele)--------------------------------  DONE  ----  TESTED SOFTWARE  ----
-15) DCM integration       ----------------------------------------------  DONE GEOPOSE PUBLISHER  ----  TESTED
-16) Fake magnetometer
-17) Revamp Reference   -------------------------------------------------  DONE  ----  WORKING
-18) Global Planner
-19) 
+3) Video/Photo dynamic FPS + dimension (Michele)  ----------------------  NOT FEASIBLE
+4) Better Landing (Nicola)    ------------------------------------------  ADDED RAW_IMU TOPIC  ---- 
+5) QoS sensors (Michele)                --------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED WITH REAL SENSORS
+6) Integration Delegation (Michele)    ---------------------------------  90% DONE  ---- TESTED SOFTWARE  ----  TESTED IN FLIGHT
+7) Uav_sim (All)                       ---------------------------------  DONE  ----  TO MAKE BETTER
+8) Forest Flight (Michele)
+9) MANUAL_FLIGHT and rollback (Michele)---------------------------------  DONE  ----  TESTED SOFTWARE  ----
+10) DCM integration       ----------------------------------------------  DONE GEOPOSE/PHOTO PUBLISHER  ----  TESTED
+11) Global Planner
+12) Local Obstacle Avoidance for ARTVA
+13) Sonar for Ground Navigation ---------------------------------------- DONE ---- TO BE TESTED
+14) ARTVA data + Sonar (Michele)
+15) Hand Deployment (Michele)
+16) Rover Landing Deck Land, Visual Servoing (Michele)
+17) Fix Workspaces mess (Michele)
+18) Relative altitude + Global altitude from DEM (Michele)
+19) Reduce usb_cam CPU overload (Michele)
+20) Velocity control commands modalaity  (Michele)
