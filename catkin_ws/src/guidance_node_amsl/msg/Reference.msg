@@ -6,5 +6,11 @@ int32 Longitude
 int32 AltitudeRelative
 # (-pi...pi)
 float32 Yawangle
+float32 vx
+float32 vy
+float32 vz
+float32 vyaw
 #reference abs or rel
 int8 Mode
+# coordinate frame
+uint8 frame

@@ -23,6 +23,7 @@
   <depend>diagnostic_msgs</depend>
   <depend>diagnostic_updater</depend>
   <depend>message_generation</depend>
+  <depend>message_runtime</depend>
   <depend>pluginlib</depend>
   <depend>roscpp</depend>
   <depend>rospy</depend>
@@ -35,6 +36,8 @@
   <depend>angles</depend>
   <depend>libmavconn</depend>
   <depend>rosconsole_bridge</depend>
+  <depend>camera_handler_SHERPA</depend>
+  <depend>mms_msgs</depend>
   <exec_depend>python-argparse</exec_depend>
 
   <export>

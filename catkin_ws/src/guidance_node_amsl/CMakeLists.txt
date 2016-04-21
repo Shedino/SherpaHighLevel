@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   message_generation
+#  mavros
 )
 
 ## System dependencies are found with CMake's conventions
@@ -47,8 +48,8 @@ find_package(Boost REQUIRED COMPONENTS system)
 add_message_files(
    FILES
    Directive.msg
-   Position.msg
    Reference.msg
+   Position_nav.msg
  )
 
 ## Generate services in the 'srv' folder
@@ -93,10 +94,14 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(~/catkin_ws/src/${PROJECT_NAME}/include/${PROJECT_NAME} ~/Matlab/extern/include ~/Matlab/simulink/include)
-#include_directories(
-#  include ${catkin_INCLUDE_DIRS}
-#)
+#include_directories(~/catkin_ws/src/${PROJECT_NAME}/include/${PROJECT_NAME} ~/Matlab/extern/include ~/Matlab/simulink/include)
+include_directories(
+  include
+  include/${PROJECT_NAME}
+  ${catkin_INCLUDE_DIRS}
+  ~/Matlab/extern/include ~/Matlab/simulink/include
+  /opt/MATLAB/R2015a/extern/include /opt/MATLAB/R2015a/simulink/include
+)
 
 ## Declare a cpp library
 # add_library(guidance_node
@@ -108,7 +113,7 @@ add_executable(${PROJECT_NAME} src/${PROJECT_NAME}.cpp src/Model_GS.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS} ${boost_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_message_cpp)
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS} ${boost_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${boost_LIBRARIES})

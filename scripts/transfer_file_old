@@ -1,0 +1,36 @@
+#!/bin/bash
+#---parameters
+local_path=/home/odroid/Photo_Mission
+<<<<<<< HEAD
+server_path=/home/jcacace/sherpa_multimedia_data/red
+user=jcacace
+password=Automation
+server_ip=192.168.0.124
+=======
+server_path=/home/sherpa/Desktop/Photo_Mission
+user=sherpa
+password=sherpa
+server_ip=192.168.0.108
+>>>>>>> a1c487d05487c1a55f34551cf55bbc02098f97e0
+echo "[FILE TRANSFER:] parameters initialised"
+#---
+
+if ping -c 1 $server_ip &> /dev/null
+then
+	echo "[FILE TRANSFER:] the server is reachable"
+	echo "[FILE TRANSFER:] monitoring new files presence in folder '$local_path' started"
+	inotifywait -m $local_path -e create -e moved_to |
+		#----new event 
+		while read path action file; do
+	    echo "[FILE TRANSFER:] the file '$file' appeared in directory '$path' via '$action'"
+			if scp -o 'StrictHostKeyChecking no' $local_path/$file $user@$server_ip:$server_path #sshpass -p $password 
+			then
+				echo "[FILE TRANSFER:] file '$file' successfully sent to " $server_ip
+				rm $local_path/$file
+			else
+				echo "[FILE TRANSFER:] ERROR: transfer of file '$file' to '$server_ip' not accomplished"
+			fi
+    done
+else
+	echo "[FILE TRANSFER:] ERROR: it is impossible to reach the server"
+fi

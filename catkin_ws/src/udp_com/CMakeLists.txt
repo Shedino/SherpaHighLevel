@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  mavros
   geometry_msgs
   sensor_msgs
 )
@@ -124,7 +125,7 @@ target_link_libraries(mocap_node_opti_gps ${catkin_LIBRARIES})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(udp_com_node udp_com_generate_messages_cpp)
+add_dependencies(mocap_node mavros_gencpp)
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(udp_com_node

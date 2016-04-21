@@ -1,3 +1,14 @@
+Prima di far girare i commandi ROS su ogni nuova macchina virtuale ricordarsi di aggiungere le seguenti righe alla fine del file ".bashrc":
+
+------------------------------------------------
+
+ source /home/odroid/catkin_ws/devel/setup.bash
+
+ export ROS_MASTER_URI=http://localhost:11311
+ export ROS_HOSTNAME=localhost
+
+------------------------------------------------
+
 Si lavora dentro catkin_ws, da prendere nel repository e fare link simbolico da home utente verso SherpaHighLevel/catkin_ws
 catkin_make -> builda tutto
 catkin_make <nome_modulo> -> builda il singolo modulo.

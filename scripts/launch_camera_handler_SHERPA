@@ -3,5 +3,6 @@ source /opt/ros/indigo/setup.bash
 source /home/odroid/catkin_ws/devel/setup.bash
 export ROS_WORKSPACE=/home/odroid/catkin_ws
 export DISPLAY=:0
-sleep 10
+sleep 5
 rosrun camera_handler_SHERPA camera_handler_SHERPA
+sleep 2

@@ -5,3 +5,4 @@ export ROS_WORKSPACE=/home/odroid/catkin_ws
 export DISPLAY=:0
 sleep 10
 rosrun usb_cam usb_cam_node
+sleep 2

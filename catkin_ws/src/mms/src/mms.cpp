@@ -1,36 +1,47 @@
 #include "ros/ros.h"
-// #include <vector>
 
-#include "guidance_node_amsl/Position.h"
-#include "guidance_node_amsl/Reference.h"
-#include "mms/Cmd.h"
-#include "mms/Ack_cmd.h"
-#include "mms/Arm.h"
-#include "mms/Ack_arm.h"
-#include "mms/Sys_status.h"
+#include "mms_msgs/Cmd.h" // input
+#include "mms_msgs/Ack_mission.h"// output
+#include "mms_msgs/Arm.h"// output
+#include "mms_msgs/Ack_arm.h" // input
+#include "mms_msgs/Sys_status.h"// input
+#include "mms_msgs/Grid_ack.h"  //input
+#include <mavros/Sonar.h> // input
+#include "mms_msgs/MMS_status.h"// output
+#include <reference/Distance.h>// input
+#include <mavros/Safety.h>// input
+#include <reference/LeashingStatus.h>// input
+#include <qos_sensors_autopilot/Qos_sensors.h>// input
 
-
-// STATES DEFINITION
+// STATES DEFINITION -> CREATE A DEDICATED LIBRARY = TODO
+//TODO make this static const int
 #define ON_GROUND_NO_HOME 10
 #define SETTING_HOME 20
 #define ON_GROUND_DISARMED 30
 #define ARMING 40
 #define DISARMING 45
 #define ON_GROUND_ARMED 50
-#define ON_GROUND_READY_TO_TAKEOFF 60
+// #define ON_GROUND_READY_TO_TAKEOFF 60
 #define PERFORMING_TAKEOFF 70
 #define IN_FLIGHT 80
-#define READY_TO_GO 90
+#define GRID 90
 #define PERFORMING_GO_TO 100
-#define READY_TO_LAND 110
+// #define READY_TO_LAND 110
 #define PERFORMING_LANDING 120
+#define LEASHING 140
+#define PAUSED 150
+#define MANUAL_FLIGHT 1000
+#define FRAME_BARO 6
+#define FRAME_SONAR 11
+
 
 double PI = 3.1416; // pi
 double eps_LAND = 10000.0; // distance to the target LAND position in millimeter
-double eps_WP = 1500.0; // distance to the target WAYPOINT position in millimeters
-double eps_TO = 1500.0; // distance to the target TAKEOFF position in millimeters
-double eps_YAW = 20.0; // distance to the target YAW position in deg
-double Dh_TO = 8000.0; // takeoff height above the groung in millimeters
+double eps_WP = 2000.0; // distance to the target WAYPOINT position in millimeters           //TODO no hardcoded and maybe dependent to HDOP
+//double eps_TO = 400.0; // distance to the target TAKEOFF position in millimeters
+double eps_alt = 1500.0; // distance to the target altitude in millimeters
+double eps_YAW = 10.0; // distance to the target YAW position in deg
+
 
 class MmsNodeClass {
 public:
@@ -38,76 +49,88 @@ public:
 
 		n_=node;
 
-		//param_ = std::vector<double>(9);
-
-		/*//frequency
-		node.param("guidance_node_amsl/frequency",rate,10);
-
-		// DEBUG param test
-		node.param("guidance_node_amsl/debug/testOffset",debugParam,1.0);
-
-		//control param
-		node.param("guidance_node_amsl/param/sat_xy", param_[0], 3.0);
-		node.param("guidance_node_amsl/param/sat_z", param_[1], 1.5);
-		node.param("guidance_node_amsl/param/sat_yaw", param_[2], 3.14);
-		node.param("guidance_node_amsl/param/gain_NE", param_[3], 0.06);
-		node.param("guidance_node_amsl/param/gain_D", param_[4], 0.06);
-		node.param("guidance_node_amsl/param/gain_yaw", param_[5], 0.3);
-		node.param("guidance_node_amsl/param/deadzone_NE", param_[6], 1.5);
-		node.param("guidance_node_amsl/param/deadzone_D", param_[7], 0.2);
-		node.param("guidance_node_amsl/param/gain_integralDown", param_[8],0.025);*/
-
 		//subscribers
-		subFromPosition_=n_.subscribe("/position", 10, &MmsNodeClass::readPositionMessage,this);
-		subFromCmd_=n_.subscribe("/command", 10, &MmsNodeClass::readCmdMessage,this);
-		// subFromAckArm_=n_.subscribe("/acknowledge_arming", 10, &MmsNodeClass::readAckArmMessage,this);
+		subFromCmd_=n_.subscribe("/sent_command", 10, &MmsNodeClass::readCmdMessage,this); //subscribe to "sent_command" to exclude the "cmd_verifier" node
+		subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
 		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
+		subFromDistance_=n_.subscribe("/distance", 10, &MmsNodeClass::readDistanceMessage,this);
+		subFromGridAck_ = n_.subscribe("/grid_ack", 10, &MmsNodeClass::readGridAckMessage,this);
+		subSafety_ = n_.subscribe("/safety_odroid", 2, &MmsNodeClass::readSafetyMessage,this);
+		subLeashingStatus_ = n_.subscribe("/leashing_status", 10, &MmsNodeClass::readLeashingStatusMessage,this);
+		subQos_sensors_ = n_.subscribe("/qos_sensors", 10, &MmsNodeClass::readQosSensorsMessage,this);
+		
 		// publishers
-		pubToAckCmd_=n_.advertise<mms::Ack_cmd>("/ack_cmd", 10);
-		pubToArm_=n_.advertise<mms::Arm>("/arm", 10);
-		pubToReference_=n_.advertise<guidance_node_amsl::Reference>("/reference",10);
+		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
+		pubToArm_=n_.advertise<mms_msgs::Arm>("/arm", 10);
+		pubToMmsStatus_=n_.advertise<mms_msgs::MMS_status>("/mms_status", 10);
+		pubCmd_ = n_.advertise<mms_msgs::Cmd>("/cmd_from_mms", 10);
+		pubGridAck_ = n_.advertise<mms_msgs::Grid_ack>("/grid_ack",10);
 
-		//Initializing outputRef_
-		outputRef_.Latitude = 0;
-		outputRef_.Longitude = 0;
-		outputRef_.AltitudeRelative = 0;
-		outputRef_.Yawangle = 0;
-		outputRef_.Mode = 100;
-
-		//Initializing outputAckCmd_
-		outputAckCmd_.mission_item_reached = false;
-		outputAckCmd_.mav_mission_accepted = false;
-		outputAckCmd_.mav_cmd_id = 0;
+		//Initializing outputAckMission_
+		outputAckMission_.mission_item_reached = false;
+		outputAckMission_.mav_mission_accepted = false;
+		outputAckMission_.seq = 0;
 
 		//Initializing outputArm_
 		outputArm_.arm_disarm = false;
 		outputArm_.new_arm_disarm = false;
+
+		//Initializing outputMmsStatus_
+		outputMmsStatus_.mms_state = ON_GROUND_NO_HOME;
+		outputMmsStatus_.target_ref_frame = FRAME_BARO;
+		
+		//Initializing states
+		SET_HOME = false;
+		TAKEOFF = false;
+		LAND = false;
+		MISSION_START = false;
+		WAYPOINT = false;
+		ARMED = false;
+		GRID_ENDED = false;
+		GRID_EVENT = false;
+		SAFETY_ON = false;
+		SAFETY_OFF = false;
+		LEASHING_START = false;
+		LEASHING_END = false;
+		LEASHING_FAILURE = false;
+		PAUSE = false;
+		CONTINUE = false;
+
+		//Init something
+		currentState = ON_GROUND_NO_HOME;
+		previousState = ON_GROUND_NO_HOME;
+		target_frame = FRAME_BARO;
+		rate = 10;
+		uint16_t counter_ = 0;
+		counter_print = 0;
+		seq_number = 0;
+		Dh_TO = 0;
 	}
 
-	void get_current_position()
+	void readDistanceMessage(const reference::Distance::ConstPtr& msg)
 	{
-		outputRef_.Latitude = inputPos_.Latitude;
-		outputRef_.Longitude = inputPos_.Longitude;
-		outputRef_.AltitudeRelative = inputPos_.AltitudeRelative;//inputPos_.AltitudeAMSL - Home.AltitudeAMSL;
-		outputRef_.Yawangle = inputPos_.Yawangle;
-		outputRef_.Mode = 0;
-		//ROS_INFO("CURRENT POSITION")
-		ROS_INFO("CURRENT POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f", inputPos_.Latitude, inputPos_.Longitude, inputPos_.AltitudeRelative, inputPos_.Yawangle);
-        // ROS_INFO("pos AMSL, %d, Home AMSL, %d, rel, %d", inputPos_.AltitudeAMSL, Home.AltitudeAMSL, outputRef_.AltitudeRelative);
+		inputDist_.error_pos=msg->error_pos;
+		inputDist_.error_ang=msg->error_ang;
+		inputDist_.error_alt=msg->error_alt;
+		inputDist_.command=msg->command;
+		inputDist_.seq=msg->seq;
 	}
-
-	void get_target_position()
+	
+	void readSafetyMessage(const mavros::Safety::ConstPtr& msg)
 	{
-		outputRef_.Latitude = (int)inputCmd_.param5*10000000.0f;
-		outputRef_.Longitude = (int)inputCmd_.param6*10000000.0f;
-		outputRef_.AltitudeRelative = (int)inputCmd_.param7*1000.0f;// - Home.AltitudeAMSL;
-		outputRef_.Yawangle = inputCmd_.param4;
-		outputRef_.Mode =0;
-		//ROS_INFO("TARGET POSITION")
-		ROS_INFO("TARGET POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f", outputRef_.Latitude, outputRef_.Longitude,outputRef_.AltitudeRelative,outputRef_.Yawangle);
+		Safety_.safety = msg->safety;
+		if (Safety_.safety && !SAFETY_ON){
+			SAFETY_ON = true;
+			SAFETY_OFF = false;
+			ROS_INFO("MMS: safety on");
+		} else if (!Safety_.safety && !SAFETY_OFF) {
+			SAFETY_OFF = true;
+			SAFETY_ON = false;
+			ROS_INFO("MMS: safety off");
+		}
 	}
 
-	void readSysStatusMessage(const mms::Sys_status::ConstPtr& msg)
+	void readSysStatusMessage(const mms_msgs::Sys_status::ConstPtr& msg)
 	{
 		inputSysStatus_.armed=msg->armed;
 		inputSysStatus_.voltage_battery=msg->voltage_battery;
@@ -115,32 +138,39 @@ public:
 		if (inputSysStatus_.armed)
 		{
 			ARMED = true;
-            //ROS_INFO("ARMED");
+                //ROS_INFO("ARMED");
 		}
 		else
 		{
 			ARMED = false;
-            //ROS_INFO("DISARMED");
+                //ROS_INFO("DISARMED");
 		}
-		//MMS_Handle();
 	}
 
-	void readPositionMessage(const guidance_node_amsl::Position::ConstPtr& msg)
-	{
-		inputPos_.Latitude=msg->Latitude;
-		inputPos_.Longitude=msg->Longitude;
-		inputPos_.AltitudeRelative = msg->AltitudeRelative;
-		inputPos_.AltitudeAMSL = msg->AltitudeAMSL;
-		inputPos_.Yawangle=msg->Yawangle;
-		inputPos_.Timestamp=msg->Timestamp;
-		inputPos_.Safety = msg->Safety;
-
-		//MMS_Handle();
+	void readGridAckMessage(const mms_msgs::Grid_ack::ConstPtr& msg){
+		Grid_ack_.grid_completed = msg->grid_completed;
+		Grid_ack_.completion_type = msg->completion_type;
+		if (Grid_ack_.grid_completed) GRID_ENDED = true;
+		else GRID_ENDED = false;
 	}
 
-	void readCmdMessage(const mms::Cmd::ConstPtr& msg)
+	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
 	{
-		ROS_INFO("CMD_RECEIVED");
+		// ROS_INFO("POSMIXER: SONAR_RECEIVED");
+		inputSonar_.distance = msg -> distance;
+	}
+
+	void readLeashingStatusMessage(const reference::LeashingStatus::ConstPtr& msg){
+		if (msg->failure > 0) LEASHING_FAILURE = true;
+	}
+
+	void readQosSensorsMessage(const qos_sensors_autopilot::Qos_sensors::ConstPtr& msg){
+		Qos_sensors_ = *msg;
+	}
+
+	void readCmdMessage(const mms_msgs::Cmd::ConstPtr& msg)
+	{
+		//TODO sostituire con inputCmd_ = *msg  ??
 		inputCmd_.command = msg -> command;
 		inputCmd_.param1  = msg -> param1;
 		inputCmd_.param2  = msg -> param2;
@@ -149,153 +179,211 @@ public:
 		inputCmd_.param5  = msg -> param5;
 		inputCmd_.param6  = msg -> param6;
 		inputCmd_.param7  = msg -> param7;
+		inputCmd_.frame  = msg -> frame;
+		inputCmd_.seq  = msg -> seq;
 
-		/*Target_Position_.Latitude = inputCmd_.param5;
-		Target_Position_.Longitude = inputCmd_.param6;
-		Target_Position_.AltitudeRelative = inputCmd_.param7;
-		Target_Position_.Yawangle = inputCmd_.param4;*/
+        ROS_INFO("MMS: CMD_RECEIVED %d. Sequence: %d", inputCmd_.command, inputCmd_.seq);
 
 		switch(inputCmd_.command)
 		{
-		case 16:  // MAV_CMD_NAV_WAYPOINT
-		{
-			ROS_INFO("MAV_CMD_DO_NAV_WAYPOINT. Params: %f - %f - %f - %f",inputCmd_.param5,inputCmd_.param6,inputCmd_.param7,inputCmd_.param4);
-			target_.Latitude = (int)(inputCmd_.param5*10000000.0f);
-			target_.Longitude = (int)(inputCmd_.param6*10000000.0f);
-			target_.AltitudeRelative = (int)(inputCmd_.param7*1000.0f);
-			target_.Yawangle = inputCmd_.param4;
-			target_.Mode = 0;
-			WAYPOINT = true;
-			//MMS_Handle();
-		} break;
-		case 21:  // MAV_CMD_NAV_LAND
-		{
-			ROS_INFO("MAV_CMD_DO_NAV_LAND");
-			LAND = true;
-			//MMS_Handle();
-		}break;
-		case 22:  // MAV_CMD_NAV_TAKEOFF
-		{
-			ROS_INFO("MAV_CMD_NAV_TAKEOFF");
-			TAKEOFF = true;
-			//MMS_Handle();
-		}break;
-		/*		case 115: // MAV_CMD_CONDITION_YAW
-		{
-			CONDITION_YAW = true;
-			Target_Position_.Yawangle = inputCmd_.param1;
-			MMS_Handle(Target_Position_);
-		}break;*/
-		case 179: // MAV_CMD_DO_SET_HOME
-		{
-			ROS_INFO("MAV_CMD_DO_SET_HOME");
-			SET_HOME = true;
-			//MMS_Handle();
-		}break;
-		case 300: // MAV_CMD_MISSION_START
-		{
-			ROS_INFO("MAV_CMD_MISSION_START");
-			MISSION_START = true;
-			//MMS_Handle();
-		}break;
-		//MMS_Handle();
-		}
-	}
+			case 16:  // MAV_CMD_NAV_WAYPOINT
+			{
+				ROS_INFO("MMS: CMD_WAYPOINT. Params: %f - %f - %f - %f",inputCmd_.param5,inputCmd_.param6,inputCmd_.param7,inputCmd_.param4);
+				ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
+				ROS_INFO("MMS: CMD_ALTITUDE = %f",inputCmd_.param7);
+				ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
 
-	/*void readAckArmMessage(const mms::Ack_arm::ConstPtr& msg)
-	{
-		ROS_INFO("ACK_ARM_RECEIVED");
-		// inputAckArm_.new_mav_result = msg -> new_mav_result;
-		inputAckArm_.mav_result = msg -> mav_result;
-		//if (new_mav_result)
-		//{
-		New_MAV_RESULT = true;
-		if (inputAckArm_.mav_result)
-		{
-			ROS_INFO("ARM/DISARM: EXECUTED");
-			MAV_RESULT = true;
-			//MMS_Handle();
-		}
-		else
-		{
-			ROS_INFO("ARM/DISARM:ERROR");
-			MAV_RESULT = false;
-			//MMS_Handle();
-		}
-		//}
+				double temp_max_speed;
+				n_.getParam("/guidance_node_amsl/param/sat_xy", temp_max_speed);
+				temp_max_speed = sqrt(pow(temp_max_speed,2));
+				//conditions to accept waypoint: frame baro && speed (param1) less than max speed OR frame sonar and sonar working and altitude less than sonar range
+				if (((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && inputCmd_.param7 > 0.3f && inputCmd_.param7 < 3.0f && Qos_sensors_.sonar_present && Qos_sensors_.sonar_working)) && inputCmd_.param1 < temp_max_speed)
+					{
+						target_frame = inputCmd_.frame;
+						seq_number = inputCmd_.seq;
+						WAYPOINT = true;
+						pubCmd_.publish(inputCmd_);  //cmd passed to reference
+					}
+					else
+					{
+						outputAckMission_.mission_item_reached = false;
+						outputAckMission_.seq = seq_number;
+						outputAckMission_.mav_mission_accepted = false;
+						pubToAckMission_.publish(outputAckMission_);
+						ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");   //TODO we can discriminate the failure motivations for feedback
 
-	}*/
+						inputCmd_.command = 0; // 0 = NOT USED it's used to disable the switch-case structure
+						target_frame = FRAME_BARO;
+						WAYPOINT = false;
+					}
 
-	class e_to_tartget{
-	public:
-		double error_pos = 0.0f; // linear error
-		double error_ang = 0.0f; // angular error
-	};
-	e_to_tartget error_to_t;
+			} break;
 
-	class ECEF{
-	public:
-		double Ne;
-		double X;
-		double Y;
-		double Z;
-	};
+			case 160:  // GRID
+			{
+				ROS_INFO("MMS: CMD_GRID. Params: %f - %f - %f - %f",inputCmd_.param1,inputCmd_.param2,inputCmd_.param3,inputCmd_.param4);
+				ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
 
-	ECEF End_Point;
-	ECEF Starting_Point;
-	guidance_node_amsl::Reference target_;
+				bool grid_correct_frame = (inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR);
+				bool grid_correct_parameters = (inputCmd_.param3 >= 0.5) ||
+										  (inputCmd_.param2 >= 0.5) ||
+										  (inputCmd_.param2 <= 30) ||
+										  (inputCmd_.param4 >= 3) ||
+										  (inputCmd_.param4 <= 20) ||
+										  (inputCmd_.param1 > 0) ||
+										  (inputCmd_.param1 <= 4);
+				// inputCmd_.param3 = height, inputCmd_.param2 = d, inputCmd_.param4 = vertex, inputCmd_.param1 = speed
+				if (grid_correct_frame && grid_correct_parameters){       //TODO add more sanity check maybe
+					target_frame = inputCmd_.frame;
+					seq_number = inputCmd_.seq;
+					GRID_EVENT = true;
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
+				} else {
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = seq_number;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED: GRID");
+					inputCmd_.command = 0; // 0 = NOT USED it's used to disable the switch-case structure
+					target_frame = FRAME_BARO;
+					GRID_EVENT = false;
+					Grid_ack_.grid_completed = 0;
+					Grid_ack_.completion_type = 2;      //failure in parameters input
+					pubGridAck_.publish(Grid_ack_);
+				}
 
-	void distance() // e_to_tartget &error_to_t, // guidance_node_amsl::Reference Target_Position, guidance_node_amsl::Position Current_Position
-	{
-		static double error_x;
-		static double error_y;
-		static double error_z;
-		static double error_yaw;
-		static double alt;
+			} break;
 
-		alt = outputRef_.AltitudeRelative/1000.0f;// + Home.AltitudeAMSL*1e-3;
-		End_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(outputRef_.Latitude/10000000.0f*PI/180.0f)*sin(outputRef_.Latitude/10000000.0f*PI/180.0f));
-		End_Point.X=(End_Point.Ne+alt)*cos(outputRef_.Latitude/10000000.0f*PI/180.0f)*cos(outputRef_.Longitude/10000000.0f*PI/180.0f);
-		End_Point.Y=(End_Point.Ne+alt)*cos(outputRef_.Latitude/10000000.0f*PI/180.0f)*sin(outputRef_.Longitude/10000000.0f*PI/180.0f);
-		End_Point.Z=(End_Point.Ne*(1.0f-0.08181919*0.08181919)+alt)*sin(outputRef_.Latitude*1e-7f*PI/180.0f);
-        //ROS_INFO("ne, %f, endp_x, %f, endp_y, %f ,endp_z, %f", End_Point.Ne,End_Point.X, End_Point.Y,End_Point.Z);
-		
-        alt = ((double)inputPos_.AltitudeRelative)/1000.0f;//AltitudeAMSL*1e-3;// AltitudeRelative + Home.AltitudeAMSL;
-		Starting_Point.Ne=6378137.0f;///sqrt(1.0f-0.08181919f*0.08181919f*sin(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f));
-		Starting_Point.X=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*cos(inputPos_.Longitude/10000000.0f*PI/180);
-		Starting_Point.Y=(Starting_Point.Ne+alt)*cos(inputPos_.Latitude/10000000.0f*PI/180.0f)*sin(inputPos_.Longitude/10000000.0f*PI/180);
-		Starting_Point.Z=(Starting_Point.Ne*(1.0f-0.08181919f*0.08181919f)+alt)*sin(inputPos_.Latitude/10000000.0f*PI/180.0f);
-		//ROS_INFO("ne, %f, sp_x, %f, sp_y, %f ,sp_z, %f, alt %d", Starting_Point.Ne,Starting_Point.X, Starting_Point.Y,Starting_Point.Z,inputPos_.AltitudeRelative);
+			case 161:  // GRID VERTEX
+			{
+				if (GRID_EVENT){
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference if in GRID state
+				}
+			} break;
 
-		error_x = End_Point.X - Starting_Point.X; //outputRef_.Latitude - inputPos_.Latitude;
-		error_y = End_Point.Y - Starting_Point.Y; //outputRef_.Longitude - inputPos_.Longitude;
-		error_z = End_Point.Z - Starting_Point.Z; //outputRef_.AltitudeRelative - (inputPos_.AltitudeAMSL-Home.AltitudeAMSL);
-		//ROS_INFO("error_x, %f, error_y, %f ,error_z, %f", error_x,error_y, error_z);
-		
-		error_yaw = outputRef_.Yawangle - inputPos_.Yawangle;
-		error_to_t.error_pos = 1000.0f*sqrt(error_x*error_x + error_y*error_y + error_z*error_z);
-		error_to_t.error_ang = 180.0f/PI*sqrt(error_yaw*error_yaw);
-        //ROS_INFO("DISTANCE TO TARGET")
-		
-		counter_print++;
-		if (counter_print >= 10){
-			counter_print = 0;
-			ROS_INFO("DISTANCE TO TARGET: Linear [mm], %f, Angular [deg], %f", error_to_t.error_pos, error_to_t.error_ang);
+			case 21:  // MAV_CMD_NAV_LAND
+			{
+				ROS_INFO("MMS: CMD_LAND");
+				ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
+				if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && inputSonar_.distance != -1))
+				{
+					target_frame = inputCmd_.frame;
+					seq_number = inputCmd_.seq;
+					LAND = true;
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
+				}
+				else
+				{
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = seq_number;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
+					target_frame = FRAME_BARO;
+					LAND = false;
+				}
+			}break;
+
+			case 22:  // MAV_CMD_NAV_TAKEOFF
+			{
+				ROS_INFO("MMS: CMD_TAKEOFF");
+				Dh_TO = (int)(inputCmd_.param7*1000.0f);
+				ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
+				ROS_INFO("MMS: CMD_DH_TO = %d",Dh_TO);
+				ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
+
+				if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && Dh_TO > 300 && Dh_TO <= 3000 && inputSonar_.distance > 0))
+				{
+					target_frame = inputCmd_.frame;
+					seq_number = inputCmd_.seq;
+					TAKEOFF = true;
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
+				} else {
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = seq_number;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
+					target_frame = FRAME_BARO;
+					TAKEOFF = false;
+				}
+			}break;
+
+			case 179: // MAV_CMD_DO_SET_HOME
+			{
+				ROS_INFO("MMS: CMD_SET_HOME");
+				SET_HOME = true;
+				pubCmd_.publish(inputCmd_);  //cmd passed to reference
+				seq_number = inputCmd_.seq;
+			}break;
+
+			case 300: // MAV_CMD_MISSION_START
+			{
+				ROS_INFO("MMS: CMD_MISSION_START");
+				MISSION_START = true;
+				pubCmd_.publish(inputCmd_);  //cmd passed to reference
+			}break;
+
+			case 25:  // MAV_CMD_NAV_FOLLOW (LEASHING)
+			{
+				//seq_number = inputCmd_.seq;
+				if (inputCmd_.param1 == 1){
+					LEASHING_START = true;
+					ROS_INFO("MMS: CMD_LEASHING_START");
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
+				} else if (inputCmd_.param1 == 0){
+					LEASHING_END = true;
+					ROS_INFO("MMS: CMD_LEASHING_STOP");
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
+				} else {
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = seq_number;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED (LEASHING). WRONG PARAM1");
+				}
+				
+			}break;
+
+			case 252:  // MAV_CMD_OVERRIDE_GOTO (PAUSE/CONTINUE)
+			{
+				//seq_number = inputCmd_.seq;
+				if (inputCmd_.param1 == 0){          //PAUSE
+					PAUSE = true;
+					ROS_INFO("MMS: CMD_PAUSE");
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
+				} else if (inputCmd_.param1 == 1){		//CONTINUE
+					CONTINUE = true;
+					ROS_INFO("MMS: CMD_CONTINUE");
+					pubCmd_.publish(inputCmd_);  //cmd passed to reference
+				} else {
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = seq_number;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED (PAUSE/CONTINUE). WRONG PARAM1");
+				}
+				
+			}break;
 		}
 	}
 
 	void set_events_false()
 	{
-		// INPUTS GCS -> MMS
 		SET_HOME = false;
 		TAKEOFF = false;
 		LAND = false;
 		MISSION_START = false;
 		WAYPOINT = false;
-		// static bool CONDITION_YAW = false;
-		// MAV_RESULT  = false;
-		//ARMED = false;
-		//DISARMED = false;
+		GRID_EVENT = false;
+		GRID_ENDED = false;
+		SAFETY_ON = false;
+		SAFETY_OFF = false;
+		LEASHING_START = false;
+		LEASHING_END = false;
+		LEASHING_FAILURE = false;
+		PAUSE = false;
+		CONTINUE = false;
 	}
 
 	void MMS_Handle()
@@ -304,569 +392,704 @@ public:
 
 		{
 
-		case ON_GROUND_NO_HOME:
-			//ROS_INFO("MMS_CURRENT_STATE:ON_GROUND_NO_HOME");
-			/*outputRef_.Latitude = 0;
-			outputRef_.Longitude = 0;
-			outputRef_.AltitudeRelative = -50; // mm @ frequency: verical speed
-			outputRef_.Yawangle = 0;
-			outputRef_.Mode = 100;
-			get_current_position();
-			outputRef_.AltitudeRelative = outputRef_.AltitudeRelative-5000;
-			pubToReference_.publish(outputRef_);
-			ROS_INFO("PUSHING THE DRONE DOWN ...");*/
-			if (ARMED)
-			{
-				set_events_false();
-				ARMED = true;
+			case ON_GROUND_NO_HOME:
+				outputMmsStatus_.mms_state = currentState;
+				outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO_ONCE("MMS->REF: CURRENT_STATE = ON_GROUND_NO_HOME");
+				
+				if (ARMED)
+				{
+					set_events_false();
+					ARMED = true;
 
-				get_current_position();
-				outputRef_.AltitudeRelative = outputRef_.AltitudeRelative-5000;
-				pubToReference_.publish(outputRef_);
-				ROS_INFO("MMS->NAV: REFERENCE = ON_GROUND");
+					outputArm_.arm_disarm = false;
+					outputArm_.new_arm_disarm = true;
+					// pubToArm_.publish(outputArm_); // TODO automatic disarming
+					ROS_INFO("MMS->APM: DISARMING");
 
-				outputArm_.arm_disarm = false;
-				outputArm_.new_arm_disarm = true;
-				pubToArm_.publish(outputArm_);
-				ROS_INFO("MMS->APM: DISARMING");
-
-				currentState = ON_GROUND_NO_HOME;
-				ROS_INFO("MMS_CURRENT_STATE: ON_GROUND_NO_HOME");
+					currentState = ON_GROUND_NO_HOME;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_NO_HOME");
+					break;
+				}
+				if (SET_HOME)
+				{
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+					set_events_false();
+					currentState = SETTING_HOME;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = SETTING_HOME");
+					break;
+				}
+				// Use these lines to introduce the mission_not_accepted for those commands which cannot be executed in this state
+				if (TAKEOFF || LAND || WAYPOINT)
+				{
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+					break;
+				}
 				break;
-			}
-			if (SET_HOME)
-			{
-				set_events_false();
-				currentState = SETTING_HOME;
-				ROS_INFO("MMS_CURRENT_STATE: SETTING_HOME");
-				break;
-			}
-			//}
-			break;
 
-		case SETTING_HOME:
-			//ROS_INFO("MMS_CURRENT_STATE:SETTING_HOME");
-			/*outputRef_.Latitude = 0;
-			outputRef_.Longitude = 0;
-			outputRef_.AltitudeRelative = -50; // mm @ frequency: verical speed
-			outputRef_.Yawangle = 0;
-			outputRef_.Mode = 100;
-			get_current_position();
-			outputRef_.AltitudeRelative = outputRef_.AltitudeRelative-5000;
-			pubToReference_.publish(outputRef_);
-			ROS_INFO("PUSHING THE DRONE DOWN ...");*/
+			case SETTING_HOME:
 
-			Home.Latitude = inputPos_.Latitude;
-			Home.Longitude = inputPos_.Longitude;
-			Home.AltitudeAMSL = inputPos_.AltitudeAMSL;
-			Home.AltitudeRelative = inputPos_.AltitudeRelative;
-			Home.Yawangle = inputPos_.Yawangle;
-			ROS_INFO("HOME POSITION: Lat, %d, Lon, %d, AltRel, %d, Yaw, %f",Home.Latitude, Home.Longitude, Home.AltitudeRelative, Home.Yawangle);
-			//ROS_INFO("Home AMSL, %d, rel, %d", Home.AltitudeAMSL, Home.AltitudeRelative);
-			currentState = ON_GROUND_DISARMED;
-			ROS_INFO("MMS_CURRENT_STATE: ON_GROUND_DISARMED");
-			break;
-
-		case ON_GROUND_DISARMED:
-			// ROS_INFO("MMS_CURRENT_STATE:ON_GROUND_DISARMED");
-
-			/*outputRef_.Latitude = 0;
-			outputRef_.Longitude = 0;
-			outputRef_.AltitudeRelative = -50; // mm @ frequency: verical speed
-			outputRef_.Yawangle = 0;
-			outputRef_.Mode = 100;
-			get_current_position();
-			outputRef_.AltitudeRelative = outputRef_.AltitudeRelative-5000;
-			pubToReference_.publish(outputRef_);
-			ROS_INFO("PUSHING THE DRONE DOWN ...");*/
-
-			if (TAKEOFF)
-			{
-				set_events_false();
-				TAKEOFF = true;
-				ARMED = false;
-
-				/*outputRef_.Latitude = 0;
-				outputRef_.Longitude = 0;
-				outputRef_.AltitudeRelative = -50; // mm @ frequency: verical speed
-				outputRef_.Yawangle = 0;
-				outputRef_.Mode = 100;*/
-				get_current_position();
-				outputRef_.AltitudeRelative = outputRef_.AltitudeRelative-5000;
-				pubToReference_.publish(outputRef_);
-				ROS_INFO("MMS->NAV: REFERENCE = ON_GROUND");
-
-				outputArm_.arm_disarm = true;
-				outputArm_.new_arm_disarm = true;
-				pubToArm_.publish(outputArm_);
-				ROS_INFO("MMS->APM: ARMING");
-
-				counter_ = 0;     //start timing to rearm
-				currentState = ARMING;
-				ROS_INFO("MMS_CURRENT_STATE: ARMING");
-				break;
-			}
-			if (SET_HOME)
-			{
-				set_events_false();
-
-				outputAckCmd_.mission_item_reached = true;
-				outputAckCmd_.mav_mission_accepted = false;
-				outputAckCmd_.mav_cmd_id = 300;
-				pubToAckCmd_.publish(outputAckCmd_);
-				ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-				currentState = SETTING_HOME;
-				ROS_INFO("MMS_CURRENT_STATE: SETTING_HOME");
-				break;
-			}
-			break;
-
-		case ARMING:
-			/* get_current_position();
-			outputRef_.AltitudeRelative = outputRef_.AltitudeRelative-5000;
-			pubToReference_.publish(outputRef_);
-			ROS_INFO("PUSHING THE DRONE DOWN ...");*/
-
-			if (LAND)
-			{
-				set_events_false();
-				ARMED = true;
-
-				get_current_position();
-				outputRef_.AltitudeRelative = outputRef_.AltitudeRelative-5000;
-				pubToReference_.publish(outputRef_);
-				ROS_INFO("MMS->NAV: REFERENCE = ON_GROUND");
-
-				outputArm_.arm_disarm = false;
-				outputArm_.new_arm_disarm = true;
-				pubToArm_.publish(outputArm_);
-				ROS_INFO("MMS->APM: DISARMING");
-
-				currentState = DISARMING;
-				ROS_INFO("MMS_CURRENT_STATE: DISARMING");
-				break;
-			}
-			if (ARMED)
-			{
-				ROS_INFO("!!! DRONE ARMED !!!");
-				set_events_false();
-				TAKEOFF = true; // to complete automatic TO
-
-				currentState = ON_GROUND_ARMED;
-				ROS_INFO("MMS_CURRENT_STATE: ON_GROUND_ARMED");
-				break;
-			}
-			if (counter_>=50)    //5 seconds
-			{
-				currentState = ON_GROUND_DISARMED;
-				ROS_INFO("MMS_ARMING FAILED. BACK TO STATE: ON_GROUND_DISARMED");
-			}
-		        break;
-
-		case DISARMING:
-			/*get_current_position();
-			outputRef_.AltitudeRelative = outputRef_.AltitudeRelative-5000;
-			pubToReference_.publish(outputRef_);
-			ROS_INFO("PUSHING THE DRONE DOWN ...");*/
-
-			if (ARMED == false)
-			{
-				ROS_INFO("DRONE DISARMED!");
-				set_events_false();
+				outputAckMission_.mission_item_reached = true;
+				outputAckMission_.seq = seq_number;
+				outputAckMission_.mav_mission_accepted = false;
+				pubToAckMission_.publish(outputAckMission_);
+				ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
 
 				currentState = ON_GROUND_DISARMED;
-				ROS_INFO("MMS_CURRENT_STATE: ON_GROUND_DISARMED");
-			}
-	        
-	                break;
-
-case ON_GROUND_ARMED:
-	/*get_current_position();
-	outputRef_.AltitudeRelative = outputRef_.AltitudeRelative-5000;
-	pubToReference_.publish(outputRef_);
-	ROS_INFO("PUSHING THE DRONE DOWN ...");*/
-
-	//ROS_INFO("MMS_CURRENT_STATE:ON_GROUND_ARMED");
-	if (LAND)
-	{
-		set_events_false();
-		ARMED = true;
-
-		outputArm_.arm_disarm = false;
-		outputArm_.new_arm_disarm = true;
-		pubToArm_.publish(outputArm_);
-		ROS_INFO("MMS->APM: DISARMING");
-
-		currentState = DISARMING;
-		ROS_INFO("MMS_CURRENT_STATE: DISARMING");
-		break;
-	}
-	if (TAKEOFF)
-	{
-		set_events_false();
-
-		outputAckCmd_.mission_item_reached = false;
-		outputAckCmd_.mav_mission_accepted = true;
-		outputAckCmd_.mav_cmd_id = 22;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-		currentState = ON_GROUND_READY_TO_TAKEOFF;
-		ROS_INFO("MMS_CURRENT_STATE: READY_TO_TAKEOFF");
-		break;
-	}
-
-	break;
-
-case ON_GROUND_READY_TO_TAKEOFF:
-	// ROS_INFO("MMS_CURRENT_STATE:ON_GROUND_READY_TO_TAKEOFF");
-	/*get_current_position();
-	outputRef_.AltitudeRelative = outputRef_.AltitudeRelative-5000;
-	pubToReference_.publish(outputRef_);
-	ROS_INFO("PUSHING THE DRONE DOWN ...");*/
-
-	if (LAND)
-	{
-		set_events_false();
-		ARMED = true;
-
-		outputAckCmd_.mission_item_reached = false;
-		outputAckCmd_.mav_mission_accepted = true;
-		outputAckCmd_.mav_cmd_id = 21;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-		outputArm_.arm_disarm = false;
-		outputArm_.new_arm_disarm = true;
-		pubToArm_.publish(outputArm_);
-		ROS_INFO("MMS->APM: DISARMING");
-
-		currentState = DISARMING;
-		ROS_INFO("MMS_CURRENT_STATE: DISARMING");
-		break;
-	}
-	if (MISSION_START)
-	{
-		set_events_false();
-
-		/*outputRef_.Latitude = 0;
-				outputRef_.Longitude = 0;
-				outputRef_.AltitudeRelative = 1000;
-	            outputRef_.Yawangle = 0;
-	            outputRef_.Mode = 100;*/
-		get_current_position();
-		outputRef_.AltitudeRelative = outputRef_.AltitudeRelative+Dh_TO;
-		pubToReference_.publish(outputRef_);
-		ROS_INFO("MMS->NAV: REFERENCE = TAKEOFF");
-
-		currentState = PERFORMING_TAKEOFF;
-		ROS_INFO("MMS_CURRENT_STATE:PERFORMING_TAKEOFF");
-		break;
-	}
-	break;
-
-case PERFORMING_TAKEOFF:
-	//ROS_INFO("MMS_CURRENT_STATE:PERFORMING_TAKEOFF");
-	distance(); // error_to_t,
-	if (LAND)
-	{
-		set_events_false();
-		LAND = true;
-
-		outputAckCmd_.mission_item_reached = false;
-		outputAckCmd_.mav_mission_accepted = true;
-		outputAckCmd_.mav_cmd_id = 21;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-		/*outputRef_.Latitude = 0;
-				outputRef_.Longitude = 0;
-				outputRef_.AltitudeRelative = 0;
-	            outputRef_.Yawangle = 0;
-	            outputRef_.Mode = 100;*/
-		get_current_position();
-		pubToReference_.publish(outputRef_);
-		ROS_INFO("MMS->NAV: REFERENCE = CURRENT POSITION");
-
-		currentState = READY_TO_LAND;
-		ROS_INFO("MMS_CURRENT_STATE: READY_TO_LAND");
-
-		break;
-	}
-	if (error_to_t.error_pos < eps_TO and error_to_t.error_ang < eps_YAW)
-		//if (abs(inputPos_.AltitudeRelative - Dh_TO) < eps_TO and error_to_t.error_ang < eps_YAW)
-	{
-		set_events_false();
-
-		outputAckCmd_.mission_item_reached = true;
-		outputAckCmd_.mav_mission_accepted = false;
-		outputAckCmd_.mav_cmd_id = 22;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
-
-		currentState = IN_FLIGHT;
-		ROS_INFO("MMS_CURRENT_STATE: IN_FLIGHT");
-		break;
-	}
-	break;
-
-case IN_FLIGHT:
-	//ROS_INFO("MMS_CURRENT_STATE:IN_FLIGHT");
-	if (LAND)
-	{
-		set_events_false();
-		LAND = true;
-
-		outputAckCmd_.mission_item_reached = false;
-		outputAckCmd_.mav_mission_accepted = true;
-		outputAckCmd_.mav_cmd_id = 21;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-		/*outputRef_.Latitude = 0;
-				outputRef_.Longitude = 0;
-				outputRef_.AltitudeRelative = 0;
-	            outputRef_.Yawangle = 0;
-	            outputRef_.Mode = 100;*/
-		get_current_position();
-		pubToReference_.publish(outputRef_);
-		ROS_INFO("MMS->NAV: REFERENCE = CURRENT POSITION");
-
-		currentState = READY_TO_LAND;
-		ROS_INFO("MMS_CURRENT_STATE: READY_TO_LAND");
-
-		break;
-	}
-	if (WAYPOINT)
-	{
-		set_events_false();
-
-		outputAckCmd_.mission_item_reached = false;
-		outputAckCmd_.mav_mission_accepted = true;
-		outputAckCmd_.mav_cmd_id = 16;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-		currentState = READY_TO_GO;
-		ROS_INFO("MMS_CURRENT_STATE: READY_TO_GO");
-		break;
-	}
-	break;
-
-case READY_TO_GO:
-	// ROS_INFO("MMS_CURRENT_STATE:READY_TO_GO");
-	if (LAND)
-	{
-		set_events_false();
-		LAND = true;
-
-		outputAckCmd_.mission_item_reached = false;
-		outputAckCmd_.mav_mission_accepted = true;
-		outputAckCmd_.mav_cmd_id = 21;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-		/*outputRef_.Latitude = 0;
-				outputRef_.Longitude = 0;
-				outputRef_.AltitudeRelative = 0;
-	            outputRef_.Yawangle = 0;
-	            outputRef_.Mode = 100;*/
-		get_current_position();
-		pubToReference_.publish(outputRef_);
-		ROS_INFO("MMS->NAV: REFERENCE = CURRENT POSITION");
-
-		currentState = READY_TO_LAND;
-		ROS_INFO("MMS_CURRENT_STATE: READY_TO_LAND");
-
-		break;
-	}
-	if (WAYPOINT)
-	{
-		set_events_false();
-
-		outputAckCmd_.mission_item_reached = false;
-		outputAckCmd_.mav_mission_accepted = true;
-		outputAckCmd_.mav_cmd_id = 16;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-		/*outputRef_.Latitude = 0;
-				outputRef_.Longitude = 0;
-				outputRef_.AltitudeRelative = 0;
-	            outputRef_.Yawangle = 0;
-	            outputRef_.Mode = 100;*/
-		get_current_position();  //TODO check not used
-		pubToReference_.publish(outputRef_);
-		ROS_INFO("MMS->NAV: REFERENCE = CURRENT POSITION");
-
-		currentState = READY_TO_GO;
-		ROS_INFO("MMS_CURRENT_STATE: READY_TO_GO");
-
-		break;
-	}
-	if (MISSION_START)
-	{
-		set_events_false();
-
-		//get_target_position();
-		pubToReference_.publish(target_);
-		outputRef_ = target_;
-		ROS_INFO("MMS->NAV: REFERENCE = TARGET WAYPOINT");
-
-		currentState = PERFORMING_GO_TO;
-		ROS_INFO("MMS_CURRENT_STATE: PERFORMING_GO_TO");
-
-		break;
-	}
-	break;
-
-case PERFORMING_GO_TO:
-	if (counter_print>=9){
-		ROS_INFO("MMS PERFOMING_GO_TO");
-	}
-	// ROS_INFO("MMS_CURRENT_STATE:PERFOMING_GO_TO");
-	distance(); // error_to_t,
-	if (LAND)
-	{
-		set_events_false();
-		LAND = true;
-
-		outputAckCmd_.mission_item_reached = false;
-		outputAckCmd_.mav_mission_accepted = true;
-		outputAckCmd_.mav_cmd_id = 21;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-		/*outputRef_.Latitude = 0;
-				outputRef_.Longitude = 0;
-				outputRef_.AltitudeRelative = 0;
-	            outputRef_.Yawangle = 0;
-	            outputRef_.Mode = 100;*/
-		get_current_position();
-		pubToReference_.publish(outputRef_);
-		ROS_INFO("MMS->NAV: REFERENCE = CURRENT POSITION");
-
-		currentState = READY_TO_LAND;
-		ROS_INFO("MMS_CURRENT_STATE: READY_TO_LAND");
-
-		break;
-	}
-	if (WAYPOINT)
-	{
-		set_events_false();
-
-		outputAckCmd_.mission_item_reached = false;
-		outputAckCmd_.mav_mission_accepted = true;
-		outputAckCmd_.mav_cmd_id = 16;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-		/*outputRef_.Latitude = 0;
-				outputRef_.Longitude = 0;
-				outputRef_.AltitudeRelative = 0;
-	            outputRef_.Yawangle = 0;
-	            outputRef_.Mode = 100;*/
-		get_current_position();   //TODO check not used
-		pubToReference_.publish(outputRef_);
-		ROS_INFO("MMS->NAV: REFERENCE = CURRENT POSITION");
-
-		currentState = READY_TO_GO;
-		ROS_INFO("MMS_CURRENT_STATE: READY_TO_GO");
-
-		break;
-	}
-
-	if (error_to_t.error_pos < eps_WP and error_to_t.error_ang < eps_YAW)
-	{
-		set_events_false();
-
-		outputAckCmd_.mission_item_reached = true;
-		outputAckCmd_.mav_mission_accepted = false;
-		outputAckCmd_.mav_cmd_id = 16;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
-
-		currentState = IN_FLIGHT;
-		ROS_INFO("MMS_CURRENT_STATE: IN_FLIGHT");
-		break;
-	}
-
-	break;
-
-case READY_TO_LAND:
-	//ROS_INFO("MMS_CURRENT_STATE: READY_TO_LAND");
-	if (MISSION_START)
-	{
-		set_events_false();
-		LAND = true;
-
-		outputRef_.Latitude = inputPos_.Latitude;
-		outputRef_.Longitude = inputPos_.Longitude;
-		outputRef_.AltitudeRelative = inputPos_.AltitudeRelative; // 5 cm @ frequencey
-		outputRef_.Yawangle = inputPos_.Yawangle;
-		outputRef_.Mode = 0;
-		//pubToReference_.publish(outputRef_);
-		//ROS_INFO("MMS->NAV: REFERENCE = VERT. LAND SPEED");
-
-		currentState = PERFORMING_LANDING;
-		ROS_INFO("MMS_CURRENT_STATE: PERFORMING_LANDING");
-		break;
-	}
-	if (WAYPOINT)
-	{
-		set_events_false();
-
-		outputAckCmd_.mission_item_reached = false;
-		outputAckCmd_.mav_mission_accepted = true;
-		outputAckCmd_.mav_cmd_id = 16;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-
-		/*outputRef_.Latitude = 0;
-				outputRef_.Longitude = 0;
-				outputRef_.AltitudeRelative = 0;
-	            outputRef_.Yawangle = 0;
-	            outputRef_.Mode = 100;*/
-		get_current_position();  //TODO check not used
-		pubToReference_.publish(outputRef_);
-		ROS_INFO("MMS->NAV: REFERENCE = CURRENT POSITION");
-
-		currentState = READY_TO_GO;
-		ROS_INFO("MMS_CURRENT_STATE: READY_TO_GO");
-
-		break;
-	}
-	break;
-
-case PERFORMING_LANDING:
-	// ROS_INFO("MMS_CURRENT_STATE:PERFORMING_LANDING");
-
-		//outputRef_.Latitude = inputPos_.Latitude;
-		//outputRef_.Longitude = inputPos_.Longitude;
-		outputRef_.AltitudeRelative -= 80; // 5 cm @ frequencey
-		//outputRef_.Yawangle = 0;
-		//outputRef_.Mode = 0;
-		pubToReference_.publish(outputRef_);
-		ROS_INFO("MMS->NAV: REFERENCE = VERT. LAND SPEED");
-
-	if (inputPos_.AltitudeRelative - outputRef_.AltitudeRelative > eps_LAND)
-	{
-		set_events_false();
-		LAND = true;
-
-		outputAckCmd_.mission_item_reached = true;
-		outputAckCmd_.mav_mission_accepted = false;
-		outputAckCmd_.mav_cmd_id = 21;
-		pubToAckCmd_.publish(outputAckCmd_);
-		ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
-
-		currentState = ON_GROUND_ARMED;
-		ROS_INFO("MMS_CURRENT_STATE: ON_GROUND_ARMED");
-	}
-	break;
-}
-
+				outputMmsStatus_.mms_state = currentState;
+				outputMmsStatus_.target_ref_frame = FRAME_BARO;
+				pubToMmsStatus_.publish(outputMmsStatus_);
+				ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_DISARMED");
+				break;
+
+			case ON_GROUND_DISARMED:
+				
+				if (TAKEOFF)
+				{
+					set_events_false();
+					TAKEOFF = true;
+					ARMED = false;
+
+					outputArm_.arm_disarm = true;
+					outputArm_.new_arm_disarm = true;
+					pubToArm_.publish(outputArm_);
+					ROS_INFO("MMS->APM: ARMING");
+
+					counter_ = 0;     //start timing to rearm
+					currentState = ARMING;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = ARMING");
+					break;
+				}
+				if (SET_HOME)
+				{
+					set_events_false();
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = SETTING_HOME;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = SETTING_HOME");
+					break;
+				}
+				// Use these lines to introduce the mission_not_accepted for those commands which cannot be executed in this state
+				if (LAND || WAYPOINT)
+				{
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+					break;
+				}
+				break;
+
+			case ARMING:
+
+				if (LAND)
+				{
+					set_events_false();
+					ARMED = true;
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					outputArm_.arm_disarm = false;
+					outputArm_.new_arm_disarm = true;
+					// pubToArm_.publish(outputArm_); // TODO automatic disarming
+					ROS_INFO("MMS->APM: DISARMING");
+
+					currentState = DISARMING;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = DISARMING");
+					counter_ = 0;     //start timing to rearm
+					break;
+				}
+				if (ARMED)
+				{
+					ROS_INFO("MMS: !!! DRONE ARMED !!!");
+					set_events_false();
+					TAKEOFF = true; // to complete automatic TO
+
+					currentState = ON_GROUND_ARMED;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_ARMED");
+					break;
+				}
+				if (counter_>=50)    //5 seconds
+				{
+					currentState = ON_GROUND_DISARMED;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS: ARMING FAILED");
+					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_DISARMED");
+				}
+				if (SET_HOME || WAYPOINT)
+				{
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+					break;
+				}
+				break;
+
+			case DISARMING:  // TODO automatic disarming
+
+				if (ARMED == false)
+				{
+					ROS_INFO("MMS: DRONE DISARMED!");
+					set_events_false();
+
+					outputAckMission_.mission_item_reached = true;
+					outputAckMission_.seq = seq_number;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
+
+					currentState = ON_GROUND_DISARMED;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_DISARMED");
+					break;
+				}
+				if (counter_>=50)    //5 seconds
+				{
+					currentState = ON_GROUND_ARMED;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					LAND = true;
+					ROS_INFO("MMS: DISARMING FAILED");
+					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_ARMED");
+				}
+				if (TAKEOFF || LAND || SET_HOME || WAYPOINT)
+				{
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+					break;
+				}
+				break;
+
+			case ON_GROUND_ARMED:
+
+				if (LAND) // TODO automatic disarming
+				{
+					set_events_false();
+					ARMED = true;
+			
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					outputArm_.arm_disarm = false;
+					outputArm_.new_arm_disarm = true;
+					// pubToArm_.publish(outputArm_); // TODO automatic disarming
+					ROS_INFO("MMS->APM: DISARMING");
+
+					currentState = DISARMING;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = DISARMING");
+					counter_ = 0;     //start timing to rearm
+					break;
+				}
+				if (TAKEOFF)
+				{
+					set_events_false();
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = PERFORMING_TAKEOFF;// ON_GROUND_READY_TO_TAKEOFF; // with this modification the state that needs the MISSION_START is excluded
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_TAKEOFF");//READY_TO_TAKEOFF");
+					break;
+				}
+						if (SET_HOME || WAYPOINT)
+						{
+							set_events_false();
+							outputAckMission_.mission_item_reached = false;
+							outputAckMission_.seq = inputCmd_.seq;
+							outputAckMission_.mav_mission_accepted = false;
+							pubToAckMission_.publish(outputAckMission_);
+							ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+							break;
+						}
+				break;
+
+			case PERFORMING_TAKEOFF:
+
+				if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+					set_events_false();
+					previousState = currentState;   //save last state in previousState
+					currentState = MANUAL_FLIGHT;
+					outputMmsStatus_.mms_state = currentState;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
+					break;
+				}
+				
+				if (LAND)
+				{
+					set_events_false();
+					LAND = true;
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = PERFORMING_LANDING;//READY_TO_LAND;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_LANDING");//READY_TO_LAND");
+
+					break;
+				}
+				
+				//ROS_INFO("MMS DEBUG: Command: %d - Seq: %d - Seq_req: %d", inputDist_.command, inputDist_.seq, seq_number);
+				if (inputDist_.command == 22 && seq_number == inputDist_.seq)
+				{
+					ROS_INFO_ONCE("MMS: REACHING THE TAKEOFF TARGET");
+					//ROS_INFO("MMS: Distances: %.3f - %.3f - %.3f", inputDist_.error_pos, inputDist_.error_ang, inputDist_.error_alt);
+					if (inputDist_.error_ang < eps_YAW && inputDist_.error_alt < eps_alt)
+					{
+						set_events_false();
+
+						outputAckMission_.mission_item_reached = true;
+						outputAckMission_.seq = seq_number;
+						outputAckMission_.mav_mission_accepted = false;
+						pubToAckMission_.publish(outputAckMission_);
+						ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
+
+						currentState = IN_FLIGHT;
+						outputMmsStatus_.mms_state = currentState;
+						outputMmsStatus_.target_ref_frame = target_frame;
+						pubToMmsStatus_.publish(outputMmsStatus_);
+						ROS_INFO("MMS->REF: CURRENT_STATE = IN_FLIGHT");
+
+						// break; // comment this line to execute also the following if()
+					}
+				}
+				
+				if (TAKEOFF || SET_HOME || WAYPOINT)
+				{
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+					break;
+				}
+				break;
+
+			case IN_FLIGHT:
+
+				if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+					set_events_false();
+					previousState = currentState;   //save last state in previousState
+					currentState = MANUAL_FLIGHT;
+					outputMmsStatus_.mms_state = currentState;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
+					break;
+				}
+				
+				if (LAND)
+				{
+					set_events_false();
+					LAND = true;
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = PERFORMING_LANDING;// READY_TO_LAND; // with this modification the state that needs the MISSION_START is excluded
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS-REF: CURRENT_STATE = PERFORMING_LANDING"); // READY_TO_LAND");
+
+					break;
+				}
+				if (WAYPOINT)
+				{
+					set_events_false();
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = PERFORMING_GO_TO; // READY_TO_GO; // with this modification the state that needs the MISSION_START is excluded
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+
+					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_GO_TO"); // READY_TO_GO");
+					break;
+				}
+				if (GRID_EVENT)           //TODO add this event in other states too (in waypoint and ??)
+				{
+					set_events_false();
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = GRID; //
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+
+					ROS_INFO("MMS->REF: CURRENT_STATE = GRID"); // READY_TO_GO");
+					break;
+				}
+				if (TAKEOFF || SET_HOME)
+				{
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+					break;
+				}
+				if (LEASHING_START)             //TODO maybe add LEASHING_START in other states
+				{
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED (LEASHING)");
+					
+					currentState = LEASHING;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = LEASHING");
+				}
+				break;
+			
+
+			case GRID:
+				
+				if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+					set_events_false();
+					previousState = currentState;   //save last state in previousState
+					currentState = MANUAL_FLIGHT;
+					outputMmsStatus_.mms_state = currentState;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
+					break;
+				}
+				
+				if (LAND){
+					set_events_false();
+					LAND = true;
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = PERFORMING_LANDING; // READY_TO_LAND;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_LANDING");//READY_TO_LAND");
+
+					break;
+				}
+				if (WAYPOINT){
+					set_events_false();
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = PERFORMING_GO_TO;//READY_TO_GO;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_GO_TO");//READY_TO_GO");
+
+					break;
+				}
+				if (GRID_ENDED){
+					set_events_false();
+					currentState = IN_FLIGHT;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = IN_FLIGHT");
+
+					if (Grid_ack_.completion_type == 1){       //success
+						outputAckMission_.mission_item_reached = true;
+						outputAckMission_.seq = seq_number;
+						outputAckMission_.mav_mission_accepted = false;
+						pubToAckMission_.publish(outputAckMission_);
+						ROS_INFO("MMS->GCS: GRID FINISHED SUCCESFULLY");
+					} else {                               //failure
+						outputAckMission_.mission_item_reached = false;
+						outputAckMission_.seq = inputCmd_.seq;
+						outputAckMission_.mav_mission_accepted = false;
+						pubToAckMission_.publish(outputAckMission_);
+						ROS_INFO("MMS->GCS: GRID FINISHED NOT SUCCESFULLY");
+					}
+				}
+				if (PAUSE){
+					set_events_false();
+					previousState = currentState;   //save last state in previousState
+					currentState = PAUSED;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PAUSED");
+				}
+				break;
+
+			case PERFORMING_GO_TO:
+
+				if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+					set_events_false();
+					previousState = currentState;   //save last state in previousState
+					currentState = MANUAL_FLIGHT;
+					outputMmsStatus_.mms_state = currentState;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
+					break;
+				}
+				
+				if (LAND)
+				{
+					set_events_false();
+					LAND = true;
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = PERFORMING_LANDING; // READY_TO_LAND;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_LANDING");//READY_TO_LAND");
+
+					break;
+				}
+				if (WAYPOINT)
+				{
+					set_events_false();
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = PERFORMING_GO_TO;//READY_TO_GO;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_GO_TO");//READY_TO_GO");
+
+					break;
+				}
+
+				//ROS_INFO("-------------- command %d --- seq %d ---  seq2: %d  ------", inputDist_.command, seq_number, inputDist_.seq);
+				if (inputDist_.command == 16  && seq_number == inputDist_.seq)
+				{
+					ROS_INFO_ONCE("MMS: REACHING THE WAYPOINT TARGET");
+					//ROS_INFO("----------MMS: Distances: %.3f - %.3f - %.3f", inputDist_.error_pos, inputDist_.error_ang, inputDist_.error_alt);
+					if (inputDist_.error_pos < eps_WP && inputDist_.error_ang < eps_YAW && inputDist_.error_alt < eps_alt)
+					{
+						set_events_false();
+
+						outputAckMission_.mission_item_reached = true;
+						outputAckMission_.seq = seq_number;
+						outputAckMission_.mav_mission_accepted = false;
+						pubToAckMission_.publish(outputAckMission_);
+						ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
+
+						currentState = IN_FLIGHT;
+						outputMmsStatus_.mms_state = currentState;
+						outputMmsStatus_.target_ref_frame = target_frame;
+						pubToMmsStatus_.publish(outputMmsStatus_);
+						ROS_INFO("MMS->REF: CURRENT_STATE = IN_FLIGHT");
+
+						// break;
+					}
+				}
+						if (TAKEOFF || SET_HOME)
+						{
+							set_events_false();
+							outputAckMission_.mission_item_reached = false;
+							outputAckMission_.seq = inputCmd_.seq;
+							outputAckMission_.mav_mission_accepted = false;
+							pubToAckMission_.publish(outputAckMission_);
+							ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+							break;
+						}
+				break;
+
+			case PERFORMING_LANDING:
+
+				set_events_false();  // TODO automatic disarming (eliminate)
+
+				//if (inputDist_.command == 21  && seq_number == inputDist_.seq)
+				//{
+					ROS_INFO_ONCE("MMS: REACHING THE LANDING TARGET");
+					/*if (inputDist_.error_alt > eps_LAND)
+					{
+						set_events_false();
+						LAND = true;
+
+						currentState = ON_GROUND_ARMED;
+						outputMmsStatus_.mms_state = currentState;
+						outputMmsStatus_.target_ref_frame = FRAME_BARO;
+						pubToMmsStatus_.publish(outputMmsStatus_);
+						ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_ARMED");
+					}*/
+				//}
+				break;
+				
+			case MANUAL_FLIGHT:
+
+				if (SAFETY_OFF)
+				{
+					set_events_false();
+					currentState = previousState;   //rolling back to last state
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS: CURRENT_STATE = BACK TO OLD ONE: %d",currentState);
+				}
+				break;
+				
+			case PAUSED:
+				if (CONTINUE){
+					set_events_false();
+					currentState = previousState;   //rolling back to last state
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS: CURRENT_STATE = BACK TO OLD ONE: %d",currentState);
+				}
+				break;
+			
+			case LEASHING:
+				if (LAND){
+					set_events_false();
+					LAND = true;
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = PERFORMING_LANDING;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_LANDING");
+
+					break;
+				}
+				if (LEASHING_END){
+					set_events_false();
+					outputAckMission_.mission_item_reached = true;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED (LEASHING)");
+					
+					currentState = IN_FLIGHT;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = IN_FLIGHT");
+				}
+				if (LEASHING_FAILURE){
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ITEM_FAILED (LEASHING)");
+
+					currentState = IN_FLIGHT;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = IN_FLIGHT");
+				}
+				break;
+		}
 }
 
 void run() {
@@ -874,7 +1097,7 @@ void run() {
 
 	while (ros::ok())
 	{
-		// ROS_INFO("MMS running");
+		ROS_INFO_ONCE("MMS: RUNNING");
 
 		MMS_Handle();
 		counter_++;
@@ -888,39 +1111,78 @@ protected:
 /*state here*/
 ros::NodeHandle n_;
 
-ros::Subscriber subFromPosition_;
+// Subscribers
+/*ros::Subscriber subFromPosition_;
+guidance_node_amsl::Position_nav inputPos_;*/
+
 ros::Subscriber subFromCmd_;
+mms_msgs::Cmd inputCmd_;
+
 ros::Subscriber subFromAckArm_;
+mms_msgs::Ack_arm inputAckArm_;
+
+ros::Subscriber subFromGridAck_;
+ros::Publisher pubGridAck_;
+mms_msgs::Grid_ack Grid_ack_;
+
+ros::Subscriber subSafety_;
+mavros::Safety Safety_;
+
 ros::Subscriber subFromSysStatus_;
+mms_msgs::Sys_status inputSysStatus_;
 
-guidance_node_amsl::Position inputPos_;
-mms::Cmd inputCmd_;
-mms::Ack_arm inputAckArm_;
-mms::Sys_status inputSysStatus_;
+ros::Subscriber subFromSonar_;
+mavros::Sonar inputSonar_;
 
-ros::Publisher pubToAckCmd_;
+ros::Subscriber subLeashingStatus_;
+
+ros::Subscriber subQos_sensors_;
+qos_sensors_autopilot::Qos_sensors Qos_sensors_;
+
+/*ros::Subscriber subFromReference_;
+guidance_node_amsl::Reference inputRef_;
+guidance_node_amsl::Reference target_;*/
+
+ros::Subscriber subFromDistance_;
+reference::Distance inputDist_;
+
+// Publishers
+ros::Publisher pubToAckMission_;
+mms_msgs::Ack_mission outputAckMission_;
+
+ros::Publisher pubCmd_;
+
 ros::Publisher pubToArm_;
-ros::Publisher pubToReference_;
+mms_msgs::Arm outputArm_;
 
-guidance_node_amsl::Reference outputRef_;
-// guidance_node_amsl::Reference LVP_;
-mms::Arm outputArm_;
-mms::Ack_cmd outputAckCmd_;
-// guidance_node_amsl::Reference Target_Position_;
-guidance_node_amsl::Position Home;
+//ros::Publisher pubToAckCmd_;
+//mms_msgs::Ack_cmd outputAckCmd_;
 
-// INPUTS GCS -> MMS
-bool SET_HOME = false;
-bool TAKEOFF = false;
-bool LAND = false;
-bool MISSION_START = false;
-bool WAYPOINT = false;
+ros::Publisher pubToMmsStatus_;
+mms_msgs::MMS_status outputMmsStatus_;
+
+// INPUTS GCS -> MMS (state machine events)
+bool SET_HOME;
+bool TAKEOFF;
+bool LAND;
+bool MISSION_START;
+bool WAYPOINT;
+bool GRID_EVENT;
+bool ARMED;
+bool GRID_ENDED;
+bool SAFETY_ON;
+bool SAFETY_OFF;
+bool LEASHING_START;
+bool LEASHING_END;
+bool LEASHING_FAILURE;
+bool PAUSE;
+bool CONTINUE;
 // static bool CONDITION_YAW = false;
 
 // INPUTS APM -> MMS
 // bool MAV_RESULT  = false;
 // bool New_MAV_RESULT= false;
-bool ARMED = false;
+
 
 // OUTPUTS MMS -> GCS
 // bool MISSION_ITEM_REACHED = false;
@@ -931,24 +1193,22 @@ bool ARMED = false;
 // bool new_arm_disarm = false; // true = armed, false = none
 
 // STATE INITIALIZATION
-int currentState = ON_GROUND_NO_HOME;
+int currentState;
+int previousState;      //used when rolling back to previous state from MANUAL_FLIGHT
 // int lastARMState = ON_GROUND_DISARMED;
+int target_frame;
 
-// ERRORS DEFINITION
-// float err; // current distance to the target position in millimeters
-/*int eps_LAND = 100; // target distance to the LAND position in millimeter
-	int eps_WP = 100; // target distance to the WAYPOINT position in millimeters
-	int eps_TO = 100; // target distance to the TAKEOFF position in millimeters*/
-
-int rate = 10;
+int rate;
 
 //std::vector<double> param_;
 //double debugParam;
 
 private:
 
-uint16_t counter_ = 0;
-uint16_t counter_print = 0;
+uint16_t counter_;
+uint16_t counter_print;
+uint16_t seq_number;
+int Dh_TO;
 };
 
 int main(int argc, char **argv)

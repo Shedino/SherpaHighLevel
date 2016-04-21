@@ -1,0 +1,5 @@
+# MISSION_ACK ( #47 )
+# Ack message during MISSION handling. The type field states if this message is a positive ack (type=0) or if an error happened (type=non-zero).
+uint8 target_system		
+uint8 target_component	
+uint8 mav_mission_result

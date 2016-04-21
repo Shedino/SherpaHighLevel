@@ -1,0 +1,12 @@
+# expressed as * 1E7
+int32 Latitude
+# expressed as * 1E7
+int32 Longitude
+# expressed as * 1000 (millimeters). The reference fram is set by other nodes
+int32 Altitude
+# (-pi...pi)
+float32 Yawangle
+# milliseconds since system boot)
+uint32 Timestamp
+# safety        this should be put in a separate topic
+int8 Safety

@@ -11,8 +11,10 @@ start "usb_cam_node" cmd /c plink -v %OdroidIP% -l %OdroidUser% -pw %OdroidPassW
 echo [SHERPA WASP LAUNCH:] "usb_cam_node" launched in "usb_cam_node" command window
 start "camera_handler_SHERPA" cmd /c plink -v %OdroidIP% -l %OdroidUser% -pw %OdroidPassWord% bash /home/odroid/SherpaHighLevel/scripts/launch_camera_handler_SHERPA
 echo [SHERPA WASP LAUNCH:] "camera_handler_SHERPA" launched in "camera_handler_SHERPA" command window
-start "mms" cmd /c plink -v %OdroidIP% -l %OdroidUser% -pw %OdroidPassWord% bash /home/odroid/SherpaHighLevel/scripts/launch_mms
-echo [SHERPA WASP LAUNCH:] "mms" launched in "mms" command window
+REM start "mms" cmd /c plink -v %OdroidIP% -l %OdroidUser% -pw %OdroidPassWord% bash /home/odroid/SherpaHighLevel/scripts/launch_mms
+REM echo [SHERPA WASP LAUNCH:] "mms" launched in "mms" command window
+start "mms_group" cmd /c plink -v %OdroidIP% -l %OdroidUser% -pw %OdroidPassWord% bash /home/odroid/SherpaHighLevel/scripts/launch_mms_group
+echo [SHERPA WASP LAUNCH:] "mms_group" launched in "mms_group" command window
 start "mavsys" cmd /c plink -v %OdroidIP% -l %OdroidUser% -pw %OdroidPassWord% bash /home/odroid/SherpaHighLevel/scripts/launch_mavsys
 echo [SHERPA WASP LAUNCH:] "mavsys" launched in "mavsys" command window
 start "web_video_server" cmd /c plink -v %OdroidIP% -l %OdroidUser% -pw %OdroidPassWord% bash /home/odroid/SherpaHighLevel/scripts/launch_web_video_server

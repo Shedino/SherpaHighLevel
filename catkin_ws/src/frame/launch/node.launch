@@ -1,0 +1,5 @@
+<launch>
+
+	<node pkg="frame" type="frame" name="frame" output="screen">
+	</node>
+</launch>

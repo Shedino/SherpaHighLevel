@@ -1,0 +1,5 @@
+<launch>
+
+	<node pkg="reference" type="reference" name="reference" output="screen">
+	</node>
+</launch>

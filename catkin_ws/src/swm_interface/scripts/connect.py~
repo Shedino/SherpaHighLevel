@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+import sys
+sys.path.append('/home/sherpa/pySWM')
+import math
+import rospy
+import tf
+import swm
+
+from custom_msgs.msg import positionEstimate
+from custom_msgs.msg import orientationEstimate
+
+agentName = "donkey"
+currentRoll = 0
+currentPitch = 0
+currentYaw = 0
+
+def updateAttitude(data):
+    global currentYaw
+#    print "I received a message! :-)"
+    currentRoll = data.roll * math.pi/180.0
+    currentPitch = data.pitch * math.pi/180.0
+    currentYaw = data.yaw * math.pi/180.0
+
+if __name__ == '__main__':
+    try:
+        rospy.init_node('dcm_com')
+        print "[dcm_com:] initialising %s data on DCM database ..." % (agentName)
+        swm.run('set donkey geopose 0 0 0 0 0 0 1')
+        rospy.Subscriber("mti/filter/orientation",orientationEstimate,updateAttitude)
+        rate = rospy.Rate(3)
+        while not rospy.is_shutdown():
+            currentQuaternion = tf.transformations.quaternion_from_euler(currentRoll, currentPitch, currentYaw, "sxyz")
+            swm.run('set %s geopose 0 0 0 %.2f %.2f %.2f %.2f' % (agentName, currentQuaternion[0], currentQuaternion[1], currentQuaternion[2], currentQuaternion[3]))
+            print "The current quaternion is %.2f, %.2f, %.2f, %.2f" % (currentQuaternion[0], currentQuaternion[1], currentQuaternion[2], currentQuaternion[3])
+            rate.sleep()
+    except rospy.ROSInterruptException:
+        pass

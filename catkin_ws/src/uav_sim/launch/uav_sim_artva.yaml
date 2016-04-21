@@ -1,0 +1,12 @@
+# Common configuration for uav_sim with camera
+
+
+#debug param
+camera_present: false
+camera_working: false
+sonar_present: true
+sonar_working: true
+artva_present: true
+artva_working: true
+laser_present: false
+laser_working: false

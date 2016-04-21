@@ -2,10 +2,17 @@
 #include <vector>
 
 #include "guidance_node_amsl/Directive.h"
-#include "guidance_node_amsl/Position.h"
+#include "guidance_node_amsl/Position_nav.h"
 #include "guidance_node_amsl/Reference.h"
 
+#include <mavros/Safety.h>
+#include <mavros/Attitude.h>
+
+#include <mms_msgs/MMS_status.h>
+
 #include "Model_GS.h" //qui devo stare attento a come si chiama il file.h
+
+uint16_t counter_print;
 
 class GuidanceNodeClass {
 public:
@@ -33,9 +40,12 @@ public:
 		node.param("guidance_node_amsl/param/gain_integralDown", param_[8],0.025);
 
 		//subscribers and publishers
-		subFromReference_=n_.subscribe("/reference",10, &GuidanceNodeClass::readReferenceMessage, this);
-		subFromPosition_=n_.subscribe("/position", 10, &GuidanceNodeClass::readPositionMessage,this);
+		subFromReference_=n_.subscribe("/reference",10, &GuidanceNodeClass::readReferenceMessage, this);       //this shoud be published by reference_traj node based on flightmode
+		subFromPosition_=n_.subscribe("/position_nav", 10, &GuidanceNodeClass::readPositionMessage,this);      //this shoud be published by reference_traj node based on flightmode
 		pub_=n_.advertise<guidance_node_amsl::Directive>("/directive", 10);
+		safety_sub = n_.subscribe("/safety_odroid",10, &GuidanceNodeClass::handle_safety, this);
+		attitude_sub = n_.subscribe("/attitude",10, &GuidanceNodeClass::handle_attitude, this);
+		mms_status_sub = n_.subscribe("/mms_status",10, &GuidanceNodeClass::handle_mms_status, this);
 
 		//Initializing inputRef_
 		node.param<int>("guidance_node_amsl/ref/latitude_ref", inputRef_.Latitude, 0);
@@ -56,40 +66,61 @@ public:
 		 */
 		if(msg->Mode==100){
 			//relative
-			inputRef_.Latitude=inputPos_.Latitude + msg->Latitude;
-			inputRef_.Longitude=inputPos_.Longitude + msg->Longitude;
-			inputRef_.AltitudeRelative = inputPos_.AltitudeRelative + msg->AltitudeRelative;
-			inputRef_.Yawangle= inputPos_.Yawangle + msg->Yawangle;
+			inputRef_.Latitude = position_nav_.Latitude + msg->Latitude;
+			inputRef_.Longitude = position_nav_.Longitude + msg->Longitude;
+			inputRef_.AltitudeRelative = position_nav_.Altitude + msg->AltitudeRelative;
+			inputRef_.Yawangle = yaw_ + msg->Yawangle;
+			inputRef_.vx = msg->vx;
+			inputRef_.vy = msg->vy;
+			inputRef_.vz = msg->vz;
+			inputRef_.vyaw = msg->vyaw;
 		} else {
 			//absolute
-			inputRef_.Latitude=msg->Latitude;
-			inputRef_.Longitude=msg->Longitude;
-			inputRef_.AltitudeRelative =msg->AltitudeRelative;
-			inputRef_.Yawangle=msg->Yawangle;
+			inputRef_.Latitude = msg->Latitude;
+			inputRef_.Longitude = msg->Longitude;
+			inputRef_.AltitudeRelative = msg->AltitudeRelative;
+			inputRef_.Yawangle = msg->Yawangle;
+			inputRef_.vx = msg->vx;
+			inputRef_.vy = msg->vy;
+			inputRef_.vz = msg->vz;
+			inputRef_.vyaw = msg->vyaw;
 		}
 	}
 
-	void readPositionMessage(const guidance_node_amsl::Position::ConstPtr& msg)
+	void readPositionMessage(const guidance_node_amsl::Position_nav::ConstPtr& msg)  
 	{
-		inputPos_.Latitude=msg->Latitude;
-		inputPos_.Longitude=msg->Longitude;
-		inputPos_.AltitudeRelative = msg->AltitudeRelative;
-		inputPos_.AltitudeAMSL = msg->AltitudeAMSL;
-		inputPos_.Yawangle=msg->Yawangle;
-		inputPos_.Timestamp=msg->Timestamp;
-		inputPos_.Safety = msg->Safety;
+		position_nav_.Latitude = msg->Latitude;
+		position_nav_.Longitude = msg->Longitude;
+		position_nav_.Altitude = msg->Altitude;
+		position_nav_.YawAngle = msg->YawAngle;
+		position_nav_.Timestamp = msg->Timestamp;
+	}
+
+	void handle_safety(const mavros::Safety::ConstPtr& msg)
+	{
+		safety_ = msg->safety;
+	}
+	
+	void handle_mms_status(const mms_msgs::MMS_status::ConstPtr& msg)
+	{
+		if (msg->mms_state == 70) trigger_ = true;          //trigger integral on PERFORMING_TAKEOFF state
+		else if (msg->mms_state == 30) trigger_ = false;		//disable integral on ON_GROUND_DISARMED state --> this happens after LAND
+	}
+
+	void handle_attitude(const mavros::Attitude::ConstPtr& msg)
+	{
+		yaw_ = msg->yaw;          //need only yaw for navigation
 	}
 
 	void process(Model_GSModelClass &guidanceClass)
 	{
 
-		guidance_node_amsl::Reference inputRef = inputRef_;
-		guidance_node_amsl::Position inputPos = inputPos_;
+		guidance_node_amsl::Reference inputRef = inputRef_;             //TODO check that this is not needed, I can pass directly the private one
 
 		guidance_node_amsl::Directive output;
 
-		initializeParameters(guidanceClass, inputPos, inputRef, param_);//initialize input parameters;
-		guidanceClass.step(); //step the function
+		initializeParameters(guidanceClass, position_nav_, inputRef, param_, yaw_, safety_);//initialize input parameters;        
+		guidanceClass.step(); //step the Simulink function
 		getOutput(guidanceClass, &output); //get the output
 
 		pub_.publish(output);
@@ -101,6 +132,10 @@ public:
 		ros::Rate loop_rate(rate);
 		Model_GSModelClass guidanceClass;
 		guidanceClass.initialize();
+		counter_print++;
+		if (counter_print >= 11){
+			counter_print = 0;
+		}
 		while (ros::ok())
 		{
 			process(guidanceClass);
@@ -114,11 +149,19 @@ protected:
 
 	ros::Subscriber subFromReference_;
 	ros::Subscriber subFromPosition_;
+	ros::Subscriber safety_sub;
+	ros::Subscriber attitude_sub;
+	ros::Subscriber mms_status_sub;
 
 	guidance_node_amsl::Reference inputRef_;
-	guidance_node_amsl::Position inputPos_;
+	//guidance_node_amsl::Position inputPos_;
+	guidance_node_amsl::Position_nav position_nav_;
 
 	ros::Publisher pub_;
+
+	bool safety_;
+	bool trigger_;    //trigger for integral
+	float yaw_;
 
 	int rate;
 
@@ -126,22 +169,29 @@ protected:
 	double debugParam;
 
 private:
-
+	// OLD WAS (Model_GSModelClass &guidanceClass, const guidance_node_amsl::Position &inputPos, const guidance_node_amsl::Reference &inputRef, const std::vector<double> &param)
 	void initializeParameters(Model_GSModelClass &guidanceClass,
-			const guidance_node_amsl::Position &inputPos,
+			const guidance_node_amsl::Position_nav &inputPos,
 			const guidance_node_amsl::Reference &inputRef,
-			const std::vector<double> &param) {
+			const std::vector<double> &param,
+			float yaw,
+			bool safety) {
 
-		guidanceClass.Model_GS_U.Actual_Pos[0]=inputPos.Latitude;
-		guidanceClass.Model_GS_U.Actual_Pos[1]=inputPos.Longitude;
-		guidanceClass.Model_GS_U.Actual_Pos[2]=inputPos.AltitudeRelative;
-		guidanceClass.Model_GS_U.Actual_Pos[3]=inputPos.AltitudeAMSL;
-		guidanceClass.Model_GS_U.Actual_Yaw=inputPos.Yawangle;
+		guidanceClass.Model_GS_U.Actual_Pos[0] = inputPos.Latitude;
+		guidanceClass.Model_GS_U.Actual_Pos[1] = inputPos.Longitude;
+		guidanceClass.Model_GS_U.Actual_Pos[2] = inputPos.Altitude;     //WAS inputPos.AltitudeRelative
+		guidanceClass.Model_GS_U.Actual_Pos[3] = 0; 			//WAS inputPos.AltitudeAMSL
+		guidanceClass.Model_GS_U.Actual_Yaw = inputPos.YawAngle;
 
 		guidanceClass.Model_GS_U.Reference_Pos[0]=inputRef.Latitude;
 		guidanceClass.Model_GS_U.Reference_Pos[1]=inputRef.Longitude;
 		guidanceClass.Model_GS_U.Reference_Pos[2]=inputRef.AltitudeRelative;
 		guidanceClass.Model_GS_U.Reference_Yaw=inputRef.Yawangle;
+
+		guidanceClass.Model_GS_U.Reference_Speed[0] = inputRef.vx;
+		guidanceClass.Model_GS_U.Reference_Speed[1] = inputRef.vy;
+		guidanceClass.Model_GS_U.Reference_Speed[2] = inputRef.vz;
+		guidanceClass.Model_GS_U.Reference_Speed[3] = inputRef.vyaw;
 
 		//Saturation, gain and deadzones
 		//forced cast due to parameter server only storing double
@@ -154,6 +204,7 @@ private:
 		guidanceClass.Model_GS_U.Control_Param[6]= (float) param[6]; //deadzone NE
 		guidanceClass.Model_GS_U.Control_Param[7]= (float) param[7]; //deadzone D
 		guidanceClass.Model_GS_U.Control_Param[8]= (float) param[8]; //gain integral D
+		//ROS_INFO("Params: %f - %f - %f - %f", param[6], param[7], param[3], param[4]);
 
 		//Delta-time, needed by the integral
 		guidanceClass.Model_GS_U.dt = ((float)1.0f)/rate;
@@ -161,32 +212,36 @@ private:
 		//Time
 		guidanceClass.Model_GS_U.Time=inputPos.Timestamp;
 
-		//Safety trigger
-		guidanceClass.Model_GS_U.Trigger = (inputPos.Safety == 0) ? true : false;
+		//Integral trigger when we are ready to takeoff
+		guidanceClass.Model_GS_U.Trigger = trigger_;       //if safety is 0, means ODROID on, so trigger
 
 		//DEBUG Test for AMSL offset or not
-		guidanceClass.Model_GS_U.Test = (float) debugParam;
+		//guidanceClass.Model_GS_U.Test = (float) debugParam;
 
 		//DEBUG
-		ROS_INFO("Loaded Matlab Pos: [Lat:%i, Long:%i, Alt:%i, Yaw:%f, SafeOn:%s,(Time:%u)]",         //TODO uncomment
-				guidanceClass.Model_GS_U.Actual_Pos[0], guidanceClass.Model_GS_U.Actual_Pos[1],
-				guidanceClass.Model_GS_U.Actual_Pos[2], guidanceClass.Model_GS_U.Actual_Yaw,
-				!guidanceClass.Model_GS_U.Trigger ? "true" : "false", inputPos.Timestamp);
-		ROS_INFO("Loaded Matlab Ref: [Lat:%i, Long:%i, Alt:%i, Yaw:%f]",
-				guidanceClass.Model_GS_U.Reference_Pos[0], guidanceClass.Model_GS_U.Reference_Pos[1],
-				guidanceClass.Model_GS_U.Reference_Pos[2], guidanceClass.Model_GS_U.Reference_Yaw);
+		//if (counter_print >= 10){
+			ROS_INFO("Loaded Matlab Pos: [Lat:%i, Long:%i, Alt:%i, Yaw:%f, SafeOn:%s,(Time:%u)]",         //TODO uncomment
+					guidanceClass.Model_GS_U.Actual_Pos[0], guidanceClass.Model_GS_U.Actual_Pos[1],
+					guidanceClass.Model_GS_U.Actual_Pos[2], guidanceClass.Model_GS_U.Actual_Yaw,
+					safety_ ? "true" : "false", inputPos.Timestamp);
+			ROS_INFO("Loaded Matlab Ref: [Lat:%i, Long:%i, Alt:%i, Yaw:%f]",
+					guidanceClass.Model_GS_U.Reference_Pos[0], guidanceClass.Model_GS_U.Reference_Pos[1],
+					guidanceClass.Model_GS_U.Reference_Pos[2], guidanceClass.Model_GS_U.Reference_Yaw);
+		//}
 	}
 
 	void getOutput(const Model_GSModelClass &guidanceClass, guidance_node_amsl::Directive *output) {
 
-		output->vxBody=guidanceClass.Model_GS_Y.FakeDirective[0];
-		output->vyBody=guidanceClass.Model_GS_Y.FakeDirective[1];
-		output->vzBody=guidanceClass.Model_GS_Y.FakeDirective[2];
-		output->yawRate=guidanceClass.Model_GS_Y.FakeDirective[3];
-
-		ROS_INFO("Calc Matlab Direc: [vx:%f, vy:%f, vz:%f, yawRate:%f]",			//TODO uncomment
-						guidanceClass.Model_GS_Y.FakeDirective[0],guidanceClass.Model_GS_Y.FakeDirective[1],
-						guidanceClass.Model_GS_Y.FakeDirective[2],guidanceClass.Model_GS_Y.FakeDirective[3]);
+		output->vxBody=guidanceClass.Model_GS_Y.BodySpeedInput[0];
+		output->vyBody=guidanceClass.Model_GS_Y.BodySpeedInput[1];
+		output->vzBody=guidanceClass.Model_GS_Y.BodySpeedInput[2];
+		output->yawRate=guidanceClass.Model_GS_Y.BodySpeedInput[3];
+		
+		if (counter_print >= 10){
+			ROS_INFO("Calc Matlab Direc: [vx:%f, vy:%f, vz:%f, yawRate:%f]",			//TODO uncomment
+							guidanceClass.Model_GS_Y.BodySpeedInput[0],guidanceClass.Model_GS_Y.BodySpeedInput[1],
+							guidanceClass.Model_GS_Y.BodySpeedInput[2],guidanceClass.Model_GS_Y.BodySpeedInput[3]);
+		}
 	}
 };
 
@@ -195,6 +250,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "guidance_node_amsl");
 	ros::NodeHandle node;
 
+	counter_print = 0;
 	GuidanceNodeClass guidanceNode(node);
 	guidanceNode.run();
 	return 0;
