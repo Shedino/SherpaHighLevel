@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 
+#include <mavros/Global_position_int.h>
 #include "camera_handler_sherpa/Camera.h"
 #include <mms_msgs/Cmd.h>
 #include <mms_msgs/Ack_mission.h>
@@ -20,7 +21,7 @@ static bool taking_photos = false;
 static char dest_video[50];
 static int video_count = 0; 
 static int photo_taken_counter = 0;
-static int FPS = 20;         //TODO not hardcoded  
+static int FPS = 8;         //TODO not hardcoded
 static int image_count = 0;
 cv::VideoWriter video;
 ros::Publisher camera_pub;
@@ -28,6 +29,7 @@ ros::Publisher camera_pub;
 ros::Publisher mission_pub;
 ros::Subscriber camera_sub;
 ros::Subscriber command_sub;
+ros::Subscriber geopose_sub;
 camera_handler_sherpa::Camera camera_topic;
 //mms::Ack_cmd outputAckCmd_;
 mms_msgs::Ack_mission outputAckMission_;
@@ -47,6 +49,7 @@ class CameraHandler
 		// Subscribe to input video feed and commands
 		image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &CameraHandler::imageCb, this);
 		command_sub = nh_.subscribe("/sent_command", 10, &CameraHandler::command_handler, this);
+		geopose_sub = nh_.subscribe("/global_position_int", 10, &CameraHandler::geopose_handler, this);
 
 		//image_pub_ = it_.advertise("/camera_handler/output_video", 1);      //only if we have to modify images and publish again
 		camera_pub = nh_.advertise<camera_handler_sherpa::Camera>("/camera_published", 20);
@@ -57,6 +60,12 @@ class CameraHandler
 		_delay_seconds = 0;            
 		_N_photo = 0;					
 		_counter_frames = 0;              
+	}
+
+	void geopose_handler(const mavros::Global_position_int::ConstPtr& msg)
+	{
+		_lat = msg->lat;
+		_lon = msg->lon;
 	}
   
 	void command_handler(const mms_msgs::Cmd::ConstPtr& msg){
@@ -195,7 +204,7 @@ class CameraHandler
 			ROS_INFO("CAMERA HANDLER: taking picture %d", photo_taken_counter+1);
 			// Save Image
 			static char dest_img[50];                        
-			sprintf(dest_img,"/home/odroid/Photo_Mission/image_%d.jpg",image_count);
+			sprintf(dest_img,"/home/odroid/Photo_Mission/image_%d_%.7f_%.7f.jpg",image_count,_lat,_lon);
 			ROS_ASSERT( cv::imwrite(dest_img,  cv_ptr->image));
 			photo_taken_counter++;
 
@@ -230,6 +239,8 @@ class CameraHandler
 	int _N_photo;
 	int _counter_frames;           
 	int _compare_frames;
+	double _lat;
+	double _lon;
 };
 
 int main(int argc, char** argv)

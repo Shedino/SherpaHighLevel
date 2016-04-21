@@ -27,7 +27,7 @@ public:
 		new_frame = false;
 		old_frame = 0;
 		rate = 10;
-		use_global_altitude = false; //true-->use global altitude from GPS, relative from baro otherwise
+		use_global_altitude = true; //true-->use global altitude from GPS, relative from baro otherwise
 
 	}
 
@@ -77,7 +77,7 @@ public:
 			outputPosNav_.Longitude = inputPos_.lon;
 			outputPosNav_.Altitude = inputPos_.alt;
 			if (use_global_altitude) outputPosNav_.Altitude = inputPos_.alt;     //use absolute alt
-			else outputPosNav_.Altitude = inputPos_.relative_alt + 1580000;  //TODO check using champoluc altitude
+			else outputPosNav_.Altitude = inputPos_.relative_alt + 785000;  //TODO check using champoluc altitude
 			outputPosNav_.Timestamp = inputPos_.time_boot_ms;
 			outputPosNav_.YawAngle = inputPos_.hdg*3.14/180/100;
 			outputPosNav_.frame = inputRefSystem_.actual_ref_frame;

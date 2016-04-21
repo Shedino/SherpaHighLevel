@@ -30,7 +30,7 @@ def updateCamera(data):
         swm.run('add picture wasp_%s %s %.7f %.7f %.2f %.2f %.4f %.4f %.4f' % (agentName, data.path_photo, geopoint_.GeoPoint.latitude, geopoint_.GeoPoint.longitude, geopoint_.GeoPoint.altitude, quaternion_.Quaternion.x, quaternion_.Quaternion.y, quaternion_.Quaternion.z, quaternion_.Quaternion.w))
     if data.taken_video:
         #missing add video on SWM
-        swm.run('add picture wasp_%s %s %.7f %.7f %.2f %.2f %.4f %.4f %.4f' % (agentName, data.path_video, geopoint_.GeoPoint.latitude, geopoint_.GeoPoint.longitude, geopoint_.GeoPoint.altitude, quaternion_.Quaternion.x, quaternion_.Quaternion.y, quaternion_.Quaternion.z, quaternion_.Quaternion.w))
+        swm.run('add picture wasp_%s %s %.7f %.7f %.2f %.2f %.4f %.4f %.4f' % (agentName, "192.168.0.107:" + data.path_video, geopoint_.GeoPoint.latitude, geopoint_.GeoPoint.longitude, geopoint_.GeoPoint.altitude, quaternion_.Quaternion.x, quaternion_.Quaternion.y, quaternion_.Quaternion.z, quaternion_.Quaternion.w))
     
 if __name__ == '__main__':
     try:
@@ -43,10 +43,14 @@ if __name__ == '__main__':
         while not rospy.is_shutdown():
             counter += 1
             #currentQuaternion = tf.transformations.quaternion_from_euler(currentRoll, currentPitch, currentYaw, "sxyz")
-            if counter>30:
+            if counter>20:
             	swm.run('set wasp %s geopose %.7f %.7f %.2f %.2f %.4f %.4f %.4f' % (agentName, geopoint_.latitude, geopoint_.longitude, geopoint_.altitude, quaternion_.x, quaternion_.y, quaternion_.z, quaternion_.w))
             	print "\n", swm.getGeopose("wasp_0"), "\n"
             	print "[swm_interface]: the current geopose of the wasp was published %.7f %.7f %.2f" % (geopoint_.latitude, geopoint_.longitude, geopoint_.altitude)
+            	counter = 0
+            if counter>1000:
+                result = swm.getObservation("wasp0")
+                print result
             	counter = 0
             rate.sleep()
     except rospy.ROSInterruptException:

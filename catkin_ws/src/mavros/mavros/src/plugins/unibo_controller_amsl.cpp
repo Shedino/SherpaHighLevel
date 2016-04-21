@@ -328,7 +328,7 @@ private:
 		
 		geopoint_.latitude = global_pos_.lat / 10000000.0f;    //to publish geopose
 		geopoint_.longitude = global_pos_.lon / 10000000.0f;
-		geopoint_.altitude = global_pos_.alt / 1000.0f;
+		geopoint_.altitude = (global_pos_.alt) / 1000.0f;  //TODO check if using relative alt
 		geopose_.position = geopoint_;
 		
 		pubGeopose_.publish(geopose_);

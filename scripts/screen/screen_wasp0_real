@@ -54,8 +54,8 @@ stuff "rosrun lrs_sherpa_proxy proxy __ns:=/wasp0 _long_name:=http://unibo.it/wa
 
 screen 12
 title "SWM"
-<<<<<<< HEAD
 stuff "sleep 10; cd DCM/ubx_robotscenegraph; ./swm_launch.sh\015"
-=======
-stuff "sleep 10; cd DCM/ubx_robotscenegraph; ./swm_launch.sh\015"
->>>>>>> 2a09eb164f88ad63f17ccbabc4689cc6e3b5420b
+
+screen 2
+title "interaction2"
+
