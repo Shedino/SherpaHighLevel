@@ -4,8 +4,8 @@
 #debug param
 camera_present: true
 camera_working: true
-sonar_present: true
-sonar_working: true
+sonar_present: false
+sonar_working: false
 artva_present: false
 artva_working: false
 laser_present: false

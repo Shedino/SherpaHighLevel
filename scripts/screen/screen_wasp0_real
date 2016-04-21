@@ -11,7 +11,7 @@ stuff "roscore -p $PORT\015"
 
 screen 1
 title "mms"
-stuff "sleep 5; roslaunch mms mms.launch __ns:=/wasp0\015"
+stuff "sleep 5; roslaunch mms mms.launch\015"
 
 screen 2
 title "interaction"
@@ -56,6 +56,6 @@ screen 12
 title "SWM"
 stuff "sleep 10; cd DCM/ubx_robotscenegraph; ./swm_launch.sh\015"
 
-screen 2
+screen 13
 title "interaction2"
 

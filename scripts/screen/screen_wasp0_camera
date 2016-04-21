@@ -1,0 +1,45 @@
+deflogin on
+autodetach on
+
+escape ^oo
+
+caption always
+
+screen 0
+title "ROS Core"
+stuff "roscore -p $PORT\015"
+
+screen 1
+title "location"
+stuff "sleep 5; roslaunch lrs_sherpa location_cesena.launch\015"
+
+screen 2
+title "interaction"
+
+screen 3
+title "Wasp Camera Usb"
+stuff "sleep 5; rosrun usb_cam usb_cam_node\015"
+
+screen 4
+title "Wasp Camera Handler"
+stuff "sleep 10; rosrun camera_handler_sherpa camera_handler_sherpa\015"
+
+screen 5
+title "Wasp Simulator"
+stuff "sleep 10; roslaunch uav_sim wasp_simulator_camera.launch\015"
+
+screen 6
+title "tst0"
+stuff "sleep 10; roslaunch lrs_sherpa tstwasp0.launch\015"
+
+screen 7
+title "Delegation"
+stuff "sleep 10; roslaunch lrs_sherpa delegation.launch __ns:=/wasp0\015"
+
+screen 10
+title "roszyre"
+stuff "sleep 10; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp0 _forward_unit_info:=1\015"
+
+screen 11
+title "proxy"
+stuff "rosrun lrs_sherpa_proxy proxy __ns:=/wasp0 _long_name:=http://unibo.it/wasp0\015"
