@@ -7,6 +7,7 @@
 #include "mms_msgs/Sys_status.h"// input
 #include "mms_msgs/Grid_ack.h"  //input
 #include <mavros/Sonar.h> // input
+#include "mavros/Attitude.h"
 #include "mms_msgs/MMS_status.h"// output
 #include <reference/Distance.h>// input
 #include <mavros/Safety.h>// input
@@ -21,18 +22,23 @@
 #define ARMING 40
 #define DISARMING 45
 #define ON_GROUND_ARMED 50
-// #define ON_GROUND_READY_TO_TAKEOFF 60
 #define PERFORMING_TAKEOFF 70
+#define HAND_TAKEOFF_WAITING 71
+#define HAND_TAKEOFF_WAITING_FIRST 711  //FirstsSub state machine state for hand deployment
+#define HAND_TAKEOFF_WAITING_SECOND 712 //FirstsSub state machine state for hand deployment
 #define IN_FLIGHT 80
 #define GRID 90
 #define PERFORMING_GO_TO 100
-// #define READY_TO_LAND 110
 #define PERFORMING_LANDING 120
 #define LEASHING 140
 #define PAUSED 150
 #define MANUAL_FLIGHT 1000
+
 #define FRAME_BARO 6
 #define FRAME_SONAR 11
+
+#define GROUND_TAKEOFF 0
+#define HAND_TAKEOFF 1
 
 
 double PI = 3.1416; // pi
@@ -58,6 +64,7 @@ public:
 		subSafety_ = n_.subscribe("/safety_odroid", 2, &MmsNodeClass::readSafetyMessage,this);
 		subLeashingStatus_ = n_.subscribe("/leashing_status", 10, &MmsNodeClass::readLeashingStatusMessage,this);
 		subQos_sensors_ = n_.subscribe("/qos_sensors", 10, &MmsNodeClass::readQosSensorsMessage,this);
+		subAttitude_ = n_.subscribe("/attitude", 10, &MmsNodeClass::readAttitudeMessage,this);
 		
 		// publishers
 		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
@@ -105,6 +112,8 @@ public:
 		counter_print = 0;
 		seq_number = 0;
 		Dh_TO = 0;
+		takeoff_type = 0;
+		hand_deployment_state = HAND_TAKEOFF_WAITING_FIRST;
 	}
 
 	void readDistanceMessage(const reference::Distance::ConstPtr& msg)
@@ -166,6 +175,10 @@ public:
 
 	void readQosSensorsMessage(const qos_sensors_autopilot::Qos_sensors::ConstPtr& msg){
 		Qos_sensors_ = *msg;
+	}
+
+	void readAttitudeMessage(const mavros::Attitude::ConstPtr& msg){
+		Attitude_ = *msg;
 	}
 
 	void readCmdMessage(const mms_msgs::Cmd::ConstPtr& msg)
@@ -297,13 +310,15 @@ public:
 					target_frame = inputCmd_.frame;
 					seq_number = inputCmd_.seq;
 					TAKEOFF = true;
+					takeoff_type = (int)inputCmd_.param1;
+					ROS_INFO("MMS: TAKEOFF command type: %d", takeoff_type);
 					pubCmd_.publish(inputCmd_);  //cmd passed to reference
 				} else {
 					outputAckMission_.mission_item_reached = false;
 					outputAckMission_.seq = seq_number;
 					outputAckMission_.mav_mission_accepted = false;
 					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");
+					ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED (TAKEOFF): frame and distance errors");
 					target_frame = FRAME_BARO;
 					TAKEOFF = false;
 				}
@@ -466,18 +481,30 @@ public:
 					TAKEOFF = true;
 					ARMED = false;
 
-					outputArm_.arm_disarm = true;
-					outputArm_.new_arm_disarm = true;
-					pubToArm_.publish(outputArm_);
-					ROS_INFO("MMS->APM: ARMING");
+					ROS_INFO("MMS: inside ON_GROUND_DISARMED %d",takeoff_type);
+					switch(takeoff_type)
+						{
+							case GROUND_TAKEOFF:
+								outputArm_.arm_disarm = true;
+								outputArm_.new_arm_disarm = true;
+								pubToArm_.publish(outputArm_);
+								ROS_INFO("MMS->AUTOPILOT: ARMING");
 
-					counter_ = 0;     //start timing to rearm
-					currentState = ARMING;
-					outputMmsStatus_.mms_state = currentState;
-					outputMmsStatus_.target_ref_frame = FRAME_BARO;
-					pubToMmsStatus_.publish(outputMmsStatus_);
-					ROS_INFO("MMS->REF: CURRENT_STATE = ARMING");
-					break;
+								counter_ = 0;     //start timing to re-arm
+								currentState = ARMING;
+								outputMmsStatus_.mms_state = currentState;
+								outputMmsStatus_.target_ref_frame = FRAME_BARO;
+								pubToMmsStatus_.publish(outputMmsStatus_);
+								ROS_INFO("MMS->REF: CURRENT_STATE = ARMING");
+								break;
+							case HAND_TAKEOFF:
+								currentState = HAND_TAKEOFF_WAITING;
+								outputMmsStatus_.mms_state = currentState;
+								outputMmsStatus_.target_ref_frame = FRAME_BARO;
+								pubToMmsStatus_.publish(outputMmsStatus_);
+								ROS_INFO("MMS->REF: CURRENT_STATE = HAND_TAKEOFF_WAITING");
+								break;
+						}
 				}
 				if (SET_HOME)
 				{
@@ -504,7 +531,7 @@ public:
 					outputAckMission_.seq = inputCmd_.seq;
 					outputAckMission_.mav_mission_accepted = false;
 					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED (LAND or WAYPOINT)");
 					break;
 				}
 				break;
@@ -637,6 +664,7 @@ public:
 					counter_ = 0;     //start timing to rearm
 					break;
 				}
+
 				if (TAKEOFF)
 				{
 					set_events_false();
@@ -654,20 +682,94 @@ public:
 					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_TAKEOFF");//READY_TO_TAKEOFF");
 					break;
 				}
-						if (SET_HOME || WAYPOINT)
-						{
-							set_events_false();
-							outputAckMission_.mission_item_reached = false;
-							outputAckMission_.seq = inputCmd_.seq;
-							outputAckMission_.mav_mission_accepted = false;
-							pubToAckMission_.publish(outputAckMission_);
-							ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
-							break;
-						}
+
+				if (SET_HOME || WAYPOINT)
+				{
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+					break;
+				}
 				break;
 
-			case PERFORMING_TAKEOFF:
+			case HAND_TAKEOFF_WAITING:
+				if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
+					set_events_false();
+					previousState = currentState;   //save last state in previousState
+					currentState = MANUAL_FLIGHT;
+					outputMmsStatus_.mms_state = currentState;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
+					break;
+				}
 
+				if (LAND)
+				{
+					set_events_false();
+					LAND = true;
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = PERFORMING_LANDING;//READY_TO_LAND;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_LANDING");//READY_TO_LAND");
+
+					break;
+				}
+
+				if (SET_HOME || WAYPOINT || GRID_EVENT)
+				{
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED (SET_HOME or WAYPOINT or GRID)");
+					break;
+				}
+
+				switch (hand_deployment_state){
+					case HAND_TAKEOFF_WAITING_FIRST:
+						//Checking if rotated more than 60 degrees on roll or pitch
+						if ((Attitude_.roll < -PI/3) || (Attitude_.roll > PI/3) || (Attitude_.pitch < -PI/3) || (Attitude_.pitch > PI/3)){
+							ROS_INFO("MMS: HAND DEPLOYMENT: tilted to activate takeoff");
+							hand_deployment_state = HAND_TAKEOFF_WAITING_SECOND;
+						}
+						break;
+
+					case HAND_TAKEOFF_WAITING_SECOND:
+						//Checking if flat
+						if ((Attitude_.roll < PI/8) && (Attitude_.roll > -PI/8) && (Attitude_.pitch < PI/8) && (Attitude_.pitch > -PI/8)){
+							ROS_INFO("MMS: HAND DEPLOYMENT: back to flat...activating TAKEOFF!");
+							hand_deployment_state = HAND_TAKEOFF_WAITING_FIRST;
+
+							outputArm_.arm_disarm = true;
+							outputArm_.new_arm_disarm = true;
+							pubToArm_.publish(outputArm_);
+							ROS_INFO("MMS->APM: ARMING");
+
+							counter_ = 0;     //start timing to rearm
+							currentState = ARMING;
+							outputMmsStatus_.mms_state = currentState;
+							outputMmsStatus_.target_ref_frame = FRAME_BARO;
+							pubToMmsStatus_.publish(outputMmsStatus_);
+							ROS_INFO("MMS->REF: CURRENT_STATE = ARMING");
+						}
+						break;
+				}
+				break;
+
+
+			case PERFORMING_TAKEOFF:
 				if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
 					set_events_false();
 					previousState = currentState;   //save last state in previousState
@@ -1139,6 +1241,9 @@ ros::Subscriber subLeashingStatus_;
 ros::Subscriber subQos_sensors_;
 qos_sensors_autopilot::Qos_sensors Qos_sensors_;
 
+ros::Subscriber subAttitude_;
+mavros::Attitude Attitude_;
+
 /*ros::Subscriber subFromReference_;
 guidance_node_amsl::Reference inputRef_;
 guidance_node_amsl::Reference target_;*/
@@ -1209,6 +1314,8 @@ uint16_t counter_;
 uint16_t counter_print;
 uint16_t seq_number;
 int Dh_TO;
+int takeoff_type;  //type of take-off: 0-->ground - 1-->hand - 2-->rover?
+int hand_deployment_state;
 };
 
 int main(int argc, char **argv)

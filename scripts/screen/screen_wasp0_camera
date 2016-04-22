@@ -30,11 +30,11 @@ stuff "sleep 10; roslaunch uav_sim wasp_simulator_camera.launch\015"
 
 screen 6
 title "tst0"
-stuff "sleep 10; roslaunch lrs_sherpa tstwasp0.launch\015"
+stuff "sleep 10; roslaunch lrs_sherpa tstwasp0.launch --screen\015"
 
 screen 7
 title "Delegation"
-stuff "sleep 10; roslaunch lrs_sherpa delegation.launch __ns:=/wasp0\015"
+stuff "sleep 10; roslaunch lrs_sherpa delegation.launch __ns:=/wasp0 --screen\015"
 
 screen 10
 title "roszyre"
@@ -43,3 +43,7 @@ stuff "sleep 10; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp0 _forward_unit_info
 screen 11
 title "proxy"
 stuff "rosrun lrs_sherpa_proxy proxy __ns:=/wasp0 _long_name:=http://unibo.it/wasp0\015"
+
+screen 13
+title "QoS Sensors-Autopilot"
+stuff "sleep 10; rosrun qos_sensors_autopilot qos_node\015"
