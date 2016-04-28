@@ -40,6 +40,7 @@
 #define GROUND_TAKEOFF 0
 #define HAND_TAKEOFF 1
 
+#define str(s) #s //stringify with preprocessor
 
 double PI = 3.1416; // pi
 double eps_LAND = 10000.0; // distance to the target LAND position in millimeter
@@ -116,8 +117,7 @@ public:
 		hand_deployment_state = HAND_TAKEOFF_WAITING_FIRST;
 	}
 
-	void readDistanceMessage(const reference::Distance::ConstPtr& msg)
-	{
+	void readDistanceMessage(const reference::Distance::ConstPtr& msg){
 		inputDist_.error_pos=msg->error_pos;
 		inputDist_.error_ang=msg->error_ang;
 		inputDist_.error_alt=msg->error_alt;
@@ -125,8 +125,7 @@ public:
 		inputDist_.seq=msg->seq;
 	}
 	
-	void readSafetyMessage(const mavros::Safety::ConstPtr& msg)
-	{
+	void readSafetyMessage(const mavros::Safety::ConstPtr& msg){
 		Safety_.safety = msg->safety;
 		if (Safety_.safety && !SAFETY_ON){
 			SAFETY_ON = true;
@@ -139,8 +138,7 @@ public:
 		}
 	}
 
-	void readSysStatusMessage(const mms_msgs::Sys_status::ConstPtr& msg)
-	{
+	void readSysStatusMessage(const mms_msgs::Sys_status::ConstPtr& msg){
 		inputSysStatus_.armed=msg->armed;
 		inputSysStatus_.voltage_battery=msg->voltage_battery;
 		//ROS_INFO("Sys_status received");
@@ -163,8 +161,7 @@ public:
 		else GRID_ENDED = false;
 	}
 
-	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
-	{
+	void readSonarMessage(const mavros::Sonar::ConstPtr& msg){
 		// ROS_INFO("POSMIXER: SONAR_RECEIVED");
 		inputSonar_.distance = msg -> distance;
 	}
@@ -401,6 +398,15 @@ public:
 		CONTINUE = false;
 	}
 
+	void refuse_mission(const char *event){
+		set_events_false();
+		outputAckMission_.mission_item_reached = false;
+		outputAckMission_.seq = inputCmd_.seq;
+		outputAckMission_.mav_mission_accepted = false;
+		pubToAckMission_.publish(outputAckMission_);
+		ROS_INFO("MMS: MISSION_NOT_ACCEPTED: %s",event);
+	}
+
 	void MMS_Handle()
 	{
 		switch(currentState)
@@ -446,14 +452,24 @@ public:
 					break;
 				}
 				// Use these lines to introduce the mission_not_accepted for those commands which cannot be executed in this state
-				if (TAKEOFF || LAND || WAYPOINT)
-				{
-					set_events_false();
-					outputAckMission_.mission_item_reached = false;
-					outputAckMission_.seq = inputCmd_.seq;
-					outputAckMission_.mav_mission_accepted = false;
-					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+				if (TAKEOFF){
+					refuse_mission(str(TAKEOFF));
+					break;
+				}
+				if (LAND){
+					refuse_mission(str(LAND));
+					break;
+				}
+				if (WAYPOINT){
+					refuse_mission(str(WAYPOINT));
+					break;
+				}
+				if (GRID_EVENT){
+					refuse_mission(str(GRID_EVENT));
+					break;
+				}
+				if (LEASHING_START){
+					refuse_mission(str(LEASHING_START));
 					break;
 				}
 				break;
@@ -524,14 +540,20 @@ public:
 					break;
 				}
 				// Use these lines to introduce the mission_not_accepted for those commands which cannot be executed in this state
-				if (LAND || WAYPOINT)
-				{
-					set_events_false();
-					outputAckMission_.mission_item_reached = false;
-					outputAckMission_.seq = inputCmd_.seq;
-					outputAckMission_.mav_mission_accepted = false;
-					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED (LAND or WAYPOINT)");
+				if (TAKEOFF){
+					refuse_mission(str(TAKEOFF));
+					break;
+				}
+				if (WAYPOINT){
+					refuse_mission(str(WAYPOINT));
+					break;
+				}
+				if (GRID_EVENT){
+					refuse_mission(str(GRID_EVENT));
+					break;
+				}
+				if (LEASHING_START){
+					refuse_mission(str(LEASHING_START));
 					break;
 				}
 				break;
@@ -584,14 +606,20 @@ public:
 					ROS_INFO("MMS: ARMING FAILED");
 					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_DISARMED");
 				}
-				if (SET_HOME || WAYPOINT)
-				{
-					set_events_false();
-					outputAckMission_.mission_item_reached = false;
-					outputAckMission_.seq = inputCmd_.seq;
-					outputAckMission_.mav_mission_accepted = false;
-					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+				if (SET_HOME){
+					refuse_mission(str(SET_HOME));
+					break;
+				}
+				if (WAYPOINT){
+					refuse_mission(str(WAYPOINT));
+					break;
+				}
+				if (GRID_EVENT){
+					refuse_mission(str(GRID_EVENT));
+					break;
+				}
+				if (LEASHING_START){
+					refuse_mission(str(LEASHING_START));
 					break;
 				}
 				break;
@@ -626,14 +654,28 @@ public:
 					ROS_INFO("MMS: DISARMING FAILED");
 					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_ARMED");
 				}
-				if (TAKEOFF || LAND || SET_HOME || WAYPOINT)
-				{
-					set_events_false();
-					outputAckMission_.mission_item_reached = false;
-					outputAckMission_.seq = inputCmd_.seq;
-					outputAckMission_.mav_mission_accepted = false;
-					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+				if (SET_HOME){
+					refuse_mission(str(SET_HOME));
+					break;
+				}
+				if (TAKEOFF){
+					refuse_mission(str(TAKEOFF));
+					break;
+				}
+				if (LAND){
+					refuse_mission(str(LAND));
+					break;
+				}
+				if (WAYPOINT){
+					refuse_mission(str(WAYPOINT));
+					break;
+				}
+				if (GRID_EVENT){
+					refuse_mission(str(GRID_EVENT));
+					break;
+				}
+				if (LEASHING_START){
+					refuse_mission(str(LEASHING_START));
 					break;
 				}
 				break;
@@ -682,15 +724,20 @@ public:
 					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_TAKEOFF");//READY_TO_TAKEOFF");
 					break;
 				}
-
-				if (SET_HOME || WAYPOINT)
-				{
-					set_events_false();
-					outputAckMission_.mission_item_reached = false;
-					outputAckMission_.seq = inputCmd_.seq;
-					outputAckMission_.mav_mission_accepted = false;
-					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+				if (SET_HOME){
+					refuse_mission(str(SET_HOME));
+					break;
+				}
+				if (WAYPOINT){
+					refuse_mission(str(WAYPOINT));
+					break;
+				}
+				if (GRID_EVENT){
+					refuse_mission(str(GRID_EVENT));
+					break;
+				}
+				if (LEASHING_START){
+					refuse_mission(str(LEASHING_START));
 					break;
 				}
 				break;
@@ -726,7 +773,7 @@ public:
 					break;
 				}
 
-				if (SET_HOME || WAYPOINT || GRID_EVENT)
+				if (SET_HOME || WAYPOINT || GRID_EVENT || LEASHING_START)
 				{
 					set_events_false();
 					outputAckMission_.mission_item_reached = false;
@@ -825,7 +872,7 @@ public:
 					}
 				}
 				
-				if (TAKEOFF || SET_HOME || WAYPOINT)
+				if (TAKEOFF || SET_HOME || WAYPOINT  || GRID_EVENT || LEASHING_START)
 				{
 					set_events_false();
 					outputAckMission_.mission_item_reached = false;
@@ -928,6 +975,7 @@ public:
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = LEASHING");
+					break;
 				}
 				break;
 			
@@ -977,6 +1025,21 @@ public:
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = PERFORMING_GO_TO");//READY_TO_GO");
 
+					break;
+				}
+				if (LEASHING_START){
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED (LEASHING)");
+
+					currentState = LEASHING;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = LEASHING");
 					break;
 				}
 				if (GRID_ENDED){
@@ -1086,37 +1149,34 @@ public:
 						// break;
 					}
 				}
-						if (TAKEOFF || SET_HOME)
-						{
-							set_events_false();
-							outputAckMission_.mission_item_reached = false;
-							outputAckMission_.seq = inputCmd_.seq;
-							outputAckMission_.mav_mission_accepted = false;
-							pubToAckMission_.publish(outputAckMission_);
-							ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
-							break;
-						}
+				if (TAKEOFF || SET_HOME)
+				{
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+					break;
+				}
 				break;
 
 			case PERFORMING_LANDING:
 
 				set_events_false();  // TODO automatic disarming (eliminate)
 
-				//if (inputDist_.command == 21  && seq_number == inputDist_.seq)
-				//{
-					ROS_INFO_ONCE("MMS: REACHING THE LANDING TARGET");
-					/*if (inputDist_.error_alt > eps_LAND)
-					{
-						set_events_false();
-						LAND = true;
+				ROS_INFO_ONCE("MMS: REACHING THE LANDING TARGET");
 
-						currentState = ON_GROUND_ARMED;
-						outputMmsStatus_.mms_state = currentState;
-						outputMmsStatus_.target_ref_frame = FRAME_BARO;
-						pubToMmsStatus_.publish(outputMmsStatus_);
-						ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_ARMED");
-					}*/
-				//}
+				if (TAKEOFF || SET_HOME || WAYPOINT  || GRID_EVENT || LEASHING_START){
+					set_events_false();
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+					break;
+				}
+
 				break;
 				
 			case MANUAL_FLIGHT:
@@ -1214,8 +1274,6 @@ protected:
 ros::NodeHandle n_;
 
 // Subscribers
-/*ros::Subscriber subFromPosition_;
-guidance_node_amsl::Position_nav inputPos_;*/
 
 ros::Subscriber subFromCmd_;
 mms_msgs::Cmd inputCmd_;
@@ -1244,10 +1302,6 @@ qos_sensors_autopilot::Qos_sensors Qos_sensors_;
 ros::Subscriber subAttitude_;
 mavros::Attitude Attitude_;
 
-/*ros::Subscriber subFromReference_;
-guidance_node_amsl::Reference inputRef_;
-guidance_node_amsl::Reference target_;*/
-
 ros::Subscriber subFromDistance_;
 reference::Distance inputDist_;
 
@@ -1259,9 +1313,6 @@ ros::Publisher pubCmd_;
 
 ros::Publisher pubToArm_;
 mms_msgs::Arm outputArm_;
-
-//ros::Publisher pubToAckCmd_;
-//mms_msgs::Ack_cmd outputAckCmd_;
 
 ros::Publisher pubToMmsStatus_;
 mms_msgs::MMS_status outputMmsStatus_;
