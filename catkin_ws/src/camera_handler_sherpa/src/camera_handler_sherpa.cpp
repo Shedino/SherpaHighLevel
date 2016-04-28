@@ -21,7 +21,6 @@ static bool taking_photos = false;
 static char dest_video[50];
 static int video_count = 0; 
 static int photo_taken_counter = 0;
-static int FPS = 8;         //TODO not hardcoded
 static int image_count = 0;
 cv::VideoWriter video;
 ros::Publisher camera_pub;
@@ -47,7 +46,8 @@ class CameraHandler
 	public:
 	CameraHandler(): it_(nh_){
 		// Subscribe to input video feed and commands
-		image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &CameraHandler::imageCb, this);
+		//image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &CameraHandler::imageCb, this);
+		image_sub_ = it_.subscribe("/image_raw", 1, &CameraHandler::imageCb, this);
 		command_sub = nh_.subscribe("/sent_command", 10, &CameraHandler::command_handler, this);
 		geopose_sub = nh_.subscribe("/global_position_int", 10, &CameraHandler::geopose_handler, this);
 
@@ -55,6 +55,14 @@ class CameraHandler
 		camera_pub = nh_.advertise<camera_handler_sherpa::Camera>("/camera_published", 20);
 		//ack_pub = nh_.advertise<mms_msgs::Ack_cmd>("/ack_cmd", 10);
 		mission_pub = nh_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
+
+		//Param of camera
+		if (!nh_.getParam("/uvc_camera/fps", FPS)){
+			FPS = 15;  //standard
+			ROS_INFO("Set standard FPS --> 15");
+		} else {
+			ROS_INFO("Set FPS --> %d", FPS);
+		}
 
 		//cv::namedWindow(OPENCV_WINDOW);
 		_delay_seconds = 0;            
@@ -187,17 +195,20 @@ class CameraHandler
 	void imageCb(const sensor_msgs::ImageConstPtr& msg){
 		//ROS_INFO("Received image");
 		cv_bridge::CvImagePtr cv_ptr;
-		try
-		{
-			cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-		}
-		catch (cv_bridge::Exception& e)
-		{
-			ROS_ERROR("cv_bridge exception: %s", e.what());
-			return;
-		}
-		_counter_frames++;  
+		_counter_frames++;
 		if (_counter_frames >= 10000) _counter_frames = 0;		//check for overflow, counter reset
+
+		if ((taking_photos && _counter_frames>=_compare_frames) || take_video){
+			try
+			{
+				cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+			}
+			catch (cv_bridge::Exception& e)
+			{
+				ROS_ERROR("cv_bridge exception: %s", e.what());
+				return;
+			}
+		}
 		
 		if (taking_photos && _counter_frames>=_compare_frames){           //we are taking pictures and we passed the delay (rounded)
 			_counter_frames = 0;
@@ -241,6 +252,7 @@ class CameraHandler
 	int _compare_frames;
 	double _lat;
 	double _lon;
+	int FPS;
 };
 
 int main(int argc, char** argv)
