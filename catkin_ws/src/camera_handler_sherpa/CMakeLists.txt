@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_transport
   roscpp
+  mavros
   sensor_msgs
   std_msgs
   message_generation
