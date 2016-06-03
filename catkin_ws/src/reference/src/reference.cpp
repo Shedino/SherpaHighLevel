@@ -15,6 +15,7 @@
 #include "reference/LeashingCommand.h"   //leashing
 #include "reference/LeashingStatus.h"    //leashing
 #include "geographic_msgs/GeoPose.h"	 //leashing
+#include "reference/DirectVelocityCommand.h"    //Direct Velocity
 #include <wgs84_ned_lib/wgs84_ned_lib.h>       
 
 
@@ -72,6 +73,7 @@ public:
 		subFromFrame_ = n_.subscribe("/ref_system", 10, &ReferenceNodeClass::readFrameMessage,this);
 		subLeashingTargetPosition_ = n_.subscribe("/leashing_target_position", 10, &ReferenceNodeClass::readLeashingTarget,this);
 		subLeashingCommand_ = n_.subscribe("/leashing_command", 10, &ReferenceNodeClass::readLeashingCommand,this);
+		subDirectVelocityCommand_ = n_.subscribe("/direct_velocity_command", 10, &ReferenceNodeClass::readDirectVelocityCommand,this);
 		
 		// publishers
 		pubToReference_ = n_.advertise<guidance_node_amsl::Reference>("/reference",10);
@@ -168,6 +170,18 @@ public:
 		leashing_status_.yaw = 0;
 		leashing_status_.failure = 0;
 		//leashing_status_.yawpoint = ;   //TODO initialize better
+
+		//VELOCITY COMMAND
+		direct_velocity_command.vx = 0;
+		direct_velocity_command.vy = 0;
+		direct_velocity_command.vz = 0;
+		direct_velocity_command.vyaw = 0;
+		counter_missed_direct_velocity_command = 0;
+		received_direct_velocity_command.vx = 0; //the latest value received to be low-pass filtered with actual value
+		received_direct_velocity_command.vy = 0;
+		received_direct_velocity_command.vz = 0;
+		received_direct_velocity_command.vyaw = 0;
+		alpha_lp_direct_velocity_command = 0.2;		//low pass filter coefficient
 	}
 
 	class pos_NE_ALT{
@@ -381,6 +395,16 @@ public:
 		}
 	}
 	
+	void readDirectVelocityCommand(const reference::DirectVelocityCommand::ConstPtr& msg){
+		if(currentState == PAUSED){
+			counter_missed_direct_velocity_command = 0;		//reset the counter
+			received_direct_velocity_command.vx = msg->north_velocity_command;
+			received_direct_velocity_command.vy = msg->east_velocity_command;
+			received_direct_velocity_command.vz = msg->down_velocity_command;
+			received_direct_velocity_command.vyaw = msg->yaw_velocity_command;
+		}
+	}
+
 	/*void readLeashingStatus(const reference::LeashingStatus::ConstPtr& msg){
 		if (currentState == LEASHING) leashing_status_ = *msg;
 	}*/
@@ -548,6 +572,21 @@ public:
 	}
 
 	void Reference_Handle(){
+		if (currentState == PAUSED){		//handle
+			counter_missed_direct_velocity_command++;
+			if (counter_missed_direct_velocity_command > 5){	//put at zero commands if lost too many commands messages
+				received_direct_velocity_command.vx = 0;
+				received_direct_velocity_command.vy = 0;
+				received_direct_velocity_command.vz = 0;
+				received_direct_velocity_command.vyaw = 0;
+			}
+
+			direct_velocity_command.vx = (1-alpha_lp_direct_velocity_command)*received_direct_velocity_command.vx + alpha_lp_direct_velocity_command*direct_velocity_command.vx;	//LP filter
+			direct_velocity_command.vy = (1-alpha_lp_direct_velocity_command)*received_direct_velocity_command.vy + alpha_lp_direct_velocity_command*direct_velocity_command.vy;	//LP filter
+			direct_velocity_command.vz = (1-alpha_lp_direct_velocity_command)*received_direct_velocity_command.vz + alpha_lp_direct_velocity_command*direct_velocity_command.vz;	//LP filter
+			direct_velocity_command.vyaw = (1-alpha_lp_direct_velocity_command)*received_direct_velocity_command.vyaw + alpha_lp_direct_velocity_command*direct_velocity_command.vyaw;	//LP filter
+		}
+
 		if (actual_frame != oldFrame_.actual_ref_frame)
 		{
 			if (actual_frame == 11 && oldFrame_.actual_ref_frame == 6){   //switched from baro to sonar
@@ -948,8 +987,16 @@ public:
 						ROS_INFO("REF: PAUSED");
 						new_state = false;
 					}
-					//TODO manual velocity control here
-					set_current_position_as_ref();
+					//TODO finish manual velocity control here
+					//TODO create the direct_velocity_command from a received topic
+					position_increments.dx = direct_velocity_command.vx /rate;
+					reference_speed.vx = direct_velocity_command.vx;
+					position_increments.dy = direct_velocity_command.vy /rate;
+					reference_speed.vy = direct_velocity_command.vy;
+					position_increments.dalt = -direct_velocity_command.vz /rate;
+					reference_speed.vz = direct_velocity_command.vz;
+					position_increments.dyaw = direct_velocity_command.vyaw /rate;
+					reference_speed.vyaw = direct_velocity_command.vyaw;
 					break;
 		}
 		//-----switch end-->calculate new targets ned-----
@@ -1009,6 +1056,7 @@ protected:
 	ros::Subscriber subFromGlobPosInt_;
 	ros::Subscriber subLeashingTargetPosition_;
 	ros::Subscriber subLeashingCommand_;
+	ros::Subscriber subDirectVelocityCommand_;
 
 	ros::Publisher pubToReference_;
 	ros::Publisher pubGridAck_;
@@ -1106,6 +1154,12 @@ protected:
 	leashing_target_ned leashing_target_ned_;
 	leashing_offset_ned leashing_offset_ned_;
 	double yaw_leashing;
+
+	//VELOCITY CONTROL
+	speed_ned direct_velocity_command;		//velocity commands (x,y,z,yaw) for direct velocity control	//TODO fill them from topic
+	speed_ned received_direct_velocity_command; //the latest value received to be low-pass filtered with actual value
+	int counter_missed_direct_velocity_command;
+	float alpha_lp_direct_velocity_command;
 
 private:
 	int Dh_TO;

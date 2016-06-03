@@ -53,6 +53,7 @@ find_package(catkin REQUIRED COMPONENTS
    Grid_info.msg
    LeashingCommand.msg
    LeashingStatus.msg
+   DirectVelocityCommand.msg
  )
 
 ## Generate services in the 'srv' folder
