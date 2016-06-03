@@ -46,8 +46,8 @@ class CameraHandler
 	public:
 	CameraHandler(): it_(nh_){
 		// Subscribe to input video feed and commands
-		//image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &CameraHandler::imageCb, this);
-		image_sub_ = it_.subscribe("/image_raw", 1, &CameraHandler::imageCb, this);
+		image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &CameraHandler::imageCb, this);
+		//image_sub_ = it_.subscribe("/image_raw", 1, &CameraHandler::imageCb, this);
 		command_sub = nh_.subscribe("/sent_command", 10, &CameraHandler::command_handler, this);
 		geopose_sub = nh_.subscribe("/global_position_int", 10, &CameraHandler::geopose_handler, this);
 
@@ -57,7 +57,7 @@ class CameraHandler
 		mission_pub = nh_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
 
 		//Param of camera
-		if (!nh_.getParam("/uvc_camera/fps", FPS)){
+		if (!nh_.getParam("/usb_cam/framerate", FPS)){
 			FPS = 15;  //standard
 			ROS_INFO("Set standard FPS --> 15");
 		} else {
