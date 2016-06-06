@@ -472,6 +472,10 @@ public:
 					refuse_mission(str(LEASHING_START));
 					break;
 				}
+				if (PAUSE){
+					refuse_mission(str(PAUSE));
+					break;
+				}
 				break;
 
 			case SETTING_HOME:
@@ -556,6 +560,10 @@ public:
 					refuse_mission(str(LEASHING_START));
 					break;
 				}
+				if (PAUSE){
+					refuse_mission(str(PAUSE));
+					break;
+				}
 				break;
 
 			case ARMING:
@@ -622,6 +630,10 @@ public:
 					refuse_mission(str(LEASHING_START));
 					break;
 				}
+				if (PAUSE){
+					refuse_mission(str(PAUSE));
+					break;
+				}
 				break;
 
 			case DISARMING:  // TODO automatic disarming
@@ -676,6 +688,10 @@ public:
 				}
 				if (LEASHING_START){
 					refuse_mission(str(LEASHING_START));
+					break;
+				}
+				if (PAUSE){
+					refuse_mission(str(PAUSE));
 					break;
 				}
 				break;
@@ -740,6 +756,10 @@ public:
 					refuse_mission(str(LEASHING_START));
 					break;
 				}
+				if (PAUSE){
+					refuse_mission(str(PAUSE));
+					break;
+				}
 				break;
 
 			case HAND_TAKEOFF_WAITING:
@@ -782,7 +802,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED (SET_HOME or WAYPOINT or GRID)");
 					break;
-				}
+				}	//TODO separate events and use refuse_mission
 
 				switch (hand_deployment_state){
 					case HAND_TAKEOFF_WAITING_FIRST:
@@ -881,7 +901,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
 					break;
-				}
+				} //TODO separate events and use refuse_mission
 				break;
 
 			case IN_FLIGHT:
@@ -977,6 +997,20 @@ public:
 					ROS_INFO("MMS->REF: CURRENT_STATE = LEASHING");
 					break;
 				}
+				if (PAUSE){
+					set_events_false();
+					previousState = currentState;   //save last state in previousState
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+					currentState = PAUSED;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PAUSED");
+				}
 				break;
 			
 
@@ -1067,6 +1101,11 @@ public:
 				if (PAUSE){
 					set_events_false();
 					previousState = currentState;   //save last state in previousState
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 					currentState = PAUSED;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
@@ -1159,6 +1198,20 @@ public:
 					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
 					break;
 				}
+				if (PAUSE){
+					set_events_false();
+					previousState = currentState;   //save last state in previousState
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+					currentState = PAUSED;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PAUSED");
+				}
 				break;
 
 			case PERFORMING_LANDING:
@@ -1175,7 +1228,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
 					break;
-				}
+				} //TODO separate events and use refuse_mission
 
 				break;
 				
@@ -1249,6 +1302,20 @@ public:
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = IN_FLIGHT");
+				}
+				if (PAUSE){
+					set_events_false();
+					previousState = currentState;   //save last state in previousState
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+					currentState = PAUSED;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = PAUSED");
 				}
 				break;
 		}
