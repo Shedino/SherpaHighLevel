@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   mavros
   mms_msgs
   wgs84_ned_lib
+  swm_interface
 )
 
 ## System dependencies are found with CMake's conventions

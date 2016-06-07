@@ -9,6 +9,7 @@ from geographic_msgs.msg import GeoPose
 from geographic_msgs.msg import GeoPoint
 from geometry_msgs.msg import Quaternion
 from camera_handler_sherpa.msg import Camera
+from swm_interface.srv import *
 
 agentName = "0"
 counter = 0 #runs at 10hz
@@ -16,6 +17,18 @@ cameraTopic_ = Camera()
 geopoint_ = GeoPoint(0,0,0)
 quaternion_ = Quaternion(0,0,0,1)
 geopose_ = GeoPose(geopoint_,quaternion_)
+
+def handle_query_swm(req):
+    #TODO real query to SWM
+    if req.query == "geopose_wasp":
+      geopose = swm.getGeopose("wasp"+"_"+req.param1)
+      if not geopose:
+        return QueryResponse("false",0,0,0,0,0,0,0)
+      else
+        return QueryResponse("true",geopose.position.latitude,geopose.position.longitude,geopose.position.altitude,geopose.orientation.x,geopose.orientation.y,geopose.orientation.z,geopose.orientation.w)
+        
+    
+    return QueryResponse("true",req.param1,req.param2,req.param3,req.param4,req.param5,req.param6,req.param7)
 
 def updateGeopose(data):
     global geopoint_
@@ -34,6 +47,8 @@ def updateCamera(data):
     
 if __name__ == '__main__':
     try:
+    	#Start query service
+        s = rospy.Service('query_swm', Query, handle_query_swm)
         rospy.init_node('dcm_com')
         print "[dcm_com:] initialising %s data on DCM database ..." % (agentName)
         swm.run('set wasp %s geopose 0 0 0 0 0 0 1' % (agentName))

@@ -14,6 +14,7 @@
 #include "qos_sensors_autopilot/Qos_sensors.h"
 #include <wgs84_ned_lib/wgs84_ned_lib.h> 
 #include <tf/transform_datatypes.h>
+#include "swm_interface/Query.h"
 
 #include <math.h>
 
@@ -65,6 +66,9 @@ public:
 		pubGeopose_ = n_.advertise<geographic_msgs::GeoPose>("geopose",10);
 		pubQosSensors_ = n_.advertise<qos_sensors_autopilot::Qos_sensors>("/qos_sensors",2);
 	
+		// Services
+		client_query = n_.serviceClient<swm_interface::Query>("query_swm");
+
 		rate = 10;
 		counter_print = 0;
 		
@@ -142,6 +146,27 @@ public:
 	void loop_handle()
 	{
 		counter_print++;
+
+		/*if (counter_print>20){
+			std::string query = "query_random";
+			srv_query.request.query = query;
+			srv_query.request.param1 = 1.0;
+			srv_query.request.param2 = 2.0;
+			srv_query.request.param3 = 3.0;
+			srv_query.request.param4 = 4.0;
+			srv_query.request.param5 = 5.0;
+			srv_query.request.param6 = 6.1;
+			srv_query.request.param7 = 7.0;
+			if (client_query.call(srv_query))
+			{
+				ROS_INFO("Query test: %s - %f - %f", srv_query.response.query_answ.c_str(), srv_query.response.answ1, srv_query.response.answ2);
+			}
+			else
+			{
+				ROS_ERROR("Failed to call service query_swm");
+			}
+			counter_print = 0;
+		}*/
 
 		switch(inputMmsStatus_.mms_state)
 		{
@@ -354,6 +379,8 @@ ros::Publisher pubToSonar_;
 ros::Publisher pubGeopose_;
 ros::Publisher pubQosSensors_;
 
+ros::ServiceClient client_query;
+swm_interface::Query srv_query;
 
 guidance_node_amsl::Directive directive_;
 guidance_node_amsl::Position_nav inputPos_;
