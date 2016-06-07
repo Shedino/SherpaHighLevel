@@ -7,16 +7,16 @@ LIST OF TODOS FOR HIGH-LEVEL-SHERPA
 5) QoS sensors (Michele)                --------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED WITH REAL SENSORS
 6) Integration Delegation (Michele)    ---------------------------------  90% DONE  ---- TESTED SOFTWARE  ----  TESTED IN FLIGHT
 7) Uav_sim (All)                       ---------------------------------  DONE  ----  TO MAKE BETTER
-8) Forest Flight (Michele)
+8) Forest Flight (Michele)           -----------------------------------  WIP   ----
 9) MANUAL_FLIGHT and rollback (Michele)---------------------------------  DONE  ----  TESTED SOFTWARE  ----
-10) DCM integration       ----------------------------------------------  DONE GEOPOSE/PHOTO PUBLISHER  ----  TESTED
-11) Global Planner
+10) SWM integration       ----------------------------------------------  DONE GEOPOSE/PHOTO PUBLISHER  ----  TESTED
+11) Global Planner   ---------------------------------------------------  WIP ----
 12) Local Obstacle Avoidance for ARTVA
-13) Sonar for Ground Navigation ---------------------------------------- DONE ---- TO BE TESTED
-14) ARTVA data + Sonar (Michele)
+13) Sonar for Ground Navigation ---------------------------------------- DONE ---- TESTED
+14) ARTVA data + Sonar (Michele)  -------------------------------------- DONE ---- TODO MORE TEST
 15) Hand Deployment (Michele) ------------------------------------------ DONE ---- TESTED SOFTWARE AND SEMI HARDWARE
 16) Rover Landing Deck Land, Visual Servoing (Michele)
 17) Fix Workspaces mess (Michele)
 18) Relative altitude + Global altitude from DEM (Michele)
-19) Reduce usb_cam CPU overload (Michele) ------------------------------ DONE ---- A LITTLE REDUCED
-20) Velocity control commands modality  (Michele)
+19) Reduce usb_cam CPU overload (Michele) ------------------------------ DONE ---- WAY BETTER WITH OPTIMIZATION IN CMAKE
+20) Velocity control commands modality  (Michele)  --------------------- DONE ----  TODO TEST
