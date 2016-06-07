@@ -1,8 +1,0 @@
-prefix=/home/odroid/catkin_ws/install
-
-Name: mjpeg_server
-Description: Description of mjpeg_server
-Version: 1.1.2
-Cflags: 
-Libs: -L/home/odroid/catkin_ws/install/lib 
-Requires: 
