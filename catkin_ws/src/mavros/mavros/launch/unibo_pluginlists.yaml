@@ -1,11 +1,26 @@
-﻿plugin_blacklist:
+plugin_blacklist:
 # common
+- 3dr_radio
 - actuator_control
+- command
+- dummy
 - ftp
+- global_position
+- gps
+- imu_pub
 - local_position
+- param
+- rc_io
 - safety_area
+- setpoint_accel
 - setpoint_attitude
+- setpoint_position
+- setpoint_velocity
+- sys_status
+- sys_time
 - unibo_controller
+- vfr_hud
+- waypoint
 #- unibo_controller_amsl
 - unibo_GCS.cpp
 # extras
