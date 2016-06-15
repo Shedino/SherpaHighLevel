@@ -1,0 +1,17 @@
+string query
+float64 param1
+float64 param2
+float64 param3
+float64 param4
+float64 param5
+float64 param6
+float64 param7
+---
+string query_answ
+float64 answ1
+float64 answ2
+float64 answ3
+float64 answ4
+float64 answ5
+float64 answ6
+float64 answ7
