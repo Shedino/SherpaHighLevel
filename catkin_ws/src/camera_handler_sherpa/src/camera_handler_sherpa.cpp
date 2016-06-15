@@ -13,6 +13,8 @@
 #include <mms_msgs/Cmd.h>
 #include <mms_msgs/Ack_mission.h>
 
+#include <geographic_msgs/GeoPose.h>
+
 //#include <exiv2/exiv2.hpp>
 
 //static const std::string OPENCV_WINDOW = "Image window";
@@ -49,7 +51,7 @@ class CameraHandler
 		image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &CameraHandler::imageCb, this);
 		//image_sub_ = it_.subscribe("/image_raw", 1, &CameraHandler::imageCb, this);
 		command_sub = nh_.subscribe("/sent_command", 10, &CameraHandler::command_handler, this);
-		geopose_sub = nh_.subscribe("/global_position_int", 10, &CameraHandler::geopose_handler, this);
+		geopose_sub = nh_.subscribe("geopose", 10, &CameraHandler::geopose_handler, this);
 
 		//image_pub_ = it_.advertise("/camera_handler/output_video", 1);      //only if we have to modify images and publish again
 		camera_pub = nh_.advertise<camera_handler_sherpa::Camera>("/camera_published", 20);
@@ -72,8 +74,9 @@ class CameraHandler
 
 	void geopose_handler(const mavros::Global_position_int::ConstPtr& msg)
 	{
-		_lat = msg->lat;
-		_lon = msg->lon;
+		_geopose = *msg;
+		_lat = msg->position.latitude;
+		_lon = msg->position.longitude;
 	}
   
 	void command_handler(const mms_msgs::Cmd::ConstPtr& msg){
@@ -176,6 +179,7 @@ class CameraHandler
 		camera_topic.taken_video = true;
 		camera_topic.N_video_taken = video_count;
 		camera_topic.path_video = dest_video;
+		camera_topic.geopose = _geopose;
 		camera_pub.publish(camera_topic);    //publish that a video is taken
 		video_count++;
 		//remove("C:\\Temp\\somefile.txt");
@@ -223,6 +227,7 @@ class CameraHandler
 			camera_topic.taken_video = false;
 			camera_topic.N_photo_taken = image_count;
 			camera_topic.path_photo = dest_img;
+			camera_topi.geopose = _geopose;
 			camera_pub.publish(camera_topic);
 			image_count++;
 		
@@ -253,6 +258,7 @@ class CameraHandler
 	double _lat;
 	double _lon;
 	int FPS;
+	geographic_msgs::GeoPose _geopose;
 };
 
 int main(int argc, char** argv)

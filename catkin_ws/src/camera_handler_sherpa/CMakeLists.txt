@@ -73,6 +73,7 @@ generate_messages(
   DEPENDENCIES
   sensor_msgs 
   std_msgs
+  geographic_msgs
 )
 
 ###################################

@@ -58,11 +58,10 @@ public:
 		sys_status_pub = nodeHandle.advertise<mms_msgs::Sys_status>("/system_status", 10);
 		distance_sensor_pub = nodeHandle.advertise<mavros::Sonar>("/sonar", 10);
 		attitude_pub = nodeHandle.advertise<mavros::Attitude>("/attitude", 10);
-		ROS_INFO("reading ARTVA message from Arduino!");
 		artva_pub = nodeHandle.advertise<mavros::ArtvaRead>("/artva_read", 10);
 		safety_pub = nodeHandle.advertise<mavros::Safety>("/safety_odroid", 10);
 		imu_pub = nodeHandle.advertise<mavros::Raw_imu>("/imu", 10);
-		pubGeopose_ = nodeHandle.advertise<geographic_msgs::GeoPose>("/geopose",10);
+		pubGeopose_ = nodeHandle.advertise<geographic_msgs::GeoPose>("geopose",10);
 
 
 		nodeHandle.param("guidance_node_amsl/param/sat_xy", v_xy_max, 3.0);
