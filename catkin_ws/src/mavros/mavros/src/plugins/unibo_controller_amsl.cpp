@@ -49,18 +49,18 @@ public:
 		uas = &uas_;
 
 		/* --- SUBSCRIPTIONS --- */
-		directive_sub = nodeHandle.subscribe("/directive", 10, &UniboControllerAMSLPlugin::directive_cb, this);
-		arm_sub = nodeHandle.subscribe("/arm", 10, &UniboControllerAMSLPlugin::arming, this);
+		directive_sub = nodeHandle.subscribe("directive", 10, &UniboControllerAMSLPlugin::directive_cb, this);
+		arm_sub = nodeHandle.subscribe("arm", 10, &UniboControllerAMSLPlugin::arming, this);
 
 		/* --- PUBLISHERS --- */
-		position_pub = nodeHandle.advertise<mavros::Global_position_int>("/global_position_int", 10);               //TODO this should become a mavros topic and removed from amsl and splitted from attitude
+		position_pub = nodeHandle.advertise<mavros::Global_position_int>("global_position_int", 10);               //TODO this should become a mavros topic and removed from amsl and splitted from attitude
 		arm_ack_pub = nodeHandle.advertise<mms_msgs::Ack_arm>("acknowledge_arming", 10);
-		sys_status_pub = nodeHandle.advertise<mms_msgs::Sys_status>("/system_status", 10);
-		distance_sensor_pub = nodeHandle.advertise<mavros::Sonar>("/sonar", 10);
-		attitude_pub = nodeHandle.advertise<mavros::Attitude>("/attitude", 10);
-		artva_pub = nodeHandle.advertise<mavros::ArtvaRead>("/artva_read", 10);
-		safety_pub = nodeHandle.advertise<mavros::Safety>("/safety_odroid", 10);
-		imu_pub = nodeHandle.advertise<mavros::Raw_imu>("/imu", 10);
+		sys_status_pub = nodeHandle.advertise<mms_msgs::Sys_status>("system_status", 10);
+		distance_sensor_pub = nodeHandle.advertise<mavros::Sonar>("sonar", 10);
+		attitude_pub = nodeHandle.advertise<mavros::Attitude>("attitude", 10);
+		artva_pub = nodeHandle.advertise<mavros::ArtvaRead>("artva_read", 10);
+		safety_pub = nodeHandle.advertise<mavros::Safety>("safety_odroid", 10);
+		imu_pub = nodeHandle.advertise<mavros::Raw_imu>("imu", 10);
 		pubGeopose_ = nodeHandle.advertise<geographic_msgs::GeoPose>("geopose",10);
 
 

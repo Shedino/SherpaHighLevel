@@ -17,16 +17,16 @@ public:
 		n_ = node;
 
 		//subscribers
-		subCamera_ = n_.subscribe("/usb_cam/image_raw", 1, &QosNodeClass::imageCb, this);
-		subSonar_ = n_.subscribe("/sonar", 5, &QosNodeClass::sonarCb, this);
-		subArtva_ = n_.subscribe("/artva_read", 5, &QosNodeClass::artvaCb, this);
+		subCamera_ = n_.subscribe("usb_cam/image_raw", 1, &QosNodeClass::imageCb, this);
+		subSonar_ = n_.subscribe("sonar", 5, &QosNodeClass::sonarCb, this);
+		subArtva_ = n_.subscribe("artva_read", 5, &QosNodeClass::artvaCb, this);
 		//subLaser_ = n_.subscribe("/laser", 10, &QosNodeClass::laserCb, this);      //TODO
-		subPosition_ = n_.subscribe("/global_position_int", 5, &QosNodeClass::positionCb, this);
-		subAttitude_ = n_.subscribe("/attitude", 5, &QosNodeClass::attitudeCb, this);
+		subPosition_ = n_.subscribe("global_position_int", 5, &QosNodeClass::positionCb, this);
+		subAttitude_ = n_.subscribe("attitude", 5, &QosNodeClass::attitudeCb, this);
 
 		// publishers
-		pubQosSensors_ = n_.advertise<qos_sensors_autopilot::Qos_sensors>("/qos_sensors",2);
-		pubQosAutopilot_ = n_.advertise<qos_sensors_autopilot::Qos_autopilot>("/qos_autopilot",2);
+		pubQosSensors_ = n_.advertise<qos_sensors_autopilot::Qos_sensors>("qos_sensors",2);
+		pubQosAutopilot_ = n_.advertise<qos_sensors_autopilot::Qos_autopilot>("qos_autopilot",2);
 		
 		//INIT
 		rate = 10;

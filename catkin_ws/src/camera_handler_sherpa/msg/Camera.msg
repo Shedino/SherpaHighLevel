@@ -17,5 +17,5 @@ string path_photo
 string path_video
 
 # geopose at the position of the photo or the final position of the video
-geopose geopose
+geographic_msgs/GeoPose geopose
 

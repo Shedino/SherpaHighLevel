@@ -35,15 +35,15 @@ public:
 		qos_sensors_.artva_present = false;
 		qos_sensors_.laser_present = false;
 		
-		ack_sub = nodeHandle.subscribe("/ack_cmd", 10, &UniboGCSPlugin::ack_cmd_callback, this);
-		ack_mission_sub = nodeHandle.subscribe("/ack_mission", 10, &UniboGCSPlugin::ack_mission_callback, this);
-		command_pub = nodeHandle.advertise<mms_msgs::Cmd>("/sent_command", 10);     //before command check
-		camera_pub = nodeHandle.advertise<camera_handler_sherpa::Camera>("/camera_trigger", 10);
-		position_sub= nodeHandle.subscribe("/position_nav", 10, &UniboGCSPlugin::position_callback, this);
-		status_sub = nodeHandle.subscribe("/system_status", 10, &UniboGCSPlugin::status_callback, this);
-		ArtvaRead_sub = nodeHandle.subscribe("/artva_read",10,&UniboGCSPlugin::artva_callback,this);
-		safety_sub = nodeHandle.subscribe("/safety_odroid", 10, &UniboGCSPlugin::safety_callback, this);
-		qos_sensors_sub = nodeHandle.subscribe("/qos_sensors", 10, &UniboGCSPlugin::qos_sensors_callback, this);
+		ack_sub = nodeHandle.subscribe("ack_cmd", 10, &UniboGCSPlugin::ack_cmd_callback, this);
+		ack_mission_sub = nodeHandle.subscribe("ack_mission", 10, &UniboGCSPlugin::ack_mission_callback, this);
+		command_pub = nodeHandle.advertise<mms_msgs::Cmd>("sent_command", 10);     //before command check
+		camera_pub = nodeHandle.advertise<camera_handler_sherpa::Camera>("camera_trigger", 10);
+		position_sub= nodeHandle.subscribe("position_nav", 10, &UniboGCSPlugin::position_callback, this);
+		status_sub = nodeHandle.subscribe("system_status", 10, &UniboGCSPlugin::status_callback, this);
+		ArtvaRead_sub = nodeHandle.subscribe("artva_read",10,&UniboGCSPlugin::artva_callback,this);
+		safety_sub = nodeHandle.subscribe("safety_odroid", 10, &UniboGCSPlugin::safety_callback, this);
+		qos_sensors_sub = nodeHandle.subscribe("qos_sensors", 10, &UniboGCSPlugin::qos_sensors_callback, this);
 
 		//ROS_INFO("ArtvaRead.msg subscribed here!");
 		//INITIALIZE ARTVA STUFF

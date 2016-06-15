@@ -14,11 +14,11 @@ public:
 		n_=node;
 
 		//subscribers
-		subFromSonar_ = n_.subscribe("/sonar", 10, &FrameNodeClass::readSonarMessage,this);
-		subFromMMSStatus_=n_.subscribe("/mms_status", 10, &FrameNodeClass::readMMSStatusMessage,this);
+		subFromSonar_ = n_.subscribe("sonar", 10, &FrameNodeClass::readSonarMessage,this);
+		subFromMMSStatus_=n_.subscribe("mms_status", 10, &FrameNodeClass::readMMSStatusMessage,this);
 
 		// publishers
-		pubToRefSystem_=n_.advertise<frame::Ref_system>("/ref_system", 10);
+		pubToRefSystem_=n_.advertise<frame::Ref_system>("ref_system", 10);
 
 		actual_frame = 6;
 		old_frame = 0;

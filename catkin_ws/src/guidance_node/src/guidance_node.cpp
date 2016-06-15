@@ -31,8 +31,8 @@ public:
 		node.param("guidance_node/param/gain_integralDown", param_[8],0.025);
 
 		//subscribers and publishers
-		subFromReference_=n_.subscribe("/reference",10, &GuidanceNodeClass::readReferenceMessage, this);
-		subFromPosition_=n_.subscribe("/position", 10, &GuidanceNodeClass::readPositionMessage,this);
+		subFromReference_=n_.subscribe("reference",10, &GuidanceNodeClass::readReferenceMessage, this);
+		subFromPosition_=n_.subscribe("position", 10, &GuidanceNodeClass::readPositionMessage,this);
 		pub_=n_.advertise<guidance_node::Directive>("/directive", 10);
 
 		//Initializing inputRef_

@@ -48,18 +48,18 @@ class CameraHandler
 	public:
 	CameraHandler(): it_(nh_){
 		// Subscribe to input video feed and commands
-		image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &CameraHandler::imageCb, this);
+		image_sub_ = it_.subscribe("usb_cam/image_raw", 1, &CameraHandler::imageCb, this);
 		//image_sub_ = it_.subscribe("/image_raw", 1, &CameraHandler::imageCb, this);
-		command_sub = nh_.subscribe("/sent_command", 10, &CameraHandler::command_handler, this);
+		command_sub = nh_.subscribe("sent_command", 10, &CameraHandler::command_handler, this);
 		geopose_sub = nh_.subscribe("geopose", 10, &CameraHandler::geopose_handler, this);
 
 		//image_pub_ = it_.advertise("/camera_handler/output_video", 1);      //only if we have to modify images and publish again
-		camera_pub = nh_.advertise<camera_handler_sherpa::Camera>("/camera_published", 20);
+		camera_pub = nh_.advertise<camera_handler_sherpa::Camera>("camera_published", 20);
 		//ack_pub = nh_.advertise<mms_msgs::Ack_cmd>("/ack_cmd", 10);
-		mission_pub = nh_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
+		mission_pub = nh_.advertise<mms_msgs::Ack_mission>("ack_mission", 10);
 
 		//Param of camera
-		if (!nh_.getParam("/usb_cam/framerate", FPS)){
+		if (!nh_.getParam("usb_cam/framerate", FPS)){
 			FPS = 15;  //standard
 			ROS_INFO("Set standard FPS --> 15");
 		} else {
@@ -72,7 +72,7 @@ class CameraHandler
 		_counter_frames = 0;              
 	}
 
-	void geopose_handler(const mavros::Global_position_int::ConstPtr& msg)
+	void geopose_handler(const geographic_msgs::GeoPose::ConstPtr& msg)
 	{
 		_geopose = *msg;
 		_lat = msg->position.latitude;
@@ -227,7 +227,7 @@ class CameraHandler
 			camera_topic.taken_video = false;
 			camera_topic.N_photo_taken = image_count;
 			camera_topic.path_photo = dest_img;
-			camera_topi.geopose = _geopose;
+			camera_topic.geopose = _geopose;
 			camera_pub.publish(camera_topic);
 			image_count++;
 		

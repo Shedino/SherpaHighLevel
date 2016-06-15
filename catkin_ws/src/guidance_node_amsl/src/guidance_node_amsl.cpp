@@ -40,12 +40,12 @@ public:
 		node.param("guidance_node_amsl/param/gain_integralDown", param_[8],0.025);
 
 		//subscribers and publishers
-		subFromReference_=n_.subscribe("/reference",10, &GuidanceNodeClass::readReferenceMessage, this);       //this shoud be published by reference_traj node based on flightmode
-		subFromPosition_=n_.subscribe("/position_nav", 10, &GuidanceNodeClass::readPositionMessage,this);      //this shoud be published by reference_traj node based on flightmode
+		subFromReference_=n_.subscribe("reference",10, &GuidanceNodeClass::readReferenceMessage, this);       //this shoud be published by reference_traj node based on flightmode
+		subFromPosition_=n_.subscribe("position_nav", 10, &GuidanceNodeClass::readPositionMessage,this);      //this shoud be published by reference_traj node based on flightmode
 		pub_=n_.advertise<guidance_node_amsl::Directive>("/directive", 10);
-		safety_sub = n_.subscribe("/safety_odroid",10, &GuidanceNodeClass::handle_safety, this);
-		attitude_sub = n_.subscribe("/attitude",10, &GuidanceNodeClass::handle_attitude, this);
-		mms_status_sub = n_.subscribe("/mms_status",10, &GuidanceNodeClass::handle_mms_status, this);
+		safety_sub = n_.subscribe("safety_odroid",10, &GuidanceNodeClass::handle_safety, this);
+		attitude_sub = n_.subscribe("attitude",10, &GuidanceNodeClass::handle_attitude, this);
+		mms_status_sub = n_.subscribe("mms_status",10, &GuidanceNodeClass::handle_mms_status, this);
 
 		//Initializing inputRef_
 		node.param<int>("guidance_node_amsl/ref/latitude_ref", inputRef_.Latitude, 0);

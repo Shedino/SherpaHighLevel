@@ -57,22 +57,22 @@ public:
 		n_=node;
 
 		//subscribers
-		subFromCmd_=n_.subscribe("/sent_command", 10, &MmsNodeClass::readCmdMessage,this); //subscribe to "sent_command" to exclude the "cmd_verifier" node
-		subFromSonar_ = n_.subscribe("/sonar", 10, &MmsNodeClass::readSonarMessage,this);
-		subFromSysStatus_=n_.subscribe("/system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
-		subFromDistance_=n_.subscribe("/distance", 10, &MmsNodeClass::readDistanceMessage,this);
-		subFromGridAck_ = n_.subscribe("/grid_ack", 10, &MmsNodeClass::readGridAckMessage,this);
-		subSafety_ = n_.subscribe("/safety_odroid", 2, &MmsNodeClass::readSafetyMessage,this);
-		subLeashingStatus_ = n_.subscribe("/leashing_status", 10, &MmsNodeClass::readLeashingStatusMessage,this);
-		subQos_sensors_ = n_.subscribe("/qos_sensors", 10, &MmsNodeClass::readQosSensorsMessage,this);
-		subAttitude_ = n_.subscribe("/attitude", 10, &MmsNodeClass::readAttitudeMessage,this);
+		subFromCmd_=n_.subscribe("sent_command", 10, &MmsNodeClass::readCmdMessage,this); //subscribe to "sent_command" to exclude the "cmd_verifier" node
+		subFromSonar_ = n_.subscribe("sonar", 10, &MmsNodeClass::readSonarMessage,this);
+		subFromSysStatus_=n_.subscribe("system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
+		subFromDistance_=n_.subscribe("distance", 10, &MmsNodeClass::readDistanceMessage,this);
+		subFromGridAck_ = n_.subscribe("grid_ack", 10, &MmsNodeClass::readGridAckMessage,this);
+		subSafety_ = n_.subscribe("safety_odroid", 2, &MmsNodeClass::readSafetyMessage,this);
+		subLeashingStatus_ = n_.subscribe("leashing_status", 10, &MmsNodeClass::readLeashingStatusMessage,this);
+		subQos_sensors_ = n_.subscribe("qos_sensors", 10, &MmsNodeClass::readQosSensorsMessage,this);
+		subAttitude_ = n_.subscribe("attitude", 10, &MmsNodeClass::readAttitudeMessage,this);
 		
 		// publishers
-		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("/ack_mission", 10);
-		pubToArm_=n_.advertise<mms_msgs::Arm>("/arm", 10);
-		pubToMmsStatus_=n_.advertise<mms_msgs::MMS_status>("/mms_status", 10);
-		pubCmd_ = n_.advertise<mms_msgs::Cmd>("/cmd_from_mms", 10);
-		pubGridAck_ = n_.advertise<mms_msgs::Grid_ack>("/grid_ack",10);
+		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("ack_mission", 10);
+		pubToArm_=n_.advertise<mms_msgs::Arm>("arm", 10);
+		pubToMmsStatus_=n_.advertise<mms_msgs::MMS_status>("mms_status", 10);
+		pubCmd_ = n_.advertise<mms_msgs::Cmd>("cmd_from_mms", 10);
+		pubGridAck_ = n_.advertise<mms_msgs::Grid_ack>("grid_ack",10);
 
 		//Initializing outputAckMission_
 		outputAckMission_.mission_item_reached = false;

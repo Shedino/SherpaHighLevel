@@ -53,18 +53,18 @@ public:
 		n_=node;
 
 		//subscribers
-		subFromDirective_ = n_.subscribe("/directive", 10, &UavSimNodeClass::readDirective,this);
-		subFromReference_ = n_.subscribe("/reference", 10, &UavSimNodeClass::readReference,this);
-		subFromState_ = n_.subscribe("/mms_status", 10, &UavSimNodeClass::readState,this);
-		subFromPosNav_ = n_.subscribe("/position_nav", 10, &UavSimNodeClass::readPosNav,this);
+		subFromDirective_ = n_.subscribe("directive", 10, &UavSimNodeClass::readDirective,this);
+		subFromReference_ = n_.subscribe("reference", 10, &UavSimNodeClass::readReference,this);
+		subFromState_ = n_.subscribe("mms_status", 10, &UavSimNodeClass::readState,this);
+		subFromPosNav_ = n_.subscribe("position_nav", 10, &UavSimNodeClass::readPosNav,this);
 		
 		// publishers
-		pubToSafety_ = n_.advertise<mavros::Safety>("/safety_odroid",10);
-		pubToSystStatus_ = n_.advertise<mms_msgs::Sys_status>("/system_status",10);
-		pubToGlobPosInt_ = n_.advertise<mavros::Global_position_int>("/global_position_int",10);
-		pubToSonar_ = n_.advertise<mavros::Sonar>("/sonar",10);
+		pubToSafety_ = n_.advertise<mavros::Safety>("safety_odroid",10);
+		pubToSystStatus_ = n_.advertise<mms_msgs::Sys_status>("system_status",10);
+		pubToGlobPosInt_ = n_.advertise<mavros::Global_position_int>("global_position_int",10);
+		pubToSonar_ = n_.advertise<mavros::Sonar>("sonar",10);
 		pubGeopose_ = n_.advertise<geographic_msgs::GeoPose>("geopose",10);
-		pubQosSensors_ = n_.advertise<qos_sensors_autopilot::Qos_sensors>("/qos_sensors",2);
+		pubQosSensors_ = n_.advertise<qos_sensors_autopilot::Qos_sensors>("qos_sensors",2);
 	
 		// Services
 		client_query = n_.serviceClient<swm_interface::Query>("query_swm");

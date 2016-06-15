@@ -65,23 +65,23 @@ public:
 		n_=node;
 
 		//subscribers
-		subFromPosition_ = n_.subscribe("/position_nav", 10, &ReferenceNodeClass::readPositionMessage,this);
-		subFromGlobPosInt_ = n_.subscribe("/global_position_int", 10, &ReferenceNodeClass::readGlobalPosIntMessage,this);
-		subFromCmd_ = n_.subscribe("/cmd_from_mms", 10, &ReferenceNodeClass::readCmdMessage,this);     //filtered by mms
-        subFromSonar_ = n_.subscribe("/sonar", 10, &ReferenceNodeClass::readSonarMessage,this);
-		subFromMmsStatus_ = n_.subscribe("/mms_status", 10, &ReferenceNodeClass::readMmsStatusMessage,this);
-		subFromFrame_ = n_.subscribe("/ref_system", 10, &ReferenceNodeClass::readFrameMessage,this);
-		subLeashingTargetPosition_ = n_.subscribe("/leashing_target_position", 10, &ReferenceNodeClass::readLeashingTarget,this);
-		subLeashingCommand_ = n_.subscribe("/leashing_command", 10, &ReferenceNodeClass::readLeashingCommand,this);
-		subDirectVelocityCommand_ = n_.subscribe("/direct_velocity_command", 10, &ReferenceNodeClass::readDirectVelocityCommand,this);
+		subFromPosition_ = n_.subscribe("position_nav", 10, &ReferenceNodeClass::readPositionMessage,this);
+		subFromGlobPosInt_ = n_.subscribe("global_position_int", 10, &ReferenceNodeClass::readGlobalPosIntMessage,this);
+		subFromCmd_ = n_.subscribe("cmd_from_mms", 10, &ReferenceNodeClass::readCmdMessage,this);     //filtered by mms
+        subFromSonar_ = n_.subscribe("sonar", 10, &ReferenceNodeClass::readSonarMessage,this);
+		subFromMmsStatus_ = n_.subscribe("mms_status", 10, &ReferenceNodeClass::readMmsStatusMessage,this);
+		subFromFrame_ = n_.subscribe("ref_system", 10, &ReferenceNodeClass::readFrameMessage,this);
+		subLeashingTargetPosition_ = n_.subscribe("leashing_target_position", 10, &ReferenceNodeClass::readLeashingTarget,this);
+		subLeashingCommand_ = n_.subscribe("leashing_command", 10, &ReferenceNodeClass::readLeashingCommand,this);
+		subDirectVelocityCommand_ = n_.subscribe("direct_velocity_command", 10, &ReferenceNodeClass::readDirectVelocityCommand,this);
 		
 		// publishers
-		pubToReference_ = n_.advertise<guidance_node_amsl::Reference>("/reference",10);
-		pubToDistance_ = n_.advertise<reference::Distance>("/distance",10);
-		pubGridAck_ = n_.advertise<mms_msgs::Grid_ack>("/grid_ack",10);
-		pubHome_ = n_.advertise<mavros::Global_position_int>("/home",5);
-		pubGridInfo_ = n_.advertise<reference::Grid_info>("/grid_info",2);
-		pubLeashingStatus_ = n_.advertise<reference::LeashingStatus>("/leashing_status",5);
+		pubToReference_ = n_.advertise<guidance_node_amsl::Reference>("reference",10);
+		pubToDistance_ = n_.advertise<reference::Distance>("distance",10);
+		pubGridAck_ = n_.advertise<mms_msgs::Grid_ack>("grid_ack",10);
+		pubHome_ = n_.advertise<mavros::Global_position_int>("home",5);
+		pubGridInfo_ = n_.advertise<reference::Grid_info>("grid_info",2);
+		pubLeashingStatus_ = n_.advertise<reference::LeashingStatus>("leashing_status",5);
 
 		//Initializing outputRef_
 		outputRef_.Latitude = 0;

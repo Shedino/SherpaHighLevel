@@ -15,12 +15,12 @@ public:
 		n_=node;
 
 		//subscribers
-		subFromPosition_=n_.subscribe("/global_position_int", 10, &PosmixerNodeClass::readPositionMessage,this);
-		subFromSonar_ = n_.subscribe("/sonar", 10, &PosmixerNodeClass::readSonarMessage,this);
-		subFromRefSystem_=n_.subscribe("/ref_system", 10, &PosmixerNodeClass::readFrameMessage,this);
+		subFromPosition_=n_.subscribe("global_position_int", 10, &PosmixerNodeClass::readPositionMessage,this);
+		subFromSonar_ = n_.subscribe("sonar", 10, &PosmixerNodeClass::readSonarMessage,this);
+		subFromRefSystem_=n_.subscribe("ref_system", 10, &PosmixerNodeClass::readFrameMessage,this);
 
 		// publishers
-		pubToPosNav_ = n_.advertise<guidance_node_amsl::Position_nav>("/position_nav", 10);
+		pubToPosNav_ = n_.advertise<guidance_node_amsl::Position_nav>("position_nav", 10);
 
 		// initialization
 		inputRefSystem_.actual_ref_frame = 6;
