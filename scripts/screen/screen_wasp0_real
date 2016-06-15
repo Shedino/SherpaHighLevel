@@ -26,7 +26,7 @@ stuff "sleep 20; rosrun mavros mavsys rate --all 10\015"
 
 screen 5
 title "Wasp Camera Usb"
-stuff "sleep 5; rosrun usb_cam usb_cam_node\015"
+stuff "sleep 5; roslaunch usb_cam camera_node.launch\015"
 
 screen 6
 title "Wasp Camera Handler"
