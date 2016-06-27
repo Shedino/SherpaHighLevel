@@ -1,22 +1,29 @@
 LIST OF TODOS FOR HIGH-LEVEL-SHERPA
 
 1) Leashing (Michele) --------------------------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED IN FLIGHT
-2) Grid (Michele)   ----------------------------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED IN FLIGHT
-3) Video/Photo dynamic FPS + dimension (Michele)  ----------------------  NOT FEASIBLE
-4) Better Landing (Nicola)    ------------------------------------------  ADDED RAW_IMU TOPIC  ---- 
-5) QoS sensors (Michele)                --------------------------------  DONE  ----  TESTED SOFTWARE  ----  TO BE TESTED WITH REAL SENSORS
-6) Integration Delegation (Michele)    ---------------------------------  90% DONE  ---- TESTED SOFTWARE  ----  TESTED IN FLIGHT
-7) Uav_sim (All)                       ---------------------------------  DONE  ----  TO MAKE BETTER
-8) Forest Flight (Michele)           -----------------------------------  WIP   ----
-9) MANUAL_FLIGHT and rollback (Michele)---------------------------------  DONE  ----  TESTED SOFTWARE  ----
-10) SWM integration       ----------------------------------------------  DONE GEOPOSE/PHOTO PUBLISHER  ----  TESTED
-11) Global Planner   ---------------------------------------------------  WIP ----
-12) Local Obstacle Avoidance for ARTVA
-13) Sonar for Ground Navigation ---------------------------------------- DONE ---- TESTED
-14) ARTVA data + Sonar (Michele)  -------------------------------------- DONE ---- TODO MORE TEST
-15) Hand Deployment (Michele) ------------------------------------------ DONE ---- TESTED SOFTWARE AND SEMI HARDWARE
-16) Rover Landing Deck Land, Visual Servoing (Michele)
-17) Fix Workspaces mess (Michele)
-18) Relative altitude + Global altitude from DEM (Michele)
-19) Reduce usb_cam CPU overload (Michele) ------------------------------ DONE ---- WAY BETTER WITH OPTIMIZATION IN CMAKE
-20) Velocity control commands modality  (Michele)  --------------------- DONE ----  TODO TEST
+2) Better Landing (Nicola)    ------------------------------------------  ADDED RAW_IMU TOPIC  ---- 
+3) Integration Delegation (Michele)    ---------------------------------  90% DONE  ---- TESTED SOFTWARE  ----  TESTED IN FLIGHT
+4) Uav_sim (All)                       ---------------------------------  DONE  ----  TO MAKE BETTER
+5) Forest Flight (Michele)           -----------------------------------  WIP   ----
+6) MANUAL_FLIGHT and rollback (Michele)---------------------------------  DONE  ----  TESTED SOFTWARE  ----
+7) SWM integration       ----------------------------------------------  DONE GEOPOSE/PHOTO PUBLISHER  ----  TESTED
+8) Global Planner   ---------------------------------------------------  WIP ----
+9) Local Obstacle Avoidance for ARTVA
+10) ARTVA data + Sonar (Michele)  -------------------------------------- DONE ---- TODO MORE TEST
+11) Hand Deployment (Michele) ------------------------------------------ DONE ---- TESTED SOFTWARE AND SEMI HARDWARE
+12) Rover Landing Deck Land, Visual Servoing (Michele)
+13) Relative altitude + Global altitude from DEM in Pos Mixer (Michele)
+
+FIXES
+
+1) Grid altitude from DEM or from actual altitude
+2) Unibo Controller taking msg from guidance_node instead of guidance_node_amsl
+3) Delete nodes not amsl
+4) Grid-->WP and Grid-->Leashing not interrupting executor (maybe fixed now)
+5) Sim: check QoS sensors glitch
+6) Ack in all executors + Mission fail ack
+7) Check logic MMS on mission accepted/item reach ...
+8) Add operator control and not merge in pause
+9) In paused state, add all events to fail
+10) Take-off not accepted 2nd time
+11) Grid takes only clockwise points
