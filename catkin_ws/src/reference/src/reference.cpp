@@ -16,10 +16,12 @@
 #include "reference/LeashingStatus.h"    //leashing
 #include "geographic_msgs/GeoPose.h"	 //leashing
 #include "reference/DirectVelocityCommand.h"    //Direct Velocity
-#include <wgs84_ned_lib/wgs84_ned_lib.h>       
+#include <wgs84_ned_lib/wgs84_ned_lib.h>
+#include "geometry_msgs/Twist.h"
 
 
 //TODO add check with terrain altitude
+//TODO add watchdog and LP filter to leashing commands
 
 double eps_WP = 2000.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here MAKE PARAMETER SERVER
 double eps_alt = 1500.0; // distance to the target altitude in millimeters
@@ -73,7 +75,8 @@ public:
 		subFromFrame_ = n_.subscribe("ref_system", 10, &ReferenceNodeClass::readFrameMessage,this);
 		subLeashingTargetPosition_ = n_.subscribe("leashing_target_position", 10, &ReferenceNodeClass::readLeashingTarget,this);
 		subLeashingCommand_ = n_.subscribe("leashing_command", 10, &ReferenceNodeClass::readLeashingCommand,this);
-		subDirectVelocityCommand_ = n_.subscribe("direct_velocity_command", 10, &ReferenceNodeClass::readDirectVelocityCommand,this);
+		//subDirectVelocityCommand_ = n_.subscribe("direct_velocity_command", 10, &ReferenceNodeClass::readDirectVelocityCommand,this);
+		subDirectVelocityCommand_ = n_.subscribe("/wasp/vel_ctrl/proxy", 10, &ReferenceNodeClass::readDirectVelocityCommand,this);
 		
 		// publishers
 		pubToReference_ = n_.advertise<guidance_node_amsl::Reference>("reference",10);
@@ -170,6 +173,25 @@ public:
 		leashing_status_.yaw = 0;
 		leashing_status_.failure = 0;
 		//leashing_status_.yawpoint = ;   //TODO initialize better
+
+		leashing_command_.horizontal_distance = 0;
+		leashing_command_.horizontal_distance_vel = 0;
+		leashing_command_.horizontal_heading = 0;
+		leashing_command_.horizontal_heading_vel = 0;
+		leashing_command_.distance_north = 0;
+		leashing_command_.distance_north_vel = 0;
+		leashing_command_.distance_east = 0;
+		leashing_command_.distance_east_vel = 0;
+		leashing_command_.horizontal_control_mode = 0;
+		leashing_command_.vertical_distance = 0;
+		leashing_command_.vertical_distance_vel = 0;
+		leashing_command_.vertical_control_mode = 0;
+		leashing_command_.yaw = 0;
+		leashing_command_.yaw_vel = 0;
+		leashing_command_.yaw_control_mode = 0;
+		leashing_command_.yawpoint.latitude = 0;
+		leashing_command_.yawpoint.longitude = 0;
+		leashing_command_.yawpoint.altitude = 0;
 
 		//VELOCITY COMMAND
 		direct_velocity_command.vx = 0;
@@ -381,6 +403,7 @@ public:
 		leashing_target_ned_.x = temp_x;
 		leashing_target_ned_.y = temp_y;
 		leashing_target_ned_.z = leashing_target_.position.altitude;
+		//ROS_INFO("REF: Received leashing target");
 	}
 	
 	void readLeashingCommand(const reference::LeashingCommand::ConstPtr& msg)
@@ -395,13 +418,23 @@ public:
 		}
 	}
 	
-	void readDirectVelocityCommand(const reference::DirectVelocityCommand::ConstPtr& msg){
+	/*void readDirectVelocityCommand(const reference::DirectVelocityCommand::ConstPtr& msg){
 		if(currentState == PAUSED){
 			counter_missed_direct_velocity_command = 0;		//reset the counter
 			received_direct_velocity_command.vx = msg->north_velocity_command;
 			received_direct_velocity_command.vy = msg->east_velocity_command;
 			received_direct_velocity_command.vz = msg->down_velocity_command;
 			received_direct_velocity_command.vyaw = msg->yaw_velocity_command;
+		}
+	}*/
+
+	void readDirectVelocityCommand(const geometry_msgs::Twist::ConstPtr& msg){
+		if(currentState == PAUSED){
+			counter_missed_direct_velocity_command = 0;		//reset the counter
+			received_direct_velocity_command.vx = msg->linear.x;
+			received_direct_velocity_command.vy = msg->linear.y;
+			received_direct_velocity_command.vz = msg->linear.z;
+			received_direct_velocity_command.vyaw = msg->angular.z;
 		}
 	}
 
@@ -545,13 +578,14 @@ public:
 					leashing_offset_ned_.x_offset = temp_reference_x - temp_target_x;          //initial offset
 					leashing_offset_ned_.y_offset = temp_reference_y - temp_target_y;
 					leashing_offset_ned_.z_offset = outputRef_.AltitudeRelative/1000.0f - leashing_target_.position.altitude;
-					if (leashing_offset_ned_.x_offset > MAX_INIT_DISTANCE_XY_LEASHING || leashing_offset_ned_.y_offset > MAX_INIT_DISTANCE_XY_LEASHING || leashing_offset_ned_.z_offset > MAX_INIT_DISTANCE_Z_LEASHING){   //target-wasp too far TODO check hardcoded paramenters
-						//TODO maybe it is better to abort leashing in MMS (can read leashing status)
+					if (leashing_offset_ned_.x_offset > MAX_INIT_DISTANCE_XY_LEASHING || leashing_offset_ned_.y_offset > MAX_INIT_DISTANCE_XY_LEASHING){   //target-wasp too far TODO check hardcoded paramenters
+						// || leashing_offset_ned_.z_offset > MAX_INIT_DISTANCE_Z_LEASHING TODO check if we want al altitude check
+						//Aborts leashing in MMS (can read leashing status)
 						leashing_status_.failure = 1;
 						ROS_INFO("REF: LEASHING target-wasp too far!");
 						leashing_offset_ned_.x_offset = 0;          //initial offset. NOT USED if aborted
 						leashing_offset_ned_.y_offset = 0;
-						leashing_offset_ned_.z_offset =	3;
+						leashing_offset_ned_.z_offset =	10;
 					}
 					leashing_offset_ned_.rho_offset = sqrt(pow(leashing_offset_ned_.x_offset,2)+pow(leashing_offset_ned_.y_offset,2));
 					if (leashing_offset_ned_.rho_offset > 0.1){
@@ -559,6 +593,7 @@ public:
 					} else {
 						leashing_offset_ned_.psi_offset = 0;
 					}
+					ROS_INFO("REF: LEASHING: Initial Distances: %f - %f - %f - %f", leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset, leashing_offset_ned_.rho_offset, leashing_offset_ned_.psi_offset);
 					yaw_leashing = outputRef_.Yawangle;    //take actual yaw
 					
 					/*leashing_offset_ned_.x_offset = 0;
@@ -719,6 +754,7 @@ public:
 					get_pos_NED_from_WGS84 (&temp_x_init, &temp_y_init, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f); //latest reference as initial point
 					initial_pos_grid[0] = temp_x_init;
 					initial_pos_grid[1] = temp_y_init;
+					ROS_INFO("REF: GRID. Before algorithm");
 					WP_grid(vertex_grid, &vertex_grid_n, initial_pos_grid, d_grid, WP, &success_grid, &N_WP);      //CORE ALGORITHM
 
 					double tot_distance = 0;
@@ -741,6 +777,7 @@ public:
 						}*/
 						executing_grid = true;
 					} else {
+						ROS_INFO("REF: GRID. Grid failed to find WPs");
 						grid_ack_.grid_completed = false;
 						grid_ack_.completion_type = 4;      //alg. failed to find WPs
 						pubGridAck_.publish(grid_ack_);
@@ -950,16 +987,19 @@ public:
 				leashing_status_.yaw = yaw_leashing;
 				pubLeashingStatus_.publish(leashing_status_);  //TODO maybe modify this to include failures
 
+				//ROS_INFO("REF: LEASHING: Targets: %f, %f, %f - %f, %f, %f", target_ned.x, leashing_target_ned_.x, leashing_offset_ned_.x_offset, target_ned.y, leashing_target_ned_.y, leashing_offset_ned_.y_offset);
 				//Leashing is overwriting and not using increments  //TODO check if making uniform with increments
-				target_ned.x = leashing_target_ned_.x+leashing_offset_ned_.x_offset;
-				//target_wp_ned.x = target_ned.x;
-				target_ned.y = leashing_target_ned_.y+leashing_offset_ned_.y_offset;
-				//target_wp_ned.y = target_ned.y;
-				target_ned.alt_baro = leashing_target_ned_.z+leashing_offset_ned_.z_offset;
-				//target_wp_ned.alt = target_ned.alt_baro;
-				//TODO sonar alt??
-				target_ned.yaw = yaw_leashing;
-				//target_wp_ned.yaw = target_ned.yaw;    //target_wp_yaw is overwritten with latest target
+				if (leashing_status_.failure == 0){  //if not failed
+					target_ned.x = leashing_target_ned_.x+leashing_offset_ned_.x_offset;
+					//target_wp_ned.x = target_ned.x;
+					target_ned.y = leashing_target_ned_.y+leashing_offset_ned_.y_offset;
+					//target_wp_ned.y = target_ned.y;
+					target_ned.alt_baro = leashing_target_ned_.z+leashing_offset_ned_.z_offset;
+					//target_wp_ned.alt = target_ned.alt_baro;
+					//TODO sonar alt??
+					target_ned.yaw = yaw_leashing;
+					//target_wp_ned.yaw = target_ned.yaw;    //target_wp_yaw is overwritten with latest target
+				}
 				break;
 			
 			case PERFORMING_LANDING:
@@ -1087,7 +1127,7 @@ protected:
 	reference::LeashingCommand leashing_command_;   //leashing
 	reference::LeashingStatus leashing_status_;    //leashing
 	geographic_msgs::GeoPose leashing_target_;	 //leashing
-	static const int MAX_INIT_DISTANCE_XY_LEASHING = 15;
+	static const int MAX_INIT_DISTANCE_XY_LEASHING = 25;
 	static const int MAX_INIT_DISTANCE_Z_LEASHING = 10;
 
 	// STATES DEFINITION
@@ -1109,7 +1149,7 @@ protected:
 	static const int PAUSED = 150;
 	static const int MANUAL_FLIGHT = 1000;
 
-	static const int  MAX_VERTEX_GRID = 10;
+	static const int  MAX_VERTEX_GRID = 25;
 
 	// STATE INITIALIZATION
 	int currentState;

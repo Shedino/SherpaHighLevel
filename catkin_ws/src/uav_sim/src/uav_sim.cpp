@@ -72,13 +72,36 @@ public:
 		rate = 10;
 		counter_print = 0;
 		
+		if (n_.getParam("/home_lat", temp_lat)){
+			home_lat = temp_lat*10000000;
+			ROS_INFO("SIM: Set home lat");
+		} else {
+			home_lat = 441532780;   //CESENA LAB
+		}
+		if (n_.getParam("/home_lon", temp_lon)){
+			home_lon = temp_lon*10000000;
+			ROS_INFO("SIM: Set home lon");
+		} else {
+			home_lon = 151015000; //CESENA LAB
+		}
+		if (n_.getParam("/home_alt", temp_alt)){
+			home_alt = temp_alt*1000;
+			ROS_INFO("SIM: Set home alt");
+		} else {
+			home_alt = 41000; //CESENA LAB
+		}
+
 		/*home_lat = 584943710;   //TERRA LAB
 		home_lon = 151015000;
 		home_alt = 100800;*/
 
-		home_lat = 441532780;   //CESENA LAB
+		/*home_lat = 441532780;   //CESENA LAB
 		home_lon = 122414260;
-		home_alt = 41000;
+		home_alt = 41000;*/
+
+		/*home_lat = 464869000;   //PORDOI
+		home_lon = 118142200;
+		home_alt = 2200000;*/
 		
 		position_ned_.x = 0;
 		position_ned_.y = 0;
@@ -401,6 +424,10 @@ int rate;
 int home_lat;
 int home_lon;
 int home_alt;
+
+double temp_lat;
+double temp_lon;
+double temp_alt;
 
 position_ned position_ned_;
 

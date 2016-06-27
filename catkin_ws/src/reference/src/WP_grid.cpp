@@ -213,10 +213,16 @@ void WP_grid(float **vertex, int *N_vertex, const float initial_position[2], con
 	*number_WP = 0;
 	
 	//----START AGLORITHM-----
+	ROS_INFO("GRID: starting");
 	is_convex(vertex, true, &convex, N_vertex);
 	//is_convex(points, true, &convex, &N_vertex);
 
-	if (!convex) return;     //Some error in convex. Probably less that 3 vertex
+	if (!convex){
+		ROS_INFO("GRID: problem with convex");
+		return;     //Some error in convex. Probably less that 3 vertex
+	}
+
+	ROS_INFO("GRID: OK convex");
 
 	find_closest_2D(vertex, initial_position, closest_point, &index, *N_vertex);	
 	WP[index_WP][0] = closest_point[0];   //filling first waypoint
@@ -269,7 +275,7 @@ void WP_grid(float **vertex, int *N_vertex, const float initial_position[2], con
 		if (index_WP>=MAX_WP){          //too much WP
 			*number_WP = MAX_WP;
 			*success = false;
-			//ROS_INFO("GRID: too much WP");
+			ROS_INFO("GRID: too much WP");
 			goto end;                  //END
 		}
 		collision = false;

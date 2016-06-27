@@ -94,6 +94,7 @@ public:
 		MISSION_START = false;
 		WAYPOINT = false;
 		ARMED = false;
+		DISARMED = true;
 		GRID_ENDED = false;
 		GRID_EVENT = false;
 		SAFETY_ON = false;
@@ -142,15 +143,17 @@ public:
 		inputSysStatus_.armed=msg->armed;
 		inputSysStatus_.voltage_battery=msg->voltage_battery;
 		//ROS_INFO("Sys_status received");
-		if (inputSysStatus_.armed)
+		if (inputSysStatus_.armed && DISARMED)
 		{
 			ARMED = true;
-                //ROS_INFO("ARMED");
+			DISARMED = false;
+            //ROS_INFO("ARMED");
 		}
-		else
+		else if (!inputSysStatus_.armed && ARMED)
 		{
 			ARMED = false;
-                //ROS_INFO("DISARMED");
+			DISARMED = true;
+            //ROS_INFO("DISARMED");
 		}
 	}
 
@@ -198,13 +201,13 @@ public:
 		{
 			case 16:  // MAV_CMD_NAV_WAYPOINT
 			{
-				ROS_INFO("MMS: CMD_WAYPOINT. Params: %f - %f - %f - %f",inputCmd_.param5,inputCmd_.param6,inputCmd_.param7,inputCmd_.param4);
+				ROS_INFO("MMS: CMD_WAYPOINT. Params: %f - %f - %f - %f - %f",inputCmd_.param1,inputCmd_.param5,inputCmd_.param6,inputCmd_.param7,inputCmd_.param4);
 				ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
 				ROS_INFO("MMS: CMD_ALTITUDE = %f",inputCmd_.param7);
 				ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
 
 				double temp_max_speed;
-				n_.getParam("/guidance_node_amsl/param/sat_xy", temp_max_speed);
+				n_.getParam("guidance_node_amsl/param/sat_xy", temp_max_speed);
 				temp_max_speed = sqrt(pow(temp_max_speed,2));
 				//conditions to accept waypoint: frame baro && speed (param1) less than max speed OR frame sonar and sonar working and altitude less than sonar range
 				if (((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && inputCmd_.param7 > 0.3f && inputCmd_.param7 < 3.0f && Qos_sensors_.sonar_present && Qos_sensors_.sonar_working)) && inputCmd_.param1 < temp_max_speed)
@@ -221,7 +224,7 @@ public:
 						outputAckMission_.mav_mission_accepted = false;
 						pubToAckMission_.publish(outputAckMission_);
 						ROS_INFO("MMS->GCS: MISSION_ITEM_NOT_ACCEPTED");   //TODO we can discriminate the failure motivations for feedback
-
+						ROS_INFO("Fail motivation check. Commanded vel: %f. Max vel: %f ", inputCmd_.param1, temp_max_speed);
 						inputCmd_.command = 0; // 0 = NOT USED it's used to disable the switch-case structure
 						target_frame = FRAME_BARO;
 						WAYPOINT = false;
@@ -239,10 +242,11 @@ public:
 										  (inputCmd_.param2 >= 0.5) ||
 										  (inputCmd_.param2 <= 30) ||
 										  (inputCmd_.param4 >= 3) ||
-										  (inputCmd_.param4 <= 20) ||
+										  (inputCmd_.param4 <= 35) ||
 										  (inputCmd_.param1 > 0) ||
-										  (inputCmd_.param1 <= 4);
+										  (inputCmd_.param1 <= 4.5);
 				// inputCmd_.param3 = height, inputCmd_.param2 = d, inputCmd_.param4 = vertex, inputCmd_.param1 = speed
+				// TODO dynamic parameters
 				if (grid_correct_frame && grid_correct_parameters){       //TODO add more sanity check maybe
 					target_frame = inputCmd_.frame;
 					seq_number = inputCmd_.seq;
@@ -362,10 +366,12 @@ public:
 				//seq_number = inputCmd_.seq;
 				if (inputCmd_.param1 == 0){          //PAUSE
 					PAUSE = true;
+					CONTINUE = false;
 					ROS_INFO("MMS: CMD_PAUSE");
 					pubCmd_.publish(inputCmd_);  //cmd passed to reference
 				} else if (inputCmd_.param1 == 1){		//CONTINUE
 					CONTINUE = true;
+					PAUSE = false;
 					ROS_INFO("MMS: CMD_CONTINUE");
 					pubCmd_.publish(inputCmd_);  //cmd passed to reference
 				} else {
@@ -793,16 +799,22 @@ public:
 					break;
 				}
 
-				if (SET_HOME || WAYPOINT || GRID_EVENT || LEASHING_START)
-				{
-					set_events_false();
-					outputAckMission_.mission_item_reached = false;
-					outputAckMission_.seq = inputCmd_.seq;
-					outputAckMission_.mav_mission_accepted = false;
-					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED (SET_HOME or WAYPOINT or GRID)");
+				if (SET_HOME){
+					refuse_mission(str(SET_HOME));
 					break;
-				}	//TODO separate events and use refuse_mission
+				}
+				if (WAYPOINT){
+					refuse_mission(str(WAYPOINT));
+					break;
+				}
+				if (GRID_EVENT){
+					refuse_mission(str(GRID_EVENT));
+					break;
+				}
+				if (LEASHING_START){
+					refuse_mission(str(LEASHING_START));
+					break;
+				}
 
 				switch (hand_deployment_state){
 					case HAND_TAKEOFF_WAITING_FIRST:
@@ -892,16 +904,27 @@ public:
 					}
 				}
 				
-				if (TAKEOFF || SET_HOME || WAYPOINT  || GRID_EVENT || LEASHING_START)
-				{
-					set_events_false();
-					outputAckMission_.mission_item_reached = false;
-					outputAckMission_.seq = inputCmd_.seq;
-					outputAckMission_.mav_mission_accepted = false;
-					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+				if (TAKEOFF){
+					refuse_mission(str(TAKEOFF));
 					break;
-				} //TODO separate events and use refuse_mission
+				}
+				if (SET_HOME){
+					refuse_mission(str(SET_HOME));
+					break;
+				}
+				if (WAYPOINT){
+					refuse_mission(str(WAYPOINT));
+					break;
+				}
+				if (GRID_EVENT){
+					refuse_mission(str(GRID_EVENT));
+					break;
+				}
+				if (LEASHING_START){
+					refuse_mission(str(LEASHING_START));
+					break;
+				}
+
 				break;
 
 			case IN_FLIGHT:
@@ -1031,6 +1054,12 @@ public:
 					LAND = true;
 
 					outputAckMission_.mission_item_reached = false;
+					//outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS: GRID INTERRUPTED BY LAND");
+
+					outputAckMission_.mission_item_reached = false;
 					outputAckMission_.seq = inputCmd_.seq;
 					outputAckMission_.mav_mission_accepted = true;
 					pubToAckMission_.publish(outputAckMission_);
@@ -1048,6 +1077,12 @@ public:
 					set_events_false();
 
 					outputAckMission_.mission_item_reached = false;
+					//outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS: GRID INTERRUPTED BY WAYPOINT");
+
+					outputAckMission_.mission_item_reached = false;
 					outputAckMission_.seq = inputCmd_.seq;
 					outputAckMission_.mav_mission_accepted = true;
 					pubToAckMission_.publish(outputAckMission_);
@@ -1063,6 +1098,13 @@ public:
 				}
 				if (LEASHING_START){
 					set_events_false();
+
+					outputAckMission_.mission_item_reached = false;
+					//outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS: GRID INTERRUPTED BY LEASHING");
+
 					outputAckMission_.mission_item_reached = false;
 					outputAckMission_.seq = inputCmd_.seq;
 					outputAckMission_.mav_mission_accepted = true;
@@ -1100,6 +1142,7 @@ public:
 				}
 				if (PAUSE){
 					set_events_false();
+
 					previousState = currentState;   //save last state in previousState
 					outputAckMission_.mission_item_reached = false;
 					outputAckMission_.seq = inputCmd_.seq;
@@ -1111,6 +1154,10 @@ public:
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = PAUSED");
+				}
+				if (GRID_EVENT){
+					refuse_mission(str(GRID_EVENT));
+					break;
 				}
 				break;
 
@@ -1220,15 +1267,34 @@ public:
 
 				ROS_INFO_ONCE("MMS: REACHING THE LANDING TARGET");
 
-				if (TAKEOFF || SET_HOME || WAYPOINT  || GRID_EVENT || LEASHING_START){
-					set_events_false();
-					outputAckMission_.mission_item_reached = false;
-					outputAckMission_.seq = inputCmd_.seq;
-					outputAckMission_.mav_mission_accepted = false;
-					pubToAckMission_.publish(outputAckMission_);
-					ROS_INFO("MMS->GCS: MISSION_NOT_ACCEPTED");
+				if (TAKEOFF){
+					refuse_mission(str(TAKEOFF));
 					break;
-				} //TODO separate events and use refuse_mission
+				}
+				if (SET_HOME){
+					refuse_mission(str(SET_HOME));
+					break;
+				}
+				if (WAYPOINT){
+					refuse_mission(str(WAYPOINT));
+					break;
+				}
+				if (GRID_EVENT){
+					refuse_mission(str(GRID_EVENT));
+					break;
+				}
+				if (LEASHING_START){
+					refuse_mission(str(LEASHING_START));
+					break;
+				}
+
+				if (DISARMED){
+					currentState = ON_GROUND_DISARMED;
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = FRAME_BARO;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_DISARMED");
+				}
 
 				break;
 				
@@ -1253,6 +1319,56 @@ public:
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS: CURRENT_STATE = BACK TO OLD ONE: %d",currentState);
+					break;
+				}
+				if (LAND)
+				{
+					set_events_false();
+					LAND = true;
+
+					outputAckMission_.mission_item_reached = false;
+					//outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS: PAUSED INTERRUPTED BY LAND");
+
+					outputAckMission_.mission_item_reached = false;
+					outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = true;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
+
+					currentState = PERFORMING_LANDING;// READY_TO_LAND; // with this modification the state that needs the MISSION_START is excluded
+					outputMmsStatus_.mms_state = currentState;
+					outputMmsStatus_.target_ref_frame = target_frame;
+					pubToMmsStatus_.publish(outputMmsStatus_);
+					ROS_INFO("MMS-REF: CURRENT_STATE = PERFORMING_LANDING"); // READY_TO_LAND");
+
+					break;
+				}
+				if (TAKEOFF){
+					refuse_mission(str(TAKEOFF));
+					break;
+				}
+				if (SET_HOME){
+					refuse_mission(str(SET_HOME));
+					break;
+				}
+				if (WAYPOINT){
+					refuse_mission(str(WAYPOINT));
+					break;
+				}
+				if (GRID_EVENT){
+					refuse_mission(str(GRID_EVENT));
+					break;
+				}
+				if (LEASHING_START){
+					refuse_mission(str(LEASHING_START));
+					break;
+				}
+				if (PAUSE){
+					refuse_mission(str(PAUSE));
+					break;
 				}
 				break;
 			
@@ -1260,6 +1376,12 @@ public:
 				if (LAND){
 					set_events_false();
 					LAND = true;
+
+					outputAckMission_.mission_item_reached = false;
+					//outputAckMission_.seq = inputCmd_.seq;
+					outputAckMission_.mav_mission_accepted = false;
+					pubToAckMission_.publish(outputAckMission_);
+					ROS_INFO("MMS: LEASHING INTERRUPTED BY LAND");
 
 					outputAckMission_.mission_item_reached = false;
 					outputAckMission_.seq = inputCmd_.seq;
@@ -1316,6 +1438,10 @@ public:
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = PAUSED");
+				}
+				if (LEASHING_START){
+					refuse_mission(str(LEASHING_START));
+					break;
 				}
 				break;
 		}
@@ -1392,6 +1518,7 @@ bool MISSION_START;
 bool WAYPOINT;
 bool GRID_EVENT;
 bool ARMED;
+bool DISARMED;
 bool GRID_ENDED;
 bool SAFETY_ON;
 bool SAFETY_OFF;

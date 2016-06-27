@@ -1,0 +1,9 @@
+<launch>
+  <rosparam>
+    location: "pordoi"
+    home_lat: 46.4869
+    home_lon: 11.814220
+    home_alt: 2260
+    default_geoid_height_egm96: 0.0
+  </rosparam>
+</launch>

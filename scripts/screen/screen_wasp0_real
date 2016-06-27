@@ -32,9 +32,9 @@ screen 6
 title "Wasp Camera Handler"
 stuff "sleep 10; rosrun camera_handler_sherpa camera_handler_sherpa __ns:=/wasp0\015"
 
-screen 7
-title "SWM interface"
-stuff "sleep 25; rosrun swm_interface connect.py\015"
+#screen 7
+#title "SWM interface"
+#stuff "sleep 25; rosrun swm_interface connect.py\015"
 
 screen 8
 title "tst0"
@@ -52,10 +52,22 @@ screen 11
 title "proxy"
 stuff "rosrun lrs_sherpa_proxy proxy __ns:=/wasp0 _long_name:=http://unibo.it/wasp0\015"
 
-screen 12
-title "SWM"
-stuff "sleep 10; cd DCM/ubx_robotscenegraph; ./swm_launch.sh\015"
+#screen 12
+#title "SWM"
+#stuff "sleep 10; cd DCM/ubx_robotscenegraph; ./swm_launch.sh\015"
 
 screen 14
 title "interaction2"
+
+#screen 15
+#title "Proxy UNIBO-CREATE 1"
+#stuff "sleep 10; rosrun sherpa_proxy create_proxy __ns:=/wasp0 _long_name:=http://unibo.it/wasp0\015"
+
+#screen 16
+#title "Proxy UNIBO-CREATE 2"
+#stuff "sleep 5; rosrun sherpa_proxy create_roszyre __ns:=/wasp0 _forward_unit_info:=1\015"
+
+screen 17
+title "bag"
+stuff "sleep 5; rosbag record /wasp1/geopose /wasp1/grid_ack /wasp1/grid_info /wasp1/leashing_status /wasp1/leashing_command /wasp1/mms_status /wasp1/reference /wasp1/sent_command /wasp1/camera_published /wasp1/directive /wasp1/arm /wasp1/ack_cmd /wasp1/ack_mission\015"
 
