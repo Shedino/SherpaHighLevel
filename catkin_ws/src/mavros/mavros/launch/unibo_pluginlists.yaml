@@ -6,6 +6,7 @@
 - safety_area
 - setpoint_attitude
 - unibo_controller
+- unibo_controller_usb
 #- unibo_controller_amsl
 - unibo_GCS.cpp
 # extras

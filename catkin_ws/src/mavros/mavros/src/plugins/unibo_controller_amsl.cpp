@@ -9,9 +9,11 @@
 #include "mavros/Global_position_int.h"
 #include "mavros/Safety.h"
 #include "mavros/Raw_imu.h"
+#include "mavros/PositionTarget.h"			// Nico
 #include "geographic_msgs/GeoPose.h"
 #include "geographic_msgs/GeoPoint.h"
 #include "geometry_msgs/Quaternion.h"
+#include "geometry_msgs/Twist.h"
 
 #include <guidance_node_amsl/Directive.h>
 //#include <guidance_node_amsl/Position.h>
@@ -19,6 +21,7 @@
 #include <mms_msgs/Arm.h>
 #include <mms_msgs/Sys_status.h>
 #include <tf/transform_datatypes.h>
+#include <wgs84_ned_lib/wgs84_ned_lib.h>  
 
 #define SONAR_THRESHOLD 300          //maximum centimetres of a reliable sonar reading
 namespace mavplugin {
@@ -31,8 +34,8 @@ public:
 		nodeHandle(),
 		uas(nullptr),
 		safetyOn(true),
-		v_xy_max(3.0),
-		v_z_max(1.5),
+		v_xy_max(1.5),
+		v_z_max(1.0),
 		v_psi_max(3.14),
 		RC1_trim_(1),
 		RC2_trim_(1),
@@ -51,6 +54,8 @@ public:
 		/* --- SUBSCRIPTIONS --- */
 		directive_sub = nodeHandle.subscribe("/directive", 10, &UniboControllerAMSLPlugin::directive_cb, this);
 		arm_sub = nodeHandle.subscribe("/arm", 10, &UniboControllerAMSLPlugin::arming, this);
+		filtered_pos_sub = nodeHandle.subscribe("/pos_filter/pos_vel_out", 1, &UniboControllerAMSLPlugin::filtered_pos_cb, this);		// Nico
+		cmd_vel_sub = nodeHandle.subscribe("/cmd_vel", 1, &UniboControllerAMSLPlugin::cmd_vel_cb, this);
 
 		/* --- PUBLISHERS --- */
 		position_pub = nodeHandle.advertise<mavros::Global_position_int>("/global_position_int", 10);               //TODO this should become a mavros topic and removed from amsl and splitted from attitude
@@ -65,8 +70,8 @@ public:
 		pubGeopose_ = nodeHandle.advertise<geographic_msgs::GeoPose>("/geopose",10);
 
 
-		nodeHandle.param("guidance_node_amsl/param/sat_xy", v_xy_max, 3.0);
-		nodeHandle.param("guidance_node_amsl/param/sat_z", v_z_max, 1.5);
+		nodeHandle.param("guidance_node_amsl/param/sat_xy", v_xy_max, 1.5);
+		nodeHandle.param("guidance_node_amsl/param/sat_z", v_z_max, 1.0);
 		nodeHandle.param("guidance_node_amsl/param/sat_yaw", v_psi_max, 3.14);
 		
 		/*nodeHandle.param("mavros/unibo_controller/trim_RC1", RC1_trim_, 1000.0);
@@ -75,8 +80,12 @@ public:
 		nodeHandle.param("mavros/unibo_controller/trim_RC4", RC4_trim_, 1000.0);*/
 
 		mavros::Sonar temp_sonar;
+		//message to send position and velocity to the quadcopter
+		mavros::PositionTarget state_;			// Nico
+
 		temp_sonar.distance = -1;      //if there is no sonar, the distance is initialized to -1
 		distance_sensor_pub.publish(temp_sonar);
+
 
 		quaternion_.x = 1;
 		quaternion_.y = 0;
@@ -113,9 +122,13 @@ private:
 	double RC3_dz_;
 	double RC4_dz_;
 
+	int RC3;	//used for SLAM LIDAR
+
 	ros::Publisher position_pub;
 	ros::Subscriber directive_sub;
 	ros::Subscriber arm_sub;
+	ros::Subscriber filtered_pos_sub;		// Nico
+	ros::Subscriber cmd_vel_sub;			// For interface with planner/standard ROS
 	ros::Publisher arm_ack_pub;
 	ros::Publisher sys_status_pub;
 	ros::Publisher distance_sensor_pub;
@@ -200,7 +213,7 @@ private:
 		 * If safety is on, chan5_raw must be less than 1200
 		 */
 		//DEBUG
-		//ROS_INFO("CHANNEL 6 IS: %u",channels_raw.chan6_raw);
+		ROS_INFO("CHANNEL 5-6 IS: %u-%u",channels_raw.chan5_raw,channels_raw.chan6_raw);
 		if(channels_raw.chan6_raw > 1700 && channels_raw.chan5_raw > 1300 && channels_raw.chan5_raw < 1700){
 		//            ODROID_ON                 HIGHER THAN STABILIZE     &&            LOWER THAN RTL        -->      LOITER
 			safetyOn = false;
@@ -212,6 +225,7 @@ private:
 		}
 		safety_pub.publish(safety_);
 
+		RC3 = channels_raw.chan3_raw;
 		//DEBUG
 //		ROS_INFO("HANDLE RC RAW");
 
@@ -370,25 +384,44 @@ private:
 	 * From directive to RC
 	 */
 	void directive_cb(const guidance_node_amsl::Directive::ConstPtr msg){
+		float _velocities[4];	//vx,vy,vz,vyaw
+		_velocities[0] = msg->vxBody;
+		_velocities[1] = msg->vyBody;
+		_velocities[2] = msg->vzBody;
+		_velocities[3] = msg->yawRate;
+		send_vel_mavlink(_velocities);
+	}
 
+	void cmd_vel_cb(const geometry_msgs::Twist::ConstPtr msg){
+		float _velocities[4];	//vx,vy,vz,vyaw
+		_velocities[0] = msg->linear.x;
+		_velocities[1] = msg->linear.y;
+		//_velocities[2] = msg->linear.z;
+		_velocities[2] = 20;					//TODO check: 20 only for safety when doing LIDAR SLAM
+		_velocities[3] = msg->angular.z;
+		ROS_INFO("MAvRoS: Receiving vel_cmd");
+		send_vel_mavlink(_velocities);
+	}
+
+	void send_vel_mavlink(float _velocities[4]){
 		/*
 		 * Initializing values, if safety is on, these values will remain
 		 */
-			velocity_.channels[0]=0;
-			velocity_.channels[1]=0;
-			velocity_.channels[2]=0;
-			velocity_.channels[3]=0;
-			velocity_.channels[4]=0;
-			velocity_.channels[5]=0;
-			velocity_.channels[6]=0;
-			velocity_.channels[7]=0;
-		
-		
+		velocity_.channels[0]=0;
+		velocity_.channels[1]=0;
+		velocity_.channels[2]=0;
+		velocity_.channels[3]=0;
+		velocity_.channels[4]=0;
+		velocity_.channels[5]=0;
+		velocity_.channels[6]=0;
+		velocity_.channels[7]=0;
+
+
 
 		if(!safetyOn){
-			
-		    if (nodeHandle.getParam("mavros/unibo_controller/trim_RC1", RC1_trim_)){
-		    	//ROS_INFO("RC1_trim: %.3f",RC1_trim_);
+
+			if (nodeHandle.getParam("mavros/unibo_controller/trim_RC1", RC1_trim_)){
+				//ROS_INFO("RC1_trim: %.3f",RC1_trim_);
 			}
 			if (nodeHandle.getParam("mavros/unibo_controller/trim_RC2", RC2_trim_)){
 				//ROS_INFO("RC2_trim: %.3f",RC2_trim_);
@@ -402,18 +435,22 @@ private:
 			/*
 			 * If safety is off, I translate velocity in RC values
 			 */
-			uint16_t vx_RC= (uint16_t)400.0f*(-msg->vxBody)/v_xy_max + RC1_trim_;         //New: 400 + 1520; Old:  500 + 1500
-			uint16_t vy_RC=(uint16_t)400.0f*(msg->vyBody)/v_xy_max + RC2_trim_;		//New: 400 + 1520; Old:  500 + 1500
+			uint16_t vx_RC= (uint16_t)400.0f*(-_velocities[0])/v_xy_max + RC1_trim_;         //New: 400 + 1520; Old:  500 + 1500
+			uint16_t vy_RC=(uint16_t)400.0f*(_velocities[1])/v_xy_max + RC2_trim_;		//New: 400 + 1520; Old:  500 + 1500
 			/*
 			 * it seems it loiters with 1420 instead of 1500...
 			 */
 			uint16_t vz_RC= RC3_trim_;
-			if (msg->vzBody > 0){ //going down, mapped only in 420us
-				vz_RC = vz_RC + (uint16_t)320.0f*(-msg->vzBody)/v_z_max;        //New: 320; Old:  420
+			if (_velocities[2] > 0){ //going down, mapped only in 420us
+				vz_RC = vz_RC + (uint16_t)320.0f*(-_velocities[2])/v_z_max;        //New: 320; Old:  420
 			} else {        //going up, mapped in 580us
-				vz_RC = vz_RC + (uint16_t)480.0f*(-msg->vzBody)/v_z_max;     //New: 480 Old: 580
+				vz_RC = vz_RC + (uint16_t)480.0f*(-_velocities[2])/v_z_max;     //New: 480 Old: 580
 			}
-			uint16_t v_psi_RC = (uint16_t)400.0f*(msg->yawRate)/v_psi_max + RC4_trim_;		//New: 400 + 1520; Old:  500 + 1500
+			if (_velocities[2] == 20){	//IF using LIDAR SLAM we override RC3 for manual height control //TODO check better
+				vz_RC = RC3;
+				ROS_INFO("Altitude manual. RC3: %d", vz_RC);
+			}
+			uint16_t v_psi_RC = (uint16_t)400.0f*(_velocities[3])/v_psi_max + RC4_trim_;		//New: 400 + 1520; Old:  500 + 1500
 
 			velocity_.channels[0] = vy_RC;
 			velocity_.channels[1] = vx_RC;
@@ -445,7 +482,8 @@ private:
 			}
 			ROS_INFO("RC: %d - %d - %d - %d", velocity_.channels[0], velocity_.channels[1], velocity_.channels[2], velocity_.channels[3]);
 
-
+		} else {
+			ROS_INFO("MAVROS: SAFETYYYY FUCKKKK");
 		}
 
 		//DEBUG
@@ -509,6 +547,33 @@ private:
 			//ROS_INFO("Disarming UAV");
 		}
 	}
+	
+	/*
+	 * send LOCATION_POS_NED
+	 */
+	void filtered_pos_cb(const mavros::PositionTarget::ConstPtr& msg){
+		// mavlink msg object
+		mavlink_message_t msg_mav;
+		
+		// mavlink_msg_local_position_ned_pack(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg, uint32_t time_boot_ms, float x, float y, float z, float vx, float vy, float vz)
+		mavlink_msg_local_position_ned_pack(0, 0, &msg_mav, msg->header.seq * 10, (float)msg->position.x, (float)msg->position.y, (float)msg->position.z, (float)msg->velocity.x, (float)msg->velocity.y, (float)msg->velocity.z);
+		
+		// send message
+		UAS_FCU(uas)->send_message(&msg_mav);
+		
+		/*// prepare GPS_INPUT message
+		ros::Time now = ros::Time::now();
+		double lat, lon;
+		uint32_t time_week_ms = (now.sec * 1000 + now.nsec / 1000) % (1000 * 3600 * 24 * 7); //not correct....
+		uint16_t time_week = 0;	// not correct...
+		get_pos_WGS84_from_NED (&lat, &lon, msg->position.x, msg->position.y, 44.4924295, 11.3310251);
+				
+		mavlink_msg_gps_input_pack(0, 0, &msg_mav, msg->header.seq * 10, 1, 0xFF, time_week_ms, time_week, 3, (int32_t)(lat*10e7), (int32_t)(lon*10e7), msg->position.z, 0, 0, msg->velocity.x, msg->velocity.y, msg->velocity.y, 0.01, 0.005, 0.005, 16);
+
+		// send message
+		UAS_FCU(uas)->send_message(&msg_mav);*/
+	}
+
 };
 };	// namespace mavplugin
 

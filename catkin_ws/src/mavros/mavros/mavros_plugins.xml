@@ -66,6 +66,9 @@
 		<description>Publish to "/position" data from attitude and global position messages, and send RCOverride message to FCU
 				with AMSL offset</description>
 	</class>
+	<class name="unibo_controller_usb" type="mavplugin::UniboControllerUSBPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Plugin used for high frequency attitude and imu via USB @ 500000 bps</description>
+	</class>
 	<class name="unibo_GCS" type="mavplugin::UniboGCSPlugin" base_class_type="mavplugin::MavRosPlugin">
 		<description>For communication with GCS with custom protocol. Writes Ack_command and receive commands from GCS</description>
 	</class>

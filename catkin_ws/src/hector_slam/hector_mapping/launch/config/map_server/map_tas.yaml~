@@ -1,0 +1,6 @@
+image: /home/laith/catkin_ws/src/rc_car_drift/rc_car_drift/map.pgm
+resolution: 0.050000
+origin: [0, 0, 0.000000]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196

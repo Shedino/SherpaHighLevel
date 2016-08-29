@@ -1,0 +1,269 @@
+#include "ros/ros.h"
+#include <tf/transform_broadcaster.h>
+#include <nav_msgs/Odometry.h>
+#include <iostream>
+#include <Eigen/Dense>
+#include "kalman.h"
+#include "complementary.h"
+#include "setup.h"
+//#include <Matrix3x3.h>
+
+// mavros
+#include "mavros/Raw_imu.h"
+#include "mavros/Attitude.h"
+//#include "mavros/mavros_uas.h" // requires c++ 2011 standard support
+
+// msgs
+#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/Pose.h"
+#include "geometry_msgs/Twist.h"
+#include "geometry_msgs/Point.h"
+#include "pos_filter/tf_msg.h"
+
+#include <sstream>
+
+// namespaces
+// using namespace Eigen;
+
+//global variables
+int posUpdateFlag = 0,
+    imuUpdateFlag = 0,
+    attUpdateFlag = 0;
+tf::Matrix3x3 rotationMatrix;
+tf::Vector3 accVec3(0.0, 0.0, 0.0);
+ros::Time timestamp;
+double mapOffset = 0.0;
+int tf_init_done = 0;
+
+// msg buffer
+mavros::Raw_imu data_raw;						// IMU raw data msg object
+mavros::Attitude attitude;						// attitude msg object
+geometry_msgs::PoseStamped estimated_pos;				// estimated position msg object
+geometry_msgs::Twist estimated_vel;					// estimated velocity msg object
+geometry_msgs::Pose estimated_bias;					// estimated bias msg object
+geometry_msgs::Pose slam_pos;						// SLAM position msg object
+pos_filter::tf_msg tf_msg;
+
+#ifdef VISU
+//geometry_msgs::TransformStamped tf_laser_pos;
+//geometry_msgs::TransformStamped tf_estimated_pos;
+#endif
+
+//function prototypes
+void laserCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
+void imuCallback(const mavros::Raw_imu::ConstPtr& msg);
+void pf_tfCallback(const pos_filter::tf_msg::ConstPtr& msg);
+void attitudeCallback(const mavros::Attitude::ConstPtr& msg);
+void compFilter(double *pos, double *vel, double *bias, double acc, double slamPos);
+void kalmanFilter(double *pos, double *vel, double *bias, double acc, double slamPos);
+geometry_msgs::PoseStamped convV3dToStPose( Vector3d vec );
+void NedToNwu(short int *x, short int *y, short int *z);
+void NwuToNed(short int *x, short int *y, short int *z);
+
+//main
+int main(int argc, char **argv)
+{
+/*** ROS init ***/
+  ros::init(argc, argv, "pos_filter");
+
+  ros::NodeHandle n;
+
+  ros::Rate loop_rate(FREQUENCY);					// frequency of loop
+  
+// variables
+  rotationMatrix.setIdentity();
+  long int cycleCount = 0;
+  
+// subscribers
+  ros::Subscriber mavros_imu_sub = n.subscribe("/imu", 10, &imuCallback);
+  ros::Subscriber laser_sub = n.subscribe("/slam_out_pose", 10, &laserCallback);
+  ros::Subscriber attitude_sub = n.subscribe("/attitude", 10, &attitudeCallback);
+  ros::Subscriber pos_filter_tf_sub = n.subscribe("/pos_filter/tf_msg", 1, &pf_tfCallback);
+
+// publishers
+  ros::Publisher position_pub = n.advertise<geometry_msgs::PoseStamped>("/geometry_msgs/PoseStamped/estimatedPose", 1);
+
+// transforms
+  //tf::TransformBroadcaster odom_broadcaster;
+  //tf::TransformBroadcaster tf_filter_broadcaster;
+
+  while (!tf_init_done){	// wait for first attitude and SLAM msg to do proper rotations
+    ros::Duration(0.1).sleep();
+    ros::spinOnce();
+  }
+
+  ros::Duration(1).sleep();
+
+// filter objects
+#ifdef COMPLEMENTARY
+  ROS_INFO("Complementary filter active");
+  Complementary comp_x(slam_pos.position.x, 0.0, 0.0);
+  Complementary comp_y(slam_pos.position.y, 0.0, 0.0);
+  Complementary comp_z(slam_pos.position.z, 0.0, 0.0);
+  ROS_INFO( "init pos: x: %.4f,    y: %.4f,    z: %.4f", slam_pos.position.x, slam_pos.position.y, slam_pos.position.z );
+#endif
+#ifdef KALMAN
+  ROS_INFO("Kalman filter active");
+  Kalman kalman_x(slam_pos.position.x, 0.0, 0.0);
+  Kalman kalman_y(slam_pos.position.y, 0.0, 0.0);
+  Kalman kalman_z(slam_pos.position.z, 0.0, 0.0);
+  ROS_INFO( "init pos: x: %.4f,    y: %.4f,    z: %.4f", slam_pos.position.x, slam_pos.position.y, slam_pos.position.z );
+#endif
+
+#ifdef DEBUG_MSGS
+  ROS_INFO( "DEBUG messages are active!" );	
+#endif
+#ifdef VISU
+  ROS_INFO( "VISU tf calculations are active!" );	
+#endif
+  ROS_INFO( "vec: %f %f %f", accVec3.getX(), accVec3.getY(), accVec3.getZ() );
+
+/*** inf loop ***/
+  while (ros::ok())
+  {
+    timestamp = ros::Time::now();
+
+#ifdef COMPLEMENTARY
+/* complementary filter */
+/*    comp_x.update((double)data_raw.xacc, slam_pos.position.x);				// --> perform filter update
+    comp_y.update((double)data_raw.yacc, slam_pos.position.y);
+    comp_z.update((double)data_raw.zacc, slam_pos.position.z);*/
+    comp_x.update(accVec3.getX(), slam_pos.position.x);				// --> perform filter update
+    comp_y.update(accVec3.getY(), slam_pos.position.y);
+//    comp_z.update(accVec3.getZ(), slam_pos.position.z);
+    comp_z.update(0, 0);
+
+    estimated_pos = convV3dToStPose(readEstimated3dPosComplementary( &comp_x, &comp_y, &comp_z ));
+#endif
+
+#ifdef KALMAN
+/* Kalman filter */
+    if ( imuUpdateFlag ){								// new IMU measurements
+/*      kalman_x.prediction((double)data_raw.xacc);				// --> perform prediction step
+      kalman_y.prediction((double)data_raw.yacc);
+      kalman_z.prediction((double)data_raw.zacc);*/
+      kalman_x.prediction(accVec3.getX());				// --> perform prediction step
+      kalman_y.prediction(accVec3.getY());
+      kalman_z.prediction(accVec3.getZ());
+      imuUpdateFlag = 0;								// reset flag
+#ifdef DEBUG_MSGS
+      ROS_INFO("KALMAN predicted");
+#endif
+    }
+    if ( posUpdateFlag ){								// new SLAM measurement
+      kalman_x.update(slam_pos.position.x);				// --> perform update step
+      kalman_y.update(slam_pos.position.y);
+      kalman_z.update(slam_pos.position.z);
+      posUpdateFlag = 0;
+#ifdef DEBUG_MSGS
+      ROS_INFO( "KALMAN updated");
+#endif
+    }
+    estimated_pos = convV3dToStPose(readEstimated3dPosKalman( &kalman_x, &kalman_y, &kalman_z ));
+#endif
+    if ( cycleCount % 10 == 0 ){
+      ROS_INFO( "new pos estimate: x: %.4f,    y: %.4f,    z: %.4f", estimated_pos.pose.position.x, estimated_pos.pose.position.y, estimated_pos.pose.position.z );
+    }
+	
+    estimated_pos.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(attitude.roll, -attitude.pitch, tf::getYaw(slam_pos.orientation)-mapOffset);
+    estimated_pos.header.stamp = timestamp;
+    estimated_pos.header.frame_id = "map";
+    position_pub.publish(estimated_pos);				// send msg
+  
+    cycleCount++;
+    ros::spinOnce();
+
+    loop_rate.sleep();
+  }
+
+  return 0;
+}
+
+
+// void callback(const guidance_node_amsl::Directive::ConstPtr& msg){
+void laserCallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
+  // read SLAM message
+  slam_pos = msg->pose;
+
+  posUpdateFlag = 1;
+#ifdef DEBUG_MSGS
+    ROS_INFO( "LASER CB: x: %.4f,    y: %.4f,    z: %.4f", slam_pos.position.x, slam_pos.position.y, slam_pos.position.z );	
+#endif
+}
+
+void imuCallback(const mavros::Raw_imu::ConstPtr& msg){
+  // read attitude
+  data_raw = *msg;						// copy msg
+
+  // convert from NED (from flight control) to NWU (ROS) convention
+  NedToNwu(&data_raw.xacc, &data_raw.yacc, &data_raw.zacc);
+
+  // save in 3 dim vector for matrix calculations
+  accVec3.setX((double)data_raw.xacc);				
+  accVec3.setY((double)data_raw.yacc);				
+  accVec3.setZ((double)data_raw.zacc);				 
+
+  // rotate IMU data
+  accVec3 = accVec3 * rotationMatrix;
+
+  imuUpdateFlag = 1;
+#ifdef DEBUG_MSGS
+    ROS_INFO( "IMU CB: acc_x: %i,    acc_y: %i,    acc_z: %i\n", data_raw.xacc, data_raw.yacc, data_raw.zacc );	
+#endif
+}
+
+void attitudeCallback(const mavros::Attitude::ConstPtr& msg){
+  // read attitude
+  attitude = *msg;			
+
+  // update rotation matrix
+  rotationMatrix.setRPY(attitude.roll, -attitude.pitch, tf::getYaw(slam_pos.orientation) - mapOffset);
+
+  attUpdateFlag = 1;
+#ifdef DEBUG_MSGS
+  ROS_INFO( "TODO::ATTITUDE CB: acc_x: %i,    acc_y: %i,    acc_z: %i\n", data_raw.xacc, data_raw.yacc, data_raw.zacc );
+    
+  double ar[16];
+  rotationMatrix.getOpenGLSubMatrix(ar);
+  ROS_INFO( "R: %f P: %f Y: %f", attitude.roll, -attitude.pitch, tf::getYaw(slam_pos.orientation) - mapOffset );
+  ROS_INFO( "\nxx: %.5f xy: %.5f xz: %.5f\nyx: %.5f yy: %.5f yz: %.5f\nzx: %.5f zy: %.5f zz: %.5f", ar[0], ar[1], ar[2], ar[4], ar[5], ar[6], ar[8], ar[9], ar[10] );	
+#endif
+}
+
+void pf_tfCallback(const pos_filter::tf_msg::ConstPtr& msg){
+  // read tf message
+  tf_msg = *msg;
+
+  // if message indicates that tf is initialized
+  if ( tf_msg.init_done ){
+    // copy global map offset to local variable
+    mapOffset = msg->mapOffset;
+    // set flag that initialization is done
+    tf_init_done = 1;
+  }
+}
+
+
+/***** converting functions *****/
+// convert 3 dim vector to stamped pose message format
+geometry_msgs::PoseStamped convV3dToStPose( Vector3d vec ){
+	geometry_msgs::PoseStamped stamped_pose;
+	stamped_pose.pose.position.x = vec(0);
+	stamped_pose.pose.position.y = vec(1);
+	stamped_pose.pose.position.z = vec(2);
+
+	return stamped_pose;
+}
+
+// convert x, y, z from North-East-Down to North-West-Up convention
+void NedToNwu(short int *x, short int *y, short int *z){
+	*y = -*y;
+	*z = -*z;
+}
+
+// convert x, y, z from North-West-Up to North-East-Down convention
+void NwuToNed(short int *x, short int *y, short int *z){
+	*y = -*y;
+	*z = -*z;
+}
+

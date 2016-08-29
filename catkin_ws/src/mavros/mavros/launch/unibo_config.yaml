@@ -149,7 +149,7 @@ visualization:
 
 # unibo_controller
 unibo_controller:
-  trim_RC1: 1520.0
-  trim_RC2: 1520.0
+  trim_RC1: 1500.0
+  trim_RC2: 1500.0
   trim_RC3: 1420.0
-  trim_RC4: 1520.0
+  trim_RC4: 1500.0

@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   angles
   libmavconn
+  wgs84_ned_lib
   rosconsole_bridge
 )
 
@@ -77,6 +78,7 @@ add_message_files(
   Safety.msg
   ArtvaRead.msg
   Raw_imu.msg
+  PositionTarget.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -139,7 +141,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mavros
-  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf geometry_msgs libmavconn
+  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf geometry_msgs libmavconn wgs84_ned_lib
   DEPENDS Boost mavlink
 )
 
@@ -199,8 +201,8 @@ add_library(mavros_plugins
   #added by mic 05_11_2015
   #src/plugins/unibo_ref_set_global_int.cpp
   src/plugins/unibo_GCS.cpp
-  #added by zano 04_28_2015
   src/plugins/unibo_controller_amsl.cpp
+  src/plugins/unibo_controller_usb.cpp
 )
 add_dependencies(mavros_plugins
   mavros

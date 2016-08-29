@@ -29,7 +29,7 @@ public:
 		directive_sub = nodeHandle.subscribe("/directive", 10, &UniboControllerPlugin::directive_cb, this);
 		position_pub = nodeHandle.advertise<guidance_node::Position>("/position", 10);
 
-		velocity_publisher_=nodeHandle.advertise<mavros::OverrideRCIn>("mavros/rc/override", 10);
+		velocity_publisher_ = nodeHandle.advertise<mavros::OverrideRCIn>("mavros/rc/override", 10);
 
 		nodeHandle.param("guidance_node/param/sat_xy", v_xy_max, 3.0);
 		nodeHandle.param("guidance_node/param/sat_z", v_z_max, 1.5);
@@ -93,7 +93,7 @@ private:
 			commonMessage.Safety= 1;
 		}
 
-		//DEBUG
+		//DEBUGfilter_out.msg
 //		ROS_INFO("HANDLE RC RAW");
 
 	}
@@ -204,7 +204,6 @@ private:
 				velocity_.channels[6], velocity_.channels[7]);
 
 		velocity_publisher_.publish(velocity_);
-
 	}
 };
 };	// namespace mavplugin

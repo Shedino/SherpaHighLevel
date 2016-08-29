@@ -1,0 +1,60 @@
+deflogin on
+autodetach on
+
+escape ^oo
+
+caption always
+
+screen 0
+title "ROS Core"
+stuff "roscore -p $PORT\015"
+
+screen 1
+title "interaction"
+
+screen 2
+title "Mavros"
+stuff "sleep 3; roslaunch mavros uniboAMSLUSB_fast.launch\015"
+
+screen 3
+title "Mavros rate: raw-sensors"
+stuff "sleep 10; rosservice call /mavros_usb/set_stream_rate 1 50 true\015"
+
+screen 4
+title "Mavros rate: extra1"
+stuff "sleep 10; rosservice call /mavros_usb/set_stream_rate 10 50 true\015"
+
+screen 5
+title "Mavros rate: all low frequency"
+stuff "sleep 8; rosservice call /mavros_usb/set_stream_rate 0 5 true"
+
+screen 6
+title "Mavros arduino"
+stuff "sleep 10; roslaunch mavros uniboAMSLUSB_simple.launch\015"
+
+screen 7
+title "Mavros rate"
+stuff "sleep 15;  rosservice call /mavros/set_stream_rate 3 5 true\015"
+
+screen 8
+title "hw launch"
+stuff "sleep 10; roslaunch pos_filter mapping_unibo.launch\015"
+
+screen 9
+title "pos filter tf"
+stuff "sleep 12; rosrun pos_filter pos_filter_tf\015"
+
+screen 10
+title "pos filter"
+stuff "sleep 12; rosrun pos_filter pos_filter\015"
+
+screen 15
+title "ROSbag recording"
+stuff "rosbag record --duration=3m -O ~/SherpaHighLevel/ROSbag/$(date +"%F_%H:%M:%S")_posFilter.bag -j -a"
+
+screen 16
+title "ROSbag reduced recording"
+stuff "rosbag record --duration=5m -O ~/SherpaHighLevel/ROSbag/$(date +"%F_%H:%M:%S")_posFilter.bag -j /attitude /imu /filter_state /first /last /map /most_intense /pos_filter/tf_msg /pos_filter/out_pose /rot_imu /slam_out_pose /tf /move_base_node/NavfnROS/plan /move_base_node/global_costmap/costmap /cmd_vel"
+
+screen 20
+title "interaction2"

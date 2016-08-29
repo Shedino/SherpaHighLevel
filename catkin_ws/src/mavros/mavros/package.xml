@@ -39,6 +39,7 @@
   <depend>camera_handler_SHERPA</depend>
   <depend>mms_msgs</depend>
   <exec_depend>python-argparse</exec_depend>
+  <depend>wgs84_ned_lib</depend>
 
   <export>
     <mavros plugin="${prefix}/mavros_plugins.xml" />
