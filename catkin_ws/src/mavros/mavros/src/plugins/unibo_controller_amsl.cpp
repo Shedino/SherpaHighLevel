@@ -55,7 +55,7 @@ public:
 		directive_sub = nodeHandle.subscribe("/directive", 10, &UniboControllerAMSLPlugin::directive_cb, this);
 		arm_sub = nodeHandle.subscribe("/arm", 10, &UniboControllerAMSLPlugin::arming, this);
 		filtered_pos_sub = nodeHandle.subscribe("/pos_filter/pos_vel_out", 1, &UniboControllerAMSLPlugin::filtered_pos_cb, this);		// Nico
-		cmd_vel_sub = nodeHandle.subscribe("/cmd_vel", 1, &UniboControllerAMSLPlugin::cmd_vel_cb, this);
+		//cmd_vel_sub = nodeHandle.subscribe("/cmd_vel", 1, &UniboControllerAMSLPlugin::cmd_vel_cb, this);
 
 		/* --- PUBLISHERS --- */
 		position_pub = nodeHandle.advertise<mavros::Global_position_int>("/global_position_int", 10);               //TODO this should become a mavros topic and removed from amsl and splitted from attitude
@@ -392,7 +392,7 @@ private:
 		send_vel_mavlink(_velocities);
 	}
 
-	void cmd_vel_cb(const geometry_msgs::Twist::ConstPtr msg){
+	/*void cmd_vel_cb(const geometry_msgs::Twist::ConstPtr msg){
 		float _velocities[4];	//vx,vy,vz,vyaw
 		_velocities[0] = msg->linear.x;
 		_velocities[1] = msg->linear.y;
@@ -401,7 +401,7 @@ private:
 		_velocities[3] = msg->angular.z;
 		ROS_INFO("MAvRoS: Receiving vel_cmd");
 		send_vel_mavlink(_velocities);
-	}
+	}*/
 
 	void send_vel_mavlink(float _velocities[4]){
 		/*

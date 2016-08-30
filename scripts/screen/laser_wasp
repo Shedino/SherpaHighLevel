@@ -30,9 +30,13 @@ stuff "sleep 8; rosservice call /mavros_usb/set_stream_rate 0 5 true"
 
 screen 6
 title "Mavros arduino"
-stuff "sleep 10; roslaunch mavros uniboAMSLUSB_simple.launch\015"
+stuff "sleep 8; roslaunch mavros uniboAMSLUSB_simple.launch\015"
 
-screen 7
+screen 71
+title "Mavros rate"
+stuff "sleep 13;  rosservice call /mavros/set_stream_rate 0 0 true\015"
+
+screen 72
 title "Mavros rate"
 stuff "sleep 15;  rosservice call /mavros/set_stream_rate 3 5 true\015"
 
@@ -47,6 +51,10 @@ stuff "sleep 12; rosrun pos_filter pos_filter_tf\015"
 screen 10
 title "pos filter"
 stuff "sleep 12; rosrun pos_filter pos_filter\015"
+
+screen 11
+title "guidance"
+stuff "sleep 10; rosrun guidance_node_speed_ned guidance_node_speed_ned\015"
 
 screen 15
 title "ROSbag recording"

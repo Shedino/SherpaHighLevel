@@ -1,6 +1,6 @@
 local_costmap:
   global_frame: map
-  robot_base_frame: base_link
+  robot_base_frame: base
   update_frequency: 5.0 #50
   publish_frequency: 1.0
   static_map: false

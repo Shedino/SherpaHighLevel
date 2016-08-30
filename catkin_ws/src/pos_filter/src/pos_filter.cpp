@@ -10,16 +10,16 @@
 // mavros
 #include "mavros/Raw_imu.h"
 #include "mavros/Attitude.h"
+#include "mavros/PositionTarget.h"
 
 // msgs
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Pose.h"
-
-#include "geometry_msgs/Point.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
+#include "geometry_msgs/Point.h"
+
 #include "pos_filter/tf_msg.h"
 #include "pos_filter/filter_state_msg.h"
-#include "mavros/PositionTarget.h"
 
 #include <sstream>
 
@@ -45,7 +45,8 @@ static mavros::Raw_imu data_raw;						// IMU raw data msg object
 static mavros::Attitude attitude;						// attitude msg object
 mavros::PositionTarget estimated_pos;					// estimated position msg object
 static geometry_msgs::Pose slam_pos;					// SLAM position msg object
-static geometry_msgs::Pose filter_pose_visu;			// SLAM position msg object
+static geometry_msgs::PoseStamped filter_pose_visu;			// SLAM position msg object
+static geometry_msgs::PoseWithCovarianceStamped resetPose;			// SLAM position used to reset
 static pos_filter::tf_msg tf_msg;						// filter tf conversion node
 static pos_filter::filter_state_msg state_msg;			// debug message (for matlab)
 //static geometry_msgs::PoseWithCovarianceStamped glob_pos_msg;
@@ -77,7 +78,8 @@ int main(int argc, char **argv)
   long int cycleCount = 0;
   static int slamOffset2BigCount = 0;
   double yaw = 0.0;
-  double slamToFilterOffset = 0;
+  double slamToFilterOffset = 0,
+		 slamToFilterYawError = 0;
   static bool slamError = false;
   
 // subscribers
@@ -90,7 +92,8 @@ int main(int argc, char **argv)
 // publishers
   ros::Publisher position_pub = n.advertise<mavros::PositionTarget>("/pos_filter/pos_vel_out", 1);
   ros::Publisher state_msg_pub = n.advertise<pos_filter::filter_state_msg>("/filter_state", 1);
-  ros::Publisher filter_pose_visu_pub = n.advertise<geometry_msgs::Pose>("/pos_filter/visu_pose", 1);
+  ros::Publisher filter_pose_visu_pub = n.advertise<geometry_msgs::PoseStamped>("/pos_filter/visu_pose", 1);
+  ros::Publisher reset_slam_pub = n.advertise<geometry_msgs::PoseWithCovarianceStamped>("/initialpose", 1);
 
   ros::spinOnce();
 
@@ -139,6 +142,7 @@ int main(int argc, char **argv)
     // update callbacks
 	ros::spinOnce();
 
+#ifdef USE_SLAM_YAW
     //read yaw from slam
 	yaw = tf::getYaw(slam_orientation);
 	// check fpr NaN error
@@ -148,6 +152,10 @@ int main(int argc, char **argv)
 	  // reset variable so that no calculations will become NaN
 	  yaw = 0.0;
     }
+#else
+	yaw = -attitude.yaw;
+	mapOffset = 0.0;
+#endif
 	
     // update rotation matrix
     rotationMatrix = AngleAxisd(normalize_angle_rad(-yaw + mapOffset), Vector3d::UnitZ())	// z axis rotation respecting map offset
@@ -158,7 +166,7 @@ int main(int argc, char **argv)
 #endif
 	
     // save imu values in 3 dim vector for matrix calculations and recalciulate units from cm to m
-	imuVec3 << (double)data_raw.xacc/100.0,
+	imuVec3 << 	(double)data_raw.xacc/100.0,
 				(double)data_raw.yacc/100.0,
 				(double)data_raw.zacc/100.0;
 
@@ -174,14 +182,17 @@ int main(int argc, char **argv)
     state_msg.imu_flag = imuUpdateFlag;
 #endif
 
+	// calculate yaw error
+	slamToFilterYawError = abs(normalize_angle_rad((tf::getYaw(slam_orientation) - tf_msg.mapOffset) + attitude.yaw));
+	//ROS_INFO("yaw error: %.4f, slam: %.4f, mapOff: %.4f, att: %.4f", slamToFilterYawError, tf::getYaw(slam_orientation), tf_msg.mapOffset, attitude.yaw);
+
 #if defined(COMPLEMENTARY) || defined(FILTER_COMPARE)
 /* Complementary filter */
 	slamToFilterOffset = sqrt( pow(slam_pos.position.x -  comp_x.getEstPos(), 2) + 		// calculate offset between last filter and slam position
 		pow(slam_pos.position.y - comp_y.getEstPos(), 2) );
-	if ( slamToFilterOffset >= SLAM_ERROR_LIMIT ){					// big jump in slam measurement
-		slamError = true;											// set error flag
-	}
-	else if( slamToFilterOffset >= 0.5 ){							// small jump
+	
+	if( slamToFilterOffset >= SLAM_RECOVER_LIMIT 					// position error ...
+		|| slamToFilterYawError >= M_PI_4 ){						// or yaw error
 		comp_x.update(imuVec3(0), comp_x.getEstPos());				// --> perform filter update with last filter position instead of slam position
 		comp_y.update(imuVec3(1), comp_y.getEstPos());
 		slamOffset2BigCount++;
@@ -206,10 +217,8 @@ int main(int argc, char **argv)
 #endif
 	  slamToFilterOffset = sqrt( pow(slam_pos.position.x -  kalman_x.getEstPos(), 2) + 		// calculate offset between last filter and slam position
 		pow(slam_pos.position.y - kalman_y.getEstPos(), 2) );
-	  if ( slamToFilterOffset >= SLAM_ERROR_LIMIT ){					// big jump in slam measurement
-		slamError = true;											// set error flag
-	  }
-	  else if( slamToFilterOffset >= 0.5 ){
+	if( slamToFilterOffset >= SLAM_RECOVER_LIMIT 					// position error ...
+		|| slamToFilterYawError >= M_PI_4 ){						// or yaw error
 		slamOffset2BigCount++;
 		// no update step
 	  }
@@ -229,7 +238,8 @@ int main(int argc, char **argv)
 	// set missing variables in mavros message
     estimated_pos.header.stamp = timestamp;				// timestamp
     estimated_pos.header.seq = cycleCount;				// sequence
-	estimated_pos.yaw = yaw - mapOffset;				// yaw
+    estimated_pos.yaw = yaw - mapOffset;				// yaw
+    estimated_pos.yaw_rate = attitude.yawspeed;				// yaw speed
 	/************DELETE****/
 /*	static int temp_pos = 0;
 	if (cycleCount % 500 == 0)
@@ -237,16 +247,29 @@ int main(int argc, char **argv)
 	estimated_pos.position.x = (float)temp_pos;
 	estimated_pos.position.y = (float)temp_pos;*/
 	/************DELETE END****/
-	if ( slamOffset2BigCount >= 200 )					// 100 = 1s, 200 = 2s
+	if ( slamOffset2BigCount >= 50 )					// 100 = 1s, 200 = 2s, ...
 		slamError = true;
+
 	if ( !slamError )									// if filter and slam running fine...
 		position_pub.publish(estimated_pos);			// send msg
-	else
-		ROS_WARN_STREAM("SLAM error occured -> aborting state estimation!");
+	else {								// initiate reset to recover from failure
+          resetPose.header.stamp = timestamp;
+          resetPose.header.frame_id = "map";
+          resetPose.pose.pose.position.x = estimated_pos.position.x;
+          resetPose.pose.pose.position.y = -estimated_pos.position.y;
+          resetPose.pose.pose.position.z = -estimated_pos.position.z;
+          resetPose.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(attitude.roll, -attitude.pitch, normalize_angle_rad(-attitude.yaw + tf_msg.mapOffset));
+
+          reset_slam_pub.publish(resetPose);
+          ROS_WARN_STREAM("SLAM error occured -> trying to recover!");
+		  ROS_INFO( "Recover pos x: %.2f | y: %.2f | yaw: %.2f !", estimated_pos.position.x, -estimated_pos.position.y, normalize_angle_rad(-attitude.yaw + tf_msg.mapOffset));
+          slamOffset2BigCount = 0;
+          slamError = 0;
+        }
 
     // print position estimation once every second
     if ( cycleCount % 100 == 0 ){
-      ROS_INFO( "new pos estimate: x: %.4f,    y: %.4f,    z: %.4f,    off: %.4f", estimated_pos.position.x, estimated_pos.position.y, estimated_pos.position.z, slamToFilterOffset );
+      ROS_INFO( "new pos estimate: x: %.4f,    y: %.4f,    z: %.4f,    off: %.4f", estimated_pos.position.x, -estimated_pos.position.y, -estimated_pos.position.z, slamToFilterOffset );
     }
 
 /*************************************************/
@@ -294,17 +317,19 @@ int main(int argc, char **argv)
 #endif
 
 #ifdef RVIZ_VISU
+		filter_pose_visu.header.stamp = timestamp;
+		filter_pose_visu.header.frame_id = "map";
 	#ifdef COMPLEMENTARY
-		filter_pose_visu.position.x = comp_x.getEstPos();
-		filter_pose_visu.position.y = comp_y.getEstPos();
-		filter_pose_visu.position.z = comp_z.getEstPos();
+		filter_pose_visu.pose.position.x = comp_x.getEstPos();
+		filter_pose_visu.pose.position.y = comp_y.getEstPos();
+		filter_pose_visu.pose.position.z = comp_z.getEstPos();
 	#endif
 	#ifdef KALMAN
-		filter_pose_visu.position.x = kalman_x.getEstPos();
-		filter_pose_visu.position.y = kalman_y.getEstPos();
-		filter_pose_visu.position.z = kalman_z.getEstPos();
+		filter_pose_visu.pose.position.x = kalman_x.getEstPos();
+		filter_pose_visu.pose.position.y = kalman_y.getEstPos();
+		filter_pose_visu.pose.position.z = kalman_z.getEstPos();
 	#endif
-	filter_pose_visu.orientation = tf::createQuaternionMsgFromRollPitchYaw(attitude.roll, -attitude.pitch,  tf::getYaw(slam_orientation)-mapOffset);
+	filter_pose_visu.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(attitude.roll, -attitude.pitch,  yaw-mapOffset);
     filter_pose_visu_pub.publish(filter_pose_visu);				// send msg	
 #endif
 /*************************************************/  

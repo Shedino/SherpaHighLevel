@@ -3,8 +3,11 @@
 
 // defines
 #define FREQUENCY 	100					// frequence of main loop in [Hz]
+#define SLAM_RECOVER_LIMIT 1.0
 #define SLAM_ERROR_LIMIT 10.0
-#define FILTER_COMPARE
+//#define USE_SLAM_YAW
+
+//#define FILTER_COMPARE
 #define KALMAN							// use enum filterType to specify which filter to use
 //#define COMPLEMENTARY
 #define RVIZ_VISU
