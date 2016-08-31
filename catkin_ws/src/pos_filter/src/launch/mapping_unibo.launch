@@ -7,7 +7,7 @@
   <arg name="pub_map_odom_transform" default="true"/>
   <arg name="scan_subscriber_queue_size" default="5"/>
   <arg name="scan_topic" default="/first"/>
-  <arg name="map_size" default="2048"/>
+  <arg name="map_size" default="1000"/>
   
   <!-- static_transform_publisher args = x y z yaw pitch roll frame_id child_frame_id period_in_ms -->
   <node pkg="tf" type="static_transform_publisher" name="base_to_laser_broadcaster" args="0 0 0.12 0 0 0 /base /laser 10" /> 

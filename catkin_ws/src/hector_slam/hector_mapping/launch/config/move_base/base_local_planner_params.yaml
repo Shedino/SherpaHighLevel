@@ -7,8 +7,8 @@ TrajectoryPlannerROS:
   sim_granularity: 0.1 #0.25
   sim_angular_granularity: 6.0 #0.025
   dwa: true
-  vx_samples: 5
-  vtheta_samples: 10
+  vx_samples: 20
+  vtheta_samples: 20
   max_vel_x: 1.0
   min_vel_x: 0.1
   y_vels: [-1.0,-0.1,0.1,1.0]

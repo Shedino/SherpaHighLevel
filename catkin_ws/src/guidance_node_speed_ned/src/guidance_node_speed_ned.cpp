@@ -31,15 +31,15 @@ public:
 		//control param
 		node.param("guidance_node_speed_ned/param/sat_xy_speed", param_[0], 1.5);
 		node.param("guidance_node_speed_ned/param/sat_yaw_speed", param_[1], 1.0);
-		node.param("guidance_node_speed_ned/param/gain_xy_speed", param_[2], 0.1);
-		node.param("guidance_node_speed_ned/param/gain_yaw_speed", param_[3], 0.1);
+		node.param("guidance_node_speed_ned/param/gain_xy_speed", param_[2], 0.01);
+		node.param("guidance_node_speed_ned/param/gain_yaw_speed", param_[3], 0.01);
 		node.param("guidance_node_speed_ned/param/gain_integral_xy_speed", param_[4],0.025);
 		node.param("guidance_node_speed_ned/param/gain_integral_yaw_speed", param_[5],0.015);
 
 		//subscribers and publishers
 		//subCmdVel = n_.subscribe("/cmd_vel",10, &GuidanceNodeSpeedClass::readCmdVel, this);
-		subCmdVel = n_.subscribe("/cmd_vel", 10, &GuidanceNodeSpeedClass::readCmdVel,this);
-		subPosFilter = n_.subscribe("/pos_filter/pos_vel_out", 10, &GuidanceNodeSpeedClass::readPosFilter,this);
+		subCmdVel = n_.subscribe("/cmd_vel", 1, &GuidanceNodeSpeedClass::readCmdVel,this);
+		subPosFilter = n_.subscribe("/pos_filter/pos_vel_out", 1, &GuidanceNodeSpeedClass::readPosFilter,this);
 
 		pubDirective = n_.advertise<guidance_node_amsl::Directive>("/directive", 10);
 
@@ -102,6 +102,7 @@ public:
 		if (counter_print > 10){
 			counter_print = 0;
 			ROS_INFO("Guidance X CONTROL: %f - %f - %f - %f - %f", _cmd_vel.linear.x, _pos_vel.velocity.x, error[0], integral[0], _directive.vxBody);
+			ROS_INFO("Guidance Y CONTROL: %f - %f - %f - %f - %f", _cmd_vel.linear.y, _pos_vel.velocity.y, error[1], integral[1], _directive.vyBody);
 			ROS_INFO("Guidance Z ANGULAR CONTROL: %f - %f - %f - %f - %f", _cmd_vel.angular.z, _pos_vel.yaw_rate, error[2], integral[2], _directive.yawRate);
 			//ROS_INFO("Guidance enableL: %s", enable_directive ? "true" : "false");
 		}

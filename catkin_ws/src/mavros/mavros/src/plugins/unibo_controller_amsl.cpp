@@ -213,7 +213,7 @@ private:
 		 * If safety is on, chan5_raw must be less than 1200
 		 */
 		//DEBUG
-		ROS_INFO("CHANNEL 5-6 IS: %u-%u",channels_raw.chan5_raw,channels_raw.chan6_raw);
+		//ROS_INFO("CHANNEL 5-6 IS: %u-%u",channels_raw.chan5_raw,channels_raw.chan6_raw);
 		if(channels_raw.chan6_raw > 1700 && channels_raw.chan5_raw > 1300 && channels_raw.chan5_raw < 1700){
 		//            ODROID_ON                 HIGHER THAN STABILIZE     &&            LOWER THAN RTL        -->      LOITER
 			safetyOn = false;
@@ -480,10 +480,10 @@ private:
 			if (velocity_.channels[3] < RC4_trim_){
 				velocity_.channels[3] -= RC4_dz_;
 			}
-			ROS_INFO("RC: %d - %d - %d - %d", velocity_.channels[0], velocity_.channels[1], velocity_.channels[2], velocity_.channels[3]);
+			//ROS_INFO("RC: %d - %d - %d - %d", velocity_.channels[0], velocity_.channels[1], velocity_.channels[2], velocity_.channels[3]);
 
 		} else {
-			ROS_INFO("MAVROS: SAFETYYYY FUCKKKK");
+			//ROS_INFO("MAVROS: SAFETYYYY FUCKKKK");
 		}
 
 		//DEBUG
