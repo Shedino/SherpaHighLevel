@@ -7,7 +7,10 @@
 #define SLAM_ERROR_LIMIT 10.0
 //#define USE_SLAM_YAW
 
-//#define FILTER_COMPARE
+#define LASER_IMU_OFFSET 0.12			// height offset laser to IMU (positiv if laser higher than IMU) in [m]
+#define USE_NAVIGATION_STACK
+
+#define FILTER_COMPARE
 #define KALMAN							// use enum filterType to specify which filter to use
 //#define COMPLEMENTARY
 #define RVIZ_VISU

@@ -3,9 +3,11 @@
 
 #include "guidance_node_amsl/Directive.h"
 #include "mavros/PositionTarget.h"
+#include "mavros/Safety.h"
 #include "geometry_msgs/Twist.h"
+#include "mavros/Attitude.h"
 
-
+#define alpha 0.0
 
 class GuidanceNodeSpeedClass {
 public:
@@ -40,6 +42,8 @@ public:
 		//subCmdVel = n_.subscribe("/cmd_vel",10, &GuidanceNodeSpeedClass::readCmdVel, this);
 		subCmdVel = n_.subscribe("/cmd_vel", 1, &GuidanceNodeSpeedClass::readCmdVel,this);
 		subPosFilter = n_.subscribe("/pos_filter/pos_vel_out", 1, &GuidanceNodeSpeedClass::readPosFilter,this);
+		subSafety = n_.subscribe("/safety_odroid", 1, &GuidanceNodeSpeedClass::readSafety,this);
+		subAttitude = n_.subscribe("/attitude", 1, &GuidanceNodeSpeedClass::readAttitude,this);
 
 		pubDirective = n_.advertise<guidance_node_amsl::Directive>("/directive", 10);
 
@@ -99,11 +103,11 @@ public:
 		_directive.yawRate = std::max((double)_directive.yawRate,-param_[1]);
 		_directive.yawRate = std::min((double)_directive.yawRate,param_[1]);
 
-		if (counter_print > 10){
+		if (counter_print >= 2 && !_safety.safety){
 			counter_print = 0;
-			ROS_INFO("Guidance X CONTROL: %f - %f - %f - %f - %f", _cmd_vel.linear.x, _pos_vel.velocity.x, error[0], integral[0], _directive.vxBody);
-			ROS_INFO("Guidance Y CONTROL: %f - %f - %f - %f - %f", _cmd_vel.linear.y, _pos_vel.velocity.y, error[1], integral[1], _directive.vyBody);
-			ROS_INFO("Guidance Z ANGULAR CONTROL: %f - %f - %f - %f - %f", _cmd_vel.angular.z, _pos_vel.yaw_rate, error[2], integral[2], _directive.yawRate);
+			ROS_INFO("Guidance X CONTROL: %f, %f, %f, %f, %f", _cmd_vel.linear.x, _pos_vel.velocity.x, error[0], integral[0], _directive.vxBody);
+			ROS_INFO("Guidance Y CONTROL: %f, %f, %f, %f, %f", _cmd_vel.linear.y, _pos_vel.velocity.y, error[1], integral[1], _directive.vyBody);
+			ROS_INFO("Guidance Z ANGULAR CONTROL: %f, %f, %f, %f, %f", _cmd_vel.angular.z, _pos_vel.yaw_rate, error[2], integral[2], _directive.yawRate);
 			//ROS_INFO("Guidance enableL: %s", enable_directive ? "true" : "false");
 		}
 
@@ -113,14 +117,46 @@ public:
 	void readCmdVel(const geometry_msgs::Twist::ConstPtr& msg){
 		//ROS_INFO("Received CMDVEL");
 		counter_wd = 0;
-		_cmd_vel  = *msg;
-		_cmd_vel.linear.y = -_cmd_vel.linear.y;		//CMD_VEL is in NWU while controller is NED
-		_cmd_vel.angular.z = -_cmd_vel.angular.z;	//CMD_VEL is in NWU while controller is NED
+		//_cmd_vel  = *msg;
+		if (_safety.safety){		//If ODROID not enabled
+			_cmd_vel.linear.x = 0;
+			_cmd_vel.linear.y = 0;
+			_cmd_vel.angular.z = 0;
+		} else {
+			//LOW PASS
+			//TODO put it into main loop and not in callback to run it at the node frequency
+			_cmd_vel.linear.x = _cmd_vel.linear.x*alpha + msg->linear.x*(1-alpha);
+			_cmd_vel.linear.y = _cmd_vel.linear.y*alpha - msg->linear.y*(1-alpha);
+			_cmd_vel.angular.z = _cmd_vel.angular.z*alpha - msg->angular.z*(1-alpha);
+			//_cmd_vel.linear.y = -_cmd_vel.linear.y;		//CMD_VEL is in NWU (ROS) while controller is Body in NED
+			//_cmd_vel.angular.z = -_cmd_vel.angular.z;	//CMD_VEL is in NWU (ROS) while controller is Body in NED
+		}
+	}
+
+	void readSafety(const mavros::Safety::ConstPtr& msg){
+		if (msg->safety){
+			integral[0] = 0;
+			integral[1] = 0;
+			integral[2] = 0;
+		}
+		_safety = *msg;
+	}
+
+	void readAttitude(const mavros::Attitude::ConstPtr& msg){
+		_attitude = *msg;
+		//ROS_INFO("Yaw: %f",msg->yaw);
 	}
 
 	void readPosFilter(const mavros::PositionTarget::ConstPtr& msg){
 		//ROS_INFO("Received POSFILTER");
 		_pos_vel = *msg;
+		double temp_x, temp_y;
+		temp_x = _pos_vel.velocity.x;
+		temp_y = _pos_vel.velocity.y;
+		//ROTATING VELOCITIES FROM NED TO BODY
+		_pos_vel.velocity.x = cos(_attitude.yaw)*temp_x + sin(_attitude.yaw)*temp_y;
+		_pos_vel.velocity.y = -sin(_attitude.yaw)*temp_x + cos(_attitude.yaw)*temp_y;
+		//ROS_INFO("Test: %f , %f , %f , %f", -sin(_attitude.yaw), cos(_attitude.yaw), temp_x, temp_y);
 	}
 
 	void run() {
@@ -141,6 +177,8 @@ protected:
 
 	ros::Subscriber subCmdVel;
 	ros::Subscriber subPosFilter;
+	ros::Subscriber subSafety;
+	ros::Subscriber subAttitude;
 
 	ros::Publisher pubDirective;
 
@@ -160,6 +198,8 @@ protected:
 	geometry_msgs::Twist _cmd_vel;
 	mavros::PositionTarget _pos_vel;
 	guidance_node_amsl::Directive _directive;
+	mavros::Safety _safety;
+	mavros::Attitude _attitude;
 
 private:
 

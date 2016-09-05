@@ -3,23 +3,24 @@
 TrajectoryPlannerROS:
   #Independent settings for the local costmap
   transform_tolerance: 0.3
-  sim_time: 1.0
+  sim_time: 2.0
   sim_granularity: 0.1 #0.25
   sim_angular_granularity: 6.0 #0.025
   dwa: true
-  vx_samples: 20
-  vtheta_samples: 20
+  vx_samples: 15
+  vy_samples: 10
+  vtheta_samples: 14
   max_vel_x: 1.0
   min_vel_x: 0.1
   y_vels: [-1.0,-0.1,0.1,1.0]
-  max_rotational_vel: 2.0
+  max_rotational_vel: 1.0
   xy_goal_tolerance: 0.2
-  yaw_goal_tolerance: 6
+  yaw_goal_tolerance: 1.0
   occdist_scale: 0.05
   oscillation_reset_dist: 0.3 #0.05
   holonomic_robot: true
-  acc_lim_th: 5.0 
-  acc_lim_x: 5.0 
-  acc_lim_y: 5.0 
+  acc_lim_theta: 2.0
+  acc_lim_x: 1.5 
+  acc_lim_y: 1.5 
   escape_vel: -0.3
   publish_cost_grid_pc: true

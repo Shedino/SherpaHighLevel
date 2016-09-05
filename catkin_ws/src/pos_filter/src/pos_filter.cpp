@@ -17,6 +17,8 @@
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/Point.h"
+#include <nav_msgs/Odometry.h>
+#include <visualization_msgs/Marker.h>
 
 #include "pos_filter/tf_msg.h"
 #include "pos_filter/filter_state_msg.h"
@@ -81,6 +83,7 @@ int main(int argc, char **argv)
   double slamToFilterOffset = 0,
 		 slamToFilterYawError = 0;
   static bool slamError = false;
+  visualization_msgs::Marker points;
   
 // subscribers
   ros::Subscriber mavros_imu_sub = n.subscribe("/imu", 1, &imuCallback);
@@ -94,6 +97,8 @@ int main(int argc, char **argv)
   ros::Publisher state_msg_pub = n.advertise<pos_filter::filter_state_msg>("/filter_state", 1);
   ros::Publisher filter_pose_visu_pub = n.advertise<geometry_msgs::PoseStamped>("/pos_filter/visu_pose", 1);
   ros::Publisher reset_slam_pub = n.advertise<geometry_msgs::PoseWithCovarianceStamped>("/initialpose", 1);
+  ros::Publisher nav_odom_pub = n.advertise<nav_msgs::Odometry>("/odom", 1);
+  ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
 
   ros::spinOnce();
 
@@ -157,6 +162,7 @@ int main(int argc, char **argv)
 	mapOffset = 0.0;
 #endif
 	
+/***** rotate IMU data *****/
     // update rotation matrix
     rotationMatrix = AngleAxisd(normalize_angle_rad(-yaw + mapOffset), Vector3d::UnitZ())	// z axis rotation respecting map offset
                    * AngleAxisd(attitude.pitch, Vector3d::UnitY())                          // y axis rotateon
@@ -223,7 +229,7 @@ int main(int argc, char **argv)
 		// no update step
 	  }
 	  else{
-        kalman_x.update(slam_pos.position.x);						// --> perform update step
+        kalman_x.update(slam_pos.position.x);								// --> perform update step
         kalman_y.update(slam_pos.position.y);
 //        kalman_z.update(HEIGHT_ESTIMATION FROM WASP);
 		slamOffset2BigCount = 0;
@@ -265,12 +271,74 @@ int main(int argc, char **argv)
 		  ROS_INFO( "Recover pos x: %.2f | y: %.2f | yaw: %.2f !", estimated_pos.position.x, -estimated_pos.position.y, normalize_angle_rad(-attitude.yaw + tf_msg.mapOffset));
           slamOffset2BigCount = 0;
           slamError = 0;
-        }
-
-    // print position estimation once every second
-    if ( cycleCount % 100 == 0 ){
-      ROS_INFO( "new pos estimate: x: %.4f,    y: %.4f,    z: %.4f,    off: %.4f", estimated_pos.position.x, -estimated_pos.position.y, -estimated_pos.position.z, slamToFilterOffset );
     }
+
+#ifdef USE_NAVIGATION_STACK
+	// set header
+	nav_msgs::Odometry odom;
+    odom.header.stamp = timestamp;
+    odom.header.frame_id = "map";
+    odom.child_frame_id = "base";
+	
+    //set the position and velocity
+	#ifdef COMPLEMENTARY
+		odom.pose.pose.position.x = comp_x.getEstPos();
+		odom.twist.twist.linear.x = comp_x.getEstVel() * cos(yaw-mapOffset) + comp_y.getEstVel() * sin(yaw-mapOffset);
+		odom.pose.pose.position.y = comp_y.getEstPos();
+		odom.twist.twist.linear.y = comp_x.getEstVel() * (- sin(yaw-mapOffset)) + comp_y.getEstVel() * cos(yaw-mapOffset);
+		odom.pose.pose.position.z = comp_z.getEstPos();
+		odom.twist.twist.linear.z = 0.0;
+	#endif
+	#ifdef KALMAN
+		odom.pose.pose.position.x = kalman_x.getEstPos();
+		odom.twist.twist.linear.x = kalman_x.getEstVel() * cos(yaw-mapOffset) + kalman_y.getEstVel() * sin(yaw-mapOffset);
+		odom.pose.pose.position.y = kalman_y.getEstPos();
+		odom.twist.twist.linear.y = kalman_x.getEstVel() * (- sin(yaw-mapOffset)) + kalman_y.getEstVel() * cos(yaw-mapOffset);
+		odom.pose.pose.position.z = kalman_z.getEstPos();
+		odom.twist.twist.linear.z = 0.0;
+	#endif
+	odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(yaw-mapOffset);
+	odom.twist.twist.angular.z = - attitude.yawspeed;				// invert because yawspeed in NED but ROS in ENU
+
+    //publish the message
+    nav_odom_pub.publish(odom);
+#endif
+    
+	// print position estimation once every second
+    if ( cycleCount % 100 == 0 ){
+		ROS_INFO("SLAMpositions:    x: %.4f | y: %.4f", slam_pos.position.x, slam_pos.position.y);
+		ROS_INFO("new pos estimate: x: %.4f | y: %.4f,    z: %.4f,    off: %.4f", estimated_pos.position.x, -estimated_pos.position.y, -estimated_pos.position.z, slamToFilterOffset );
+		//ROS_INFO("slam pos offsets: X: %.4f | Y: %.4f", LASER_IMU_OFFSET * sin(attitude.pitch), LASER_IMU_OFFSET * sin(attitude.roll));
+    }
+
+#ifdef RVIZ_VISU
+    if ( cycleCount % 10 == 0 ){
+		points.header.frame_id = "/map";
+		points.header.stamp = timestamp;
+		points.ns = "points_and_lines";
+		points.action = visualization_msgs::Marker::ADD;
+		points.pose.orientation.w = 1.0;
+
+		points.id = 0;
+
+		points.type = visualization_msgs::Marker::POINTS;
+	
+		// POINTS markers use x and y scale for width/height respectively
+		points.scale.x = 0.015;	//Points width
+		points.scale.y = 0.015;	//Points height
+		points.color.g = 1.0f;	//Points color green
+		points.color.b = 1.0f;
+		points.color.a = 1.0;
+
+		geometry_msgs::Point p;
+		p.x = estimated_pos.position.x;
+		p.y = -estimated_pos.position.y;
+		p.z = 0.0;
+		points.points.push_back(p);
+		marker_pub.publish(points);
+	}
+#endif
+
 
 /*************************************************/
 #ifdef FILTER_COMPARE

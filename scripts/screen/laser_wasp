@@ -62,7 +62,7 @@ stuff "rosbag record --duration=3m -O ~/SherpaHighLevel/ROSbag/$(date +"%F_%H:%M
 
 screen 16
 title "ROSbag reduced recording"
-stuff "rosbag record --duration=5m -O ~/SherpaHighLevel/ROSbag/$(date +"%F_%H:%M:%S")_posFilter.bag -j /attitude /imu /filter_state /first /last /map /most_intense /pos_filter/tf_msg /pos_filter/out_pose /rot_imu /slam_out_pose /tf /move_base_node/NavfnROS/plan /move_base_node/global_costmap/costmap /cmd_vel"
+stuff "rosbag record --duration=5m -O ~/SherpaHighLevel/ROSbag/$(date +"%F_%H:%M:%S")_posFilter.bag -j /attitude /imu /filter_state /first /last /map /most_intense /pos_filter/tf_msg /pos_filter/pos_vel_out /pos_filter/visu_pose /rot_imu /slam_out_pose /tf /move_base_node/NavfnROS/plan /move_base_node/global_costmap/costmap /cmd_vel"
 
 screen 20
 title "interaction2"

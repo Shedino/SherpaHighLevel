@@ -56,6 +56,8 @@ int main(int argc, char **argv)
 /*** inf loop ***/
   while (ros::ok())
   {
+	ros::spinOnce();
+		  
     timestamp = ros::Time::now();
 
     if ( attUpdateFlag ){
@@ -81,9 +83,6 @@ int main(int argc, char **argv)
 
       attUpdateFlag = 0;
     }
-
-    
-    ros::spinOnce();
 
     loop_rate.sleep();
   }
