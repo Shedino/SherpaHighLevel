@@ -56,13 +56,17 @@ screen 11
 title "guidance"
 stuff "sleep 10; rosrun guidance_node_speed_ned guidance_node_speed_ned\015"
 
+screen 12
+title "trajectory"
+stuff "sleep 15; rosrun trajectory_generator trajectory_generator\015"
+
 screen 15
 title "ROSbag recording"
 stuff "rosbag record --duration=3m -O ~/SherpaHighLevel/ROSbag/$(date +"%F_%H:%M:%S")_posFilter.bag -j -a"
 
 screen 16
 title "ROSbag reduced recording"
-stuff "rosbag record --duration=5m -O ~/SherpaHighLevel/ROSbag/$(date +"%F_%H:%M:%S")_posFilter.bag -j /attitude /imu /filter_state /first /last /map /most_intense /pos_filter/tf_msg /pos_filter/pos_vel_out /pos_filter/visu_pose /rot_imu /slam_out_pose /tf /move_base_node/NavfnROS/plan /move_base_node/global_costmap/costmap /cmd_vel"
+stuff "rosbag record --duration=5m -O ~/SherpaHighLevel/ROSbag/$(date +"%F_%H:%M:%S")_posFilter.bag -j /attitude /imu /filter_state /first /last /map /most_intense /pos_filter/tf_msg /pos_filter/pos_vel_out /pos_filter/visu_pose /rot_imu /slam_out_pose /tf /move_base_node/NavfnROS/plan /move_base_node/global_costmap/costmap /cmd_vel /pos_filter/moved_path /cmd_vel_pose"
 
 screen 20
 title "interaction2"

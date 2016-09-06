@@ -1,0 +1,21 @@
+<launch>
+
+	<node pkg="mms_rover" type="mms_rover" name="mms_rover" output="screen">
+	</node>
+	
+	<node pkg="position_estimator" type="position_estimator" name="position_estimator" output="screen">  
+	</node> 
+
+	<node pkg="reference_rover" type="reference_rover" name="reference_rover" output="screen"> 
+	</node> 
+
+	<node pkg="body_frame_error" type="body_frame_error" name="body_frame_error" output="screen">
+	</node> 
+
+	<node pkg="donkey_rover" type="follow.py" name="follow" output="screen"> 
+	</node> 
+
+	<node pkg="rover_simulator" type="rover_sim" name="rover_sim" output="screen">
+	</node>		
+	
+</launch>

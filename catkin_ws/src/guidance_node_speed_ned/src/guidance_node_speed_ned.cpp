@@ -6,6 +6,9 @@
 #include "mavros/Safety.h"
 #include "geometry_msgs/Twist.h"
 #include "mavros/Attitude.h"
+#include <tf/transform_broadcaster.h>
+#include "nav_msgs/Odometry.h"
+
 
 #define alpha 0.0
 
@@ -28,22 +31,26 @@ public:
 		_directive.vzBody = 0; //Not used
 		_directive.yawRate = 0;
 
+		_cmd_vel_pose.pose.pose.orientation = tf::createQuaternionMsgFromYaw(0.0);
+
 		enable_directive = false;
 
 		//control param
 		node.param("guidance_node_speed_ned/param/sat_xy_speed", param_[0], 1.5);
 		node.param("guidance_node_speed_ned/param/sat_yaw_speed", param_[1], 1.0);
-		node.param("guidance_node_speed_ned/param/gain_xy_speed", param_[2], 0.01);
-		node.param("guidance_node_speed_ned/param/gain_yaw_speed", param_[3], 0.01);
-		node.param("guidance_node_speed_ned/param/gain_integral_xy_speed", param_[4],0.025);
-		node.param("guidance_node_speed_ned/param/gain_integral_yaw_speed", param_[5],0.015);
+		node.param("guidance_node_speed_ned/param/gain_xy", param_[2], 0.2);
+		node.param("guidance_node_speed_ned/param/gain_yaw", param_[3], 0.2);
+		node.param("guidance_node_speed_ned/param/gain_integral_xy", param_[4],0.01);
+		node.param("guidance_node_speed_ned/param/gain_integral_yaw", param_[5],0.01);
 
 		//subscribers and publishers
 		//subCmdVel = n_.subscribe("/cmd_vel",10, &GuidanceNodeSpeedClass::readCmdVel, this);
-		subCmdVel = n_.subscribe("/cmd_vel", 1, &GuidanceNodeSpeedClass::readCmdVel,this);
+		subCmdVel = n_.subscribe("/cmd_vel_pose", 1, &GuidanceNodeSpeedClass::readCmdVelPose,this);
+		//subCmdPos = n_.subscribe("/cmd_pose", 1, &GuidanceNodeSpeedClass::readCmdPose,this);
 		subPosFilter = n_.subscribe("/pos_filter/pos_vel_out", 1, &GuidanceNodeSpeedClass::readPosFilter,this);
 		subSafety = n_.subscribe("/safety_odroid", 1, &GuidanceNodeSpeedClass::readSafety,this);
 		subAttitude = n_.subscribe("/attitude", 1, &GuidanceNodeSpeedClass::readAttitude,this);
+
 
 		pubDirective = n_.advertise<guidance_node_amsl::Directive>("/directive", 10);
 
@@ -66,18 +73,22 @@ public:
 
 
 		if (!enable_directive){
-			_cmd_vel.linear.x = 0;
-			_cmd_vel.linear.y = 0;
-			_cmd_vel.angular.z = 0;
+			_cmd_vel_pose.twist.twist.linear.x = 0;
+			_cmd_vel_pose.twist.twist.linear.y = 0;
+			_cmd_vel_pose.twist.twist.linear.z = 0;
+			_cmd_vel_pose.twist.twist.angular.x = 0;
+			_cmd_vel_pose.twist.twist.angular.y = 0;
+			_cmd_vel_pose.twist.twist.angular.z = 0;
 		}
 
 		//CONTROLLER
 
 		//Calculate Error
-		error[0] = _cmd_vel.linear.x - _pos_vel.velocity.x;
-		error[1] = _cmd_vel.linear.y - _pos_vel.velocity.y;
-		//error[2] = _cmd_vel.linear.z - _pos_vel.velocity.z;
-		error[2] = _cmd_vel.angular.z - _pos_vel.yaw_rate;
+		error[0] = _cmd_vel_pose.pose.pose.position.x - _pos_vel.position.x;
+		error[1] = _cmd_vel_pose.pose.pose.position.y - _pos_vel.position.y;
+		//tf::Quaternion temp_quat(_cmd_vel_pose.pose.pose.orientation.x, _cmd_vel_pose.pose.pose.orientation.y,_cmd_vel_pose.pose.pose.orientation.z,_cmd_vel_pose.pose.pose.orientation.w);
+		//temp_quat.normalize();
+		error[2] = tf::getYaw (_cmd_vel_pose.pose.pose.orientation) - _pos_vel.yaw;
 
 		//Calculate Integral and anti-wind up
 		integral[0] = integral[0] + param_[4]*error[0]*dt;
@@ -91,9 +102,14 @@ public:
 		integral[2] = std::min(integral[2],param_[1]/2);
 
 		//Proportional + I + FF
-		_directive.vxBody = param_[2]*error[0] + integral[0] + _cmd_vel.linear.x;
-		_directive.vyBody = param_[2]*error[1] + integral[1] + _cmd_vel.linear.y;
-		_directive.yawRate = param_[3]*error[2] + integral[2] + _cmd_vel.angular.z;
+		_cmd_vel_ned.linear.x = param_[2]*error[0] + integral[0] + _cmd_vel_pose.twist.twist.linear.x;
+		_cmd_vel_ned.linear.y = param_[2]*error[1] + integral[1] + _cmd_vel_pose.twist.twist.linear.y;
+		_cmd_vel_ned.angular.z = param_[3]*error[2] + integral[2] + _cmd_vel_pose.twist.twist.angular.z;
+
+		//Convert NED-->BODY
+		_directive.vxBody = cos(_attitude.yaw)*_cmd_vel_ned.linear.x + sin(_attitude.yaw)*_cmd_vel_ned.linear.y;
+		_directive.vyBody = -sin(_attitude.yaw)*_cmd_vel_ned.linear.x + cos(_attitude.yaw)*_cmd_vel_ned.linear.y;
+		_directive.yawRate = _cmd_vel_ned.angular.z;
 
 		//Saturation
 		_directive.vxBody = std::max((double)_directive.vxBody,-param_[0]);
@@ -105,29 +121,45 @@ public:
 
 		if (counter_print >= 2 && !_safety.safety){
 			counter_print = 0;
-			ROS_INFO("Guidance X CONTROL: %f, %f, %f, %f, %f", _cmd_vel.linear.x, _pos_vel.velocity.x, error[0], integral[0], _directive.vxBody);
-			ROS_INFO("Guidance Y CONTROL: %f, %f, %f, %f, %f", _cmd_vel.linear.y, _pos_vel.velocity.y, error[1], integral[1], _directive.vyBody);
-			ROS_INFO("Guidance Z ANGULAR CONTROL: %f, %f, %f, %f, %f", _cmd_vel.angular.z, _pos_vel.yaw_rate, error[2], integral[2], _directive.yawRate);
+			ROS_INFO("Guidance X CONTROL: %f, %f, %f", error[0], integral[0], _directive.vxBody);
+			ROS_INFO("Guidance Y CONTROL: %f, %f, %f", error[1], integral[1], _directive.vyBody);
+			ROS_INFO("Guidance Z ANGULAR CONTROL: %f, %f, %f", error[2], integral[2], _directive.yawRate);
 			//ROS_INFO("Guidance enableL: %s", enable_directive ? "true" : "false");
 		}
 
 		pubDirective.publish(_directive);
 	}
 
-	void readCmdVel(const geometry_msgs::Twist::ConstPtr& msg){
+	void readCmdVelPose(const nav_msgs::Odometry::ConstPtr& msg){
 		//ROS_INFO("Received CMDVEL");
 		counter_wd = 0;
 		//_cmd_vel  = *msg;
 		if (_safety.safety){		//If ODROID not enabled
-			_cmd_vel.linear.x = 0;
-			_cmd_vel.linear.y = 0;
-			_cmd_vel.angular.z = 0;
+			_cmd_vel_pose.twist.twist.linear.x = 0;
+			_cmd_vel_pose.twist.twist.linear.y = 0;
+			_cmd_vel_pose.twist.twist.linear.z = 0;
+			_cmd_vel_pose.twist.twist.angular.x = 0;
+			_cmd_vel_pose.twist.twist.angular.y = 0;
+			_cmd_vel_pose.twist.twist.angular.z = 0;
 		} else {
+			_cmd_vel_pose = *msg;
+			//NWU (ROS) to NED
+			_cmd_vel_pose.twist.twist.linear.y = -_cmd_vel_pose.twist.twist.linear.y;
+			_cmd_vel_pose.twist.twist.linear.z = -_cmd_vel_pose.twist.twist.linear.z;
+			_cmd_vel_pose.twist.twist.angular.y = -_cmd_vel_pose.twist.twist.angular.y;
+			_cmd_vel_pose.twist.twist.angular.z = -_cmd_vel_pose.twist.twist.angular.z;
+			_cmd_vel_pose.pose.pose.position.y = -_cmd_vel_pose.pose.pose.position.y;
+			_cmd_vel_pose.pose.pose.position.z = -_cmd_vel_pose.pose.pose.position.z;
+			_cmd_vel_pose.pose.pose.orientation.z = -_cmd_vel_pose.pose.pose.orientation.z;
+			//double yaw = tf::getYaw(_cmd_vel_pose.pose.pose.orientation);
+			//yaw = -yaw;
+			//_cmd_vel_pose.pose.pose.orientation = tf::createQuaternionMsgFromYaw(yaw);
+
 			//LOW PASS
 			//TODO put it into main loop and not in callback to run it at the node frequency
-			_cmd_vel.linear.x = _cmd_vel.linear.x*alpha + msg->linear.x*(1-alpha);
-			_cmd_vel.linear.y = _cmd_vel.linear.y*alpha - msg->linear.y*(1-alpha);
-			_cmd_vel.angular.z = _cmd_vel.angular.z*alpha - msg->angular.z*(1-alpha);
+			//_cmd_vel.linear.x = _cmd_vel.linear.x*alpha + msg->linear.x*(1-alpha);
+			//_cmd_vel.linear.y = _cmd_vel.linear.y*alpha - msg->linear.y*(1-alpha);
+			//_cmd_vel.angular.z = _cmd_vel.angular.z*alpha - msg->angular.z*(1-alpha);
 			//_cmd_vel.linear.y = -_cmd_vel.linear.y;		//CMD_VEL is in NWU (ROS) while controller is Body in NED
 			//_cmd_vel.angular.z = -_cmd_vel.angular.z;	//CMD_VEL is in NWU (ROS) while controller is Body in NED
 		}
@@ -154,8 +186,8 @@ public:
 		temp_x = _pos_vel.velocity.x;
 		temp_y = _pos_vel.velocity.y;
 		//ROTATING VELOCITIES FROM NED TO BODY
-		_pos_vel.velocity.x = cos(_attitude.yaw)*temp_x + sin(_attitude.yaw)*temp_y;
-		_pos_vel.velocity.y = -sin(_attitude.yaw)*temp_x + cos(_attitude.yaw)*temp_y;
+		//_pos_vel.velocity.x = cos(_attitude.yaw)*temp_x + sin(_attitude.yaw)*temp_y;
+		//_pos_vel.velocity.y = -sin(_attitude.yaw)*temp_x + cos(_attitude.yaw)*temp_y;
 		//ROS_INFO("Test: %f , %f , %f , %f", -sin(_attitude.yaw), cos(_attitude.yaw), temp_x, temp_y);
 	}
 
@@ -179,6 +211,7 @@ protected:
 	ros::Subscriber subPosFilter;
 	ros::Subscriber subSafety;
 	ros::Subscriber subAttitude;
+	ros::Subscriber subCmdPos;
 
 	ros::Publisher pubDirective;
 
@@ -195,8 +228,9 @@ protected:
 
 	bool enable_directive;
 
-	geometry_msgs::Twist _cmd_vel;
+	geometry_msgs::Twist _cmd_vel_ned;
 	mavros::PositionTarget _pos_vel;
+	nav_msgs::Odometry _cmd_vel_pose;
 	guidance_node_amsl::Directive _directive;
 	mavros::Safety _safety;
 	mavros::Attitude _attitude;

@@ -98,7 +98,7 @@ int main(int argc, char **argv)
   ros::Publisher filter_pose_visu_pub = n.advertise<geometry_msgs::PoseStamped>("/pos_filter/visu_pose", 1);
   ros::Publisher reset_slam_pub = n.advertise<geometry_msgs::PoseWithCovarianceStamped>("/initialpose", 1);
   ros::Publisher nav_odom_pub = n.advertise<nav_msgs::Odometry>("/odom", 1);
-  ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
+  ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("/pos_filter/moved_path", 1);
 
   ros::spinOnce();
 
@@ -333,8 +333,10 @@ int main(int argc, char **argv)
 		geometry_msgs::Point p;
 		p.x = estimated_pos.position.x;
 		p.y = -estimated_pos.position.y;
-		p.z = 0.0;
-		points.points.push_back(p);
+		p.z = 0.0;  
+		points.points.insert(points.points.begin(), p);                 // insert new point at first position
+        if ( points.points.size() > 1000 )                               // if more than 100 points
+            points.points.pop_back();                                   // ... delete last point
 		marker_pub.publish(points);
 	}
 #endif
