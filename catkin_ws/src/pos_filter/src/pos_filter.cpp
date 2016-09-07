@@ -244,7 +244,7 @@ int main(int argc, char **argv)
 	// set missing variables in mavros message
     estimated_pos.header.stamp = timestamp;				// timestamp
     estimated_pos.header.seq = cycleCount;				// sequence
-    estimated_pos.yaw = yaw - mapOffset;				// yaw
+    estimated_pos.yaw = - (yaw - mapOffset);				// yaw
     estimated_pos.yaw_rate = attitude.yawspeed;				// yaw speed
 	/************DELETE****/
 /*	static int temp_pos = 0;

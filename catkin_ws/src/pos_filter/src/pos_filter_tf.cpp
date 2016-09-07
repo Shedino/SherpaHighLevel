@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 
       odom_trans.transform.translation.x = 0.0;
       odom_trans.transform.translation.y = 0.0;
-      odom_trans.transform.translation.z = 0.0;
+      odom_trans.transform.translation.z = 1.0;
       odom_trans.transform.rotation = odom_quat;
 	
       odom_broadcaster.sendTransform(odom_trans);

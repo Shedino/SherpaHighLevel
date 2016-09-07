@@ -9,9 +9,11 @@
 #include <visualization_msgs/Marker.h>
 #include <tf/transform_broadcaster.h>
 #include "nav_msgs/Odometry.h"
+#include "mavros/Safety.h"
+#include "mavros/PositionTarget.h"
 
 
-#define max_speed 1.0
+#define max_speed 0.8
 
 
 class TrajectoryGeneratorClass {
@@ -22,7 +24,8 @@ public:
 
 		//subscribers
 		subPlan=n_.subscribe("/move_base_node/NavfnROS/plan", 1, &TrajectoryGeneratorClass::readPlan,this); 
-		
+		subPosFilter = n_.subscribe("/odom", 1, &TrajectoryGeneratorClass::readOdometry,this);
+		subSafety = n_.subscribe("/safety_odroid", 1, &TrajectoryGeneratorClass::readSafety,this);
 		// publishers
         //marker_pub = n_.advertise<visualization_msgs::Marker>("visualization_marker", 10);
         //cmd_pose_pub = n_.advertise<geometry_msgs::Pose>("/cmd_pose", 10);
@@ -40,7 +43,11 @@ public:
         ds = 0;
         dds = 0.3;
         position_xy.reserve(2);
+        position_xy[0] = 0;
+        position_xy[1] = 0;
         speed_xy.reserve(2);
+        speed_xy[0] = 0;
+        speed_xy[1] = 0;
         counter_print = 0;
         yaw = 0;
 
@@ -81,8 +88,11 @@ public:
         //points.points.clear();
         //marker_pub.publish(points);
         // ----------------------
-        flag_received_new_path = true;
         N_points_in_path = path.poses.size();
+        if (N_points_in_path > 15){
+        	N_points_in_path -= 4;	//Removing last 4 stupid points from global planner
+        }
+
         ROS_INFO("TrajectoryGenerator: received plan. N points: %d",N_points_in_path);
         double temp_distance;
         double temp_time;
@@ -94,7 +104,15 @@ public:
             //ROS_INFO("TrajectoryGenerator: distances: %f",temp_distance);
             total_distance += temp_distance;
         }
-        target_speed = std::min(max_speed,total_distance/5);    //TODO make better and not heuristic
+        if (total_distance < 0.4){
+			flag_received_new_path = false;		//don't generate too short trajectories
+			position_xy[0] = path.poses[N_points_in_path-1].pose.position.x;
+			position_xy[1] = path.poses[N_points_in_path-1].pose.position.y;
+			speed_xy[0] = 0;
+			speed_xy[1] = 0;
+			return;
+		}
+        target_speed = std::min(max_speed,total_distance/5*max_speed);    //TODO make better and not heuristic
         ROS_INFO("TrajectoryGenerator: target speed: %f",target_speed);
         for (int i=0; i<N_points_in_path-1; i++){
             temp_time = round(distances[i]/target_speed/dt)*dt;
@@ -103,10 +121,27 @@ public:
             ds_vector.push_back(1/temp_time);
             delta_x_vector.push_back(path.poses[i+1].pose.position.x-path.poses[i].pose.position.x);
             delta_y_vector.push_back(path.poses[i+1].pose.position.y-path.poses[i].pose.position.y);
+            //ROS_INFO("TrajectoryGenerator: i: %d, x(i+1): %f, x(i): %f,y(i+1): %f, y(i): %f, deltax: %f, deltay: %f",i,path.poses[i+1].pose.position.x,path.poses[i].pose.position.x,path.poses[i+1].pose.position.y,path.poses[i].pose.position.y,delta_x_vector[i],delta_y_vector[i]);
         }
         ROS_INFO("TrajectoryGenerator: finish reading plan");
+        flag_received_new_path = true;
 	}
 	
+	void readSafety(const mavros::Safety::ConstPtr& msg){
+		if (msg->safety){
+			position_xy[0] = _odom.pose.pose.position.x;	//With safety gives the position of the WASP as trajectory
+			position_xy[1] = _odom.pose.pose.position.y;
+			yaw = tf::getYaw(_odom.pose.pose.orientation);
+			speed_xy[0] = 0;
+			speed_xy[1] = 0;
+		}
+	}
+
+	void readOdometry(const nav_msgs::Odometry::ConstPtr& msg){
+		//ROS_INFO("Received POSFILTER");
+		_odom = *msg;
+	}
+
 	void loop()
 	{
         //ROS_INFO("TrajectoryGenerator: LOOP");
@@ -138,9 +173,15 @@ public:
             speed_xy[0] = delta_x_vector[index_actual_segment]*ds;
             speed_xy[1] = delta_y_vector[index_actual_segment]*ds;
             yaw = atan2(delta_y_vector[index_actual_segment],delta_x_vector[index_actual_segment]);
+            /*if (index_actual_segment == N_points_in_path-2){
+				ROS_INFO("TrajectoryGenerator: YAW DEBUG BEFORE LAST: %f, %f, %f",yaw, delta_y_vector[index_actual_segment],delta_x_vector[index_actual_segment]);
+			}
+            if (index_actual_segment == N_points_in_path-1){
+				ROS_INFO("TrajectoryGenerator: YAW DEBUG LAST: %f, %f, %f",yaw, delta_y_vector[index_actual_segment],delta_x_vector[index_actual_segment]);
+			}*/
             if (s >= 1){
                 s = 0; 
-                if (index_actual_segment == N_points_in_path-1){
+                if (index_actual_segment == N_points_in_path-2){
                     flag_received_new_path = false;
                 } else {
                     index_actual_segment++;
@@ -148,10 +189,10 @@ public:
                 //ROS_INFO("TrajectoryGenerator: Next segment: %d", index_actual_segment);
             }
             //ROS_INFO("TrajectoryGenerator: speeds: %f , %f", speed_xy[0], speed_xy[1]);
-            if (counter_print >= 50){
+            /* (counter_print >= 50){
                 counter_print = 0;
                 ROS_INFO("TrajectoryGenerator: ds_index: %f, ds: %f, s: %f , position_x: %f, position_y: %f",ds_vector[index_actual_segment], ds, s, position_xy[0], position_xy[1]);
-            }
+            }*/
 
             //RVIZ
             /*if (counter_rviz_print > 5){
@@ -167,7 +208,7 @@ public:
         } else {
             speed_xy[0] = 0;
             speed_xy[1] = 0;
-            if (counter_print >= 50){
+            if (counter_print >= 100){
                 counter_print = 0;
                 ROS_INFO("TrajectoryGenerator: NO FLAG");
             }
@@ -211,6 +252,8 @@ ros::NodeHandle n_;
 
 // Subscribers
 ros::Subscriber subPlan;
+ros::Subscriber subPosFilter;
+ros::Subscriber subSafety;
 
 // Publishers
 ros::Publisher marker_pub;
@@ -242,6 +285,7 @@ std::vector<double> delta_y_vector;
 //geometry_msgs::Pose cmd_pose;
 nav_msgs::Odometry cmd_vel_pose;
 geometry_msgs::Quaternion quaternion;
+nav_msgs::Odometry _odom;
 
 //RVIZ
 //visualization_msgs::Marker points;

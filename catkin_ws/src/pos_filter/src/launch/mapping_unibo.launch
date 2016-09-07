@@ -69,7 +69,7 @@
    
   <!-- Original Move Base-->
   <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
-    <param name="controller_frequency" value="10.0"/>
+    <param name="controller_frequency" value="1.0"/>
     <rosparam file="$(find hector_mapping)/launch/config/move_base/costmap_common_params.yaml" command="load" ns="global_costmap" />
     <rosparam file="$(find hector_mapping)/launch/config/move_base/costmap_common_params.yaml" command="load" ns="local_costmap" />
     <rosparam file="$(find hector_mapping)/launch/config/move_base/local_costmap_params.yaml" command="load" />
