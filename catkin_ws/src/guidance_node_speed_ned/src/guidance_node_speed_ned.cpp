@@ -23,7 +23,7 @@ public:
 		error = std::vector<double>(3);		//x,y and yaw
 
 		//frequency
-		rate = 10;
+		rate = 33;
 		dt = 1.0/rate;
 
 		_directive.vxBody = 0;
@@ -38,9 +38,9 @@ public:
 		//control param
 		node.param("guidance_node_speed_ned/param/sat_xy_speed", param_[0], 1.5);
 		node.param("guidance_node_speed_ned/param/sat_yaw_speed", param_[1], 1.0);
-		node.param("guidance_node_speed_ned/param/gain_xy", param_[2], 0.2);
-		node.param("guidance_node_speed_ned/param/gain_yaw", param_[3], 0.07);
-		node.param("guidance_node_speed_ned/param/gain_integral_xy", param_[4],0.01);
+		node.param("guidance_node_speed_ned/param/gain_xy", param_[2], 0.65);
+		node.param("guidance_node_speed_ned/param/gain_yaw", param_[3], 0.8);
+		node.param("guidance_node_speed_ned/param/gain_integral_xy", param_[4],0.02);
 		node.param("guidance_node_speed_ned/param/gain_integral_yaw", param_[5],0.01);
 
 		//subscribers and publishers
@@ -85,6 +85,7 @@ public:
 		//tf::Quaternion temp_quat(_cmd_vel_pose.pose.pose.orientation.x, _cmd_vel_pose.pose.pose.orientation.y,_cmd_vel_pose.pose.pose.orientation.z,_cmd_vel_pose.pose.pose.orientation.w);
 		//temp_quat.normalize();
 		error[2] = tf::getYaw(_cmd_vel_pose.pose.pose.orientation) - tf::getYaw(_odom.pose.pose.orientation);
+		error[2] = normalize_angle_rad(error[2]);
 
 		//Calculate Integral and anti-wind up
 		integral[0] = integral[0] + param_[4]*error[0]*dt;
@@ -121,8 +122,8 @@ public:
 
 		if (counter_print >= 2 && !_safety.safety){
 			counter_print = 0;
-			ROS_INFO("Guidance X CONTROL: %f, %f, %f", error[0], integral[0], _directive.vxBody);
-			ROS_INFO("Guidance Y CONTROL: %f, %f, %f", error[1], integral[1], _directive.vyBody);
+			ROS_INFO("Guidance X CONTROL: %f, %f, %f, %f", error[0], integral[0], _cmd_vel_pose.twist.twist.linear.x, _directive.vxBody);
+			ROS_INFO("Guidance Y CONTROL: %f, %f, %f, %f", error[1], integral[1], _cmd_vel_pose.twist.twist.linear.y, _directive.vyBody);
 			ROS_INFO("Guidance Z ANGULAR CONTROL: %f, %f, %f", error[2], integral[2], _directive.yawRate);
 			ROS_INFO("Guidance Z ANGULAR 2: %f, %f", tf::getYaw(_cmd_vel_pose.pose.pose.orientation), tf::getYaw(_odom.pose.pose.orientation));
 			//ROS_INFO("Guidance enableL: %s", enable_directive ? "true" : "false");
@@ -134,6 +135,8 @@ public:
 	void readCmdVelPose(const nav_msgs::Odometry::ConstPtr& msg){
 		//ROS_INFO("Received CMDVEL");
 		counter_wd = 0;
+		enable_directive = true;
+		_cmd_vel_pose = *msg;
 		if (_safety.safety){		//If ODROID not enabled
 			_cmd_vel_pose.twist.twist.linear.x = 0;
 			_cmd_vel_pose.twist.twist.linear.y = 0;
@@ -142,7 +145,6 @@ public:
 			_cmd_vel_pose.twist.twist.angular.y = 0;
 			_cmd_vel_pose.twist.twist.angular.z = 0;
 		} else {
-			_cmd_vel_pose = *msg;
 			//NWU (ROS) to NED
 			//TODO put it into main loop and not in callback to run it at the node frequency
 			//_cmd_vel.linear.x = _cmd_vel.linear.x*alpha + msg->linear.x*(1-alpha);
@@ -160,6 +162,16 @@ public:
 			integral[2] = 0;
 		}
 		_safety = *msg;
+	}
+
+	double normalize_angle_rad(double angle_rad){
+		if (angle_rad >= M_PI){
+			angle_rad -= 2 * M_PI;
+		}
+		if (angle_rad <= -M_PI){
+			angle_rad += 2 * M_PI;
+		}
+		return angle_rad;
 	}
 
 	void readAttitude(const mavros::Attitude::ConstPtr& msg){

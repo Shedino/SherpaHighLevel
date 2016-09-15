@@ -6,9 +6,9 @@
 debug/testOffset: 1.0
 
 #control param
-param/sat_xy: 4.5
+param/sat_xy: 1.5
 param/sat_z: 1.5
-param/sat_yaw: 0.785
+param/sat_yaw: 3.14
 param/gain_NE: 0.3
 param/gain_D: 0.27
 param/gain_yaw: 0.11

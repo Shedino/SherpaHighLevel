@@ -10,9 +10,9 @@
 #define LASER_IMU_OFFSET 0.12			// height offset laser to IMU (positiv if laser higher than IMU) in [m]
 #define USE_NAVIGATION_STACK
 
-#define FILTER_COMPARE
+//#define FILTER_COMPARE				// uncomment for debugging the two filters
 #define KALMAN							// use enum filterType to specify which filter to use
-//#define COMPLEMENTARY
+//#define COMPLEMENTARY					// use only one between define KALMAN and define COMPLEMENTARY
 #define RVIZ_VISU
 #if defined(KALMAN) && defined(COMPLEMENTARY)
   #error "only one filter my be active!"

@@ -4,10 +4,10 @@ global_costmap:
   update_frequency: 2.5
   publish_frequency: 0.5
   static_map: false
-  rolling_window: true
-  width: 30
+  rolling_window: false
+  width: 50
   height: 30
   resolution: 0.05
-  origin_x: -15
+  origin_x: -10
   origin_y: -15
 

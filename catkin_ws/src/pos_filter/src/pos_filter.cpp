@@ -238,7 +238,13 @@ int main(int argc, char **argv)
 #ifdef DEBUG_MSGS
       ROS_INFO( "KALMAN updated");
 #endif
-    estimated_pos = convFilterToMavrosPositionTarget( readEstimated3dPosKalman( &kalman_x, &kalman_y, &kalman_z ), readEstimated3dVelKalman( &kalman_x, &kalman_y, &kalman_z ) );
+#ifndef FILTER_COMPARE
+	estimated_pos = convFilterToMavrosPositionTarget( readEstimated3dPosKalman( &kalman_x, &kalman_y, &kalman_z ), readEstimated3dVelKalman( &kalman_x, &kalman_y, &kalman_z ) );
+#else
+	if ( cycleCount % 1000 == 0 ){
+		ROS_INFO("skipped KALMAN for comparing reasons");
+	}
+#endif
 #endif
 	
 	// set missing variables in mavros message

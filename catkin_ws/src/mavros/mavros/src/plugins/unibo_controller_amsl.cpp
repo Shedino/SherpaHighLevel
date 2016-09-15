@@ -54,7 +54,7 @@ public:
 		/* --- SUBSCRIPTIONS --- */
 		directive_sub = nodeHandle.subscribe("/directive", 10, &UniboControllerAMSLPlugin::directive_cb, this);
 		arm_sub = nodeHandle.subscribe("/arm", 10, &UniboControllerAMSLPlugin::arming, this);
-		filtered_pos_sub = nodeHandle.subscribe("/pos_filter/pos_vel_out", 1, &UniboControllerAMSLPlugin::filtered_pos_cb, this);		// Nico
+		//filtered_pos_sub = nodeHandle.subscribe("/pos_filter/pos_vel_out", 1, &UniboControllerAMSLPlugin::filtered_pos_cb, this);		// Nico
 		//cmd_vel_sub = nodeHandle.subscribe("/cmd_vel", 1, &UniboControllerAMSLPlugin::cmd_vel_cb, this);
 
 		/* --- PUBLISHERS --- */
@@ -551,7 +551,7 @@ private:
 	/*
 	 * send LOCATION_POS_NED
 	 */
-	void filtered_pos_cb(const mavros::PositionTarget::ConstPtr& msg){
+	/*void filtered_pos_cb(const mavros::PositionTarget::ConstPtr& msg){
 		// mavlink msg object
 		mavlink_message_t msg_mav;
 		
@@ -561,7 +561,7 @@ private:
 		// send message
 		UAS_FCU(uas)->send_message(&msg_mav);
 		
-		/*// prepare GPS_INPUT message
+		// prepare GPS_INPUT message
 		ros::Time now = ros::Time::now();
 		double lat, lon;
 		uint32_t time_week_ms = (now.sec * 1000 + now.nsec / 1000) % (1000 * 3600 * 24 * 7); //not correct....
@@ -571,8 +571,8 @@ private:
 		mavlink_msg_gps_input_pack(0, 0, &msg_mav, msg->header.seq * 10, 1, 0xFF, time_week_ms, time_week, 3, (int32_t)(lat*10e7), (int32_t)(lon*10e7), msg->position.z, 0, 0, msg->velocity.x, msg->velocity.y, msg->velocity.y, 0.01, 0.005, 0.005, 16);
 
 		// send message
-		UAS_FCU(uas)->send_message(&msg_mav);*/
-	}
+		UAS_FCU(uas)->send_message(&msg_mav);
+	}*/
 
 };
 };	// namespace mavplugin
