@@ -43,15 +43,14 @@ int tf_init_done = 0;
 tf::Quaternion slam_orientation(0.0, 0.0, 0.0, 0.0);
 
 // msg buffer
-static mavros::Raw_imu data_raw;						// IMU raw data msg object
-static mavros::Attitude attitude;						// attitude msg object
-mavros::PositionTarget estimated_pos;					// estimated position msg object
-static geometry_msgs::Pose slam_pos;					// SLAM position msg object
-static geometry_msgs::PoseStamped filter_pose_visu;			// SLAM position msg object
-static geometry_msgs::PoseWithCovarianceStamped resetPose;			// SLAM position used to reset
-static pos_filter::tf_msg tf_msg;						// filter tf conversion node
-static pos_filter::filter_state_msg state_msg;			// debug message (for matlab)
-//static geometry_msgs::PoseWithCovarianceStamped glob_pos_msg;
+static mavros::Raw_imu data_raw;								// IMU raw data msg object
+static mavros::Attitude attitude;								// attitude msg object
+mavros::PositionTarget estimated_pos;							// estimated position msg object
+static geometry_msgs::Pose slam_pos;							// SLAM position msg object
+static geometry_msgs::PoseStamped filter_pose_visu;				// SLAM position msg object
+static geometry_msgs::PoseWithCovarianceStamped resetPose;		// SLAM position used to reset
+static pos_filter::tf_msg tf_msg;								// filter tf conversion node
+static pos_filter::filter_state_msg state_msg;					// debug message (for matlab)
 
 //function prototypes
 void laserCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
@@ -64,9 +63,9 @@ mavros::PositionTarget convFilterToMavrosPositionTarget( Vector3d pos, Vector3d 
 void NedToNwu(short int *x, short int *y, short int *z);
 void NwuToNed(short int *x, short int *y, short int *z);
 double normalize_angle_rad(double angle_rad);
-//void globPosCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
 
-//main
+
+/* main */
 int main(int argc, char **argv)
 {
 /*** ROS init ***/
@@ -74,7 +73,7 @@ int main(int argc, char **argv)
 
   ros::NodeHandle n;
 
-  ros::Rate loop_rate(FREQUENCY);					// frequency of loop (see setup.h)
+  ros::Rate loop_rate(FREQUENCY);								// frequency of loop (see setup.h)
   
 // variables
   long int cycleCount = 0;
@@ -90,7 +89,6 @@ int main(int argc, char **argv)
   ros::Subscriber laser_sub = n.subscribe("/slam_out_pose", 1, &laserCallback);
   ros::Subscriber attitude_sub = n.subscribe("/attitude", 1, &attitudeCallback);
   ros::Subscriber pos_filter_tf_sub = n.subscribe("/pos_filter/tf_msg", 1, &pf_tfCallback);
-//  ros::Subscriber glob_pos_sub = n.subscribe("/mavros/global_position/local", 1, &globPosCallback);
 
 // publishers
   ros::Publisher position_pub = n.advertise<mavros::PositionTarget>("/pos_filter/pos_vel_out", 1);
@@ -104,19 +102,19 @@ int main(int argc, char **argv)
 
   ros::Duration(0.1).sleep();
 
-  while (!tf_init_done){	// wait for first attitude and SLAM msg to do proper rotations
+  while (!tf_init_done){										// wait for pos_filter_tf node
     ROS_WARN_STREAM("pos_filter_tf_node not running properly!");
     ros::Duration(1).sleep();
     ros::spinOnce();
   }
 
-  while (!(posUpdateFlag && imuUpdateFlag && attUpdateFlag)){
+  while (!(posUpdateFlag && imuUpdateFlag && attUpdateFlag)){	// wait for first attitude, IMU and SLAM msg to do proper rotations
     ROS_INFO("waiting for slam running and first mavros (IMU, attitude) messages");
     ros::Duration(1).sleep();
     ros::spinOnce();
   }
 
-// filter objects
+/* create filter objects */
 #if defined(COMPLEMENTARY) || defined(FILTER_COMPARE)
   ROS_INFO("Complementary filter active");
   Complementary comp_x(slam_pos.position.x, 0.0, 0.0);
@@ -147,39 +145,34 @@ int main(int argc, char **argv)
     // update callbacks
 	ros::spinOnce();
 
-#ifdef USE_SLAM_YAW
-    //read yaw from slam
-	yaw = tf::getYaw(slam_orientation);
-	// check fpr NaN error
-    if (yaw != yaw){
-	  // received NaN -> print warn message
-      ROS_WARN_STREAM("Received NaN from SLAM orientation!");
-	  // reset variable so that no calculations will become NaN
-	  yaw = 0.0;
+#ifdef USE_SLAM_YAW												// write SLAM yaw to yaw variable if USE_SLAM_YAW is activated
+	yaw = tf::getYaw(slam_orientation);							// read yaw from slam		
+    if (yaw != yaw){											// check fpr NaN error
+      ROS_WARN_STREAM("Received NaN from SLAM orientation!");	// received NaN -> print warning
+	  yaw = 0.0;												// reset variable so that no calculations will become NaN
     }
-#else
-	yaw = -attitude.yaw;
-	mapOffset = 0.0;
+#else															// write attitude yaw to yaw variable if USE_SLAM_YAW is deactivated
+	yaw = -attitude.yaw;										// invert value due to NED to ENU conversion
+	mapOffset = 0.0;											// overwrite map offset because map is normalized to attitude
 #endif
 	
-/***** rotate IMU data *****/
-    // update rotation matrix
+/* update rotation matrix */
     rotationMatrix = AngleAxisd(normalize_angle_rad(-yaw + mapOffset), Vector3d::UnitZ())	// z axis rotation respecting map offset
                    * AngleAxisd(attitude.pitch, Vector3d::UnitY())                          // y axis rotateon
                    * AngleAxisd(attitude.roll, Vector3d::UnitX());                          // x axis rotation
 #ifdef DEBUG_MSGS
-    std::cout << rotationMatrix << std::endl << std::endl << std::endl;
+    std::cout << rotationMatrix << std::endl << std::endl << std::endl;						// print matrix
 #endif
 	
-    // save imu values in 3 dim vector for matrix calculations and recalciulate units from cm to m
+/* save imu values in 3 dim vector for matrix calculations and recalciulate units from [cm] to [m] */
 	imuVec3 << 	(double)data_raw.xacc/100.0,
 				(double)data_raw.yacc/100.0,
 				(double)data_raw.zacc/100.0;
 
-    // rotate IMU data
+/* rotate IMU data */
 	imuVec3 = rotationMatrix * imuVec3;
     
-	// convert from NED (FCU) to NWU (ROS) convention
+/* convert from NED (FCU) to ENU (ROS) convention */
 	imuVec3(1) = -imuVec3(1);
 	imuVec3(2) = -imuVec3(2);
 
@@ -188,25 +181,24 @@ int main(int argc, char **argv)
     state_msg.imu_flag = imuUpdateFlag;
 #endif
 
-	// calculate yaw error
+/* calculate yaw error for recovery evaluation */
 	slamToFilterYawError = abs(normalize_angle_rad((tf::getYaw(slam_orientation) - tf_msg.mapOffset) + attitude.yaw));
-	//ROS_INFO("yaw error: %.4f, slam: %.4f, mapOff: %.4f, att: %.4f", slamToFilterYawError, tf::getYaw(slam_orientation), tf_msg.mapOffset, attitude.yaw);
 
 #if defined(COMPLEMENTARY) || defined(FILTER_COMPARE)
 /* Complementary filter */
-	slamToFilterOffset = sqrt( pow(slam_pos.position.x -  comp_x.getEstPos(), 2) + 		// calculate offset between last filter and slam position
+	slamToFilterOffset = sqrt( pow(slam_pos.position.x -  comp_x.getEstPos(), 2) + 		// calculate offset between last filter and slam positions
 		pow(slam_pos.position.y - comp_y.getEstPos(), 2) );
 	
-	if( slamToFilterOffset >= SLAM_RECOVER_LIMIT 					// position error ...
-		|| slamToFilterYawError >= M_PI_4 ){						// or yaw error
-		comp_x.update(imuVec3(0), comp_x.getEstPos());				// --> perform filter update with last filter position instead of slam position
-		comp_y.update(imuVec3(1), comp_y.getEstPos());
-		slamOffset2BigCount++;
+	if( slamToFilterOffset >= SLAM_RECOVER_LIMIT 				// position error over threshold
+		|| slamToFilterYawError >= M_PI_4 ){					// or yaw error over threshold
+		comp_x.update(imuVec3(0), comp_x.getEstPos());			// --> perform filter update with last filter position instead of slam position
+		comp_y.update(imuVec3(1), comp_y.getEstPos());			// ...
+		slamOffset2BigCount++;									// increment counter to evaluate if we really lost slam position
 	}
-	else{															// offset is smaller than 50 cm
-		comp_x.update(imuVec3(0), slam_pos.position.x);				// --> perform normal filter update
-		comp_y.update(imuVec3(1), slam_pos.position.y);
-		slamOffset2BigCount = 0;
+	else{														// offset is smaller than threshold
+		comp_x.update(imuVec3(0), slam_pos.position.x);			// --> perform normal filter update
+		comp_y.update(imuVec3(1), slam_pos.position.y);			// ...
+		slamOffset2BigCount = 0;								// reset counter as we are in normaöl operation
 	}
 
     estimated_pos = convFilterToMavrosPositionTarget( readEstimated3dPosComplementary( &comp_x, &comp_y, &comp_z ), readEstimated3dVelComplementary( &comp_x, &comp_y, &comp_z ) );
@@ -214,25 +206,23 @@ int main(int argc, char **argv)
 
 #if defined(KALMAN) || defined(FILTER_COMPARE)
 /* Kalman filter */
-      kalman_x.prediction(imuVec3(0));								// --> perform prediction step
-      kalman_y.prediction(imuVec3(1));
-//      kalman_z.prediction(accVec3.getZ());
-      imuUpdateFlag = 0;											// reset flag
+      kalman_x.prediction(imuVec3(0));							// --> perform prediction step
+      kalman_y.prediction(imuVec3(1));							// ...
+      imuUpdateFlag = 0;										// reset flag
 #ifdef DEBUG_MSGS
       ROS_INFO("KALMAN predicted");
 #endif
 	  slamToFilterOffset = sqrt( pow(slam_pos.position.x -  kalman_x.getEstPos(), 2) + 		// calculate offset between last filter and slam position
 		pow(slam_pos.position.y - kalman_y.getEstPos(), 2) );
-	if( slamToFilterOffset >= SLAM_RECOVER_LIMIT 					// position error ...
-		|| slamToFilterYawError >= M_PI_4 ){						// or yaw error
-		slamOffset2BigCount++;
-		// no update step
+	if( slamToFilterOffset >= SLAM_RECOVER_LIMIT 				// position error over threshold
+		|| slamToFilterYawError >= M_PI_4 ){					// or yaw error over threshold
+		slamOffset2BigCount++;									// increment counter to evaluate if we really lost slam position
+		/* no update step */
 	  }
-	  else{
-        kalman_x.update(slam_pos.position.x);								// --> perform update step
-        kalman_y.update(slam_pos.position.y);
-//        kalman_z.update(HEIGHT_ESTIMATION FROM WASP);
-		slamOffset2BigCount = 0;
+	  else{														// offset is smaller than threshold
+        kalman_x.update(slam_pos.position.x);					// --> perform normal filter update
+        kalman_y.update(slam_pos.position.y);					// ...
+		slamOffset2BigCount = 0;								// reset counter as we are in normaöl operation
 	  }
       posUpdateFlag = 0;
 #ifdef DEBUG_MSGS
@@ -247,24 +237,18 @@ int main(int argc, char **argv)
 #endif
 #endif
 	
-	// set missing variables in mavros message
-    estimated_pos.header.stamp = timestamp;				// timestamp
-    estimated_pos.header.seq = cycleCount;				// sequence
-    estimated_pos.yaw = - (yaw - mapOffset);				// yaw
-    estimated_pos.yaw_rate = attitude.yawspeed;				// yaw speed
-	/************DELETE****/
-/*	static int temp_pos = 0;
-	if (cycleCount % 500 == 0)
-		temp_pos = cycleCount*2;
-	estimated_pos.position.x = (float)temp_pos;
-	estimated_pos.position.y = (float)temp_pos;*/
-	/************DELETE END****/
-	if ( slamOffset2BigCount >= 50 )					// 100 = 1s, 200 = 2s, ...
-		slamError = true;
+/* prepare mavros message */
+    estimated_pos.header.stamp = timestamp;
+    estimated_pos.header.seq = cycleCount;
+    estimated_pos.yaw = - (yaw - mapOffset);
+    estimated_pos.yaw_rate = attitude.yawspeed;
 
-	if ( !slamError )									// if filter and slam running fine...
-		position_pub.publish(estimated_pos);			// send msg
-	else {								// initiate reset to recover from failure
+	if ( slamOffset2BigCount >= 50 )							// if counter over threshold (100 = 1s, 200 = 2s, ...)
+		slamError = true;										// set flag for erreor in slam detected
+
+	if ( !slamError )											// if filter and slam running fine...
+		position_pub.publish(estimated_pos);					// send msg
+	else {														// else -> initiate reset to recover from failure
           resetPose.header.stamp = timestamp;
           resetPose.header.frame_id = "map";
           resetPose.pose.pose.position.x = estimated_pos.position.x;
@@ -279,6 +263,7 @@ int main(int argc, char **argv)
           slamError = 0;
     }
 
+/* publish odometry in /nav_msgs/odometry to use filtered position with navigation stack of ROS if activated */
 #ifdef USE_NAVIGATION_STACK
 	// set header
 	nav_msgs::Odometry odom;
@@ -310,45 +295,12 @@ int main(int argc, char **argv)
     nav_odom_pub.publish(odom);
 #endif
     
-	// print position estimation once every second
+/* print position estimation once every second */
     if ( cycleCount % 100 == 0 ){
-		ROS_INFO("SLAMpositions:    x: %.4f | y: %.4f", slam_pos.position.x, slam_pos.position.y);
 		ROS_INFO("new pos estimate: x: %.4f | y: %.4f,    z: %.4f,    off: %.4f", estimated_pos.position.x, -estimated_pos.position.y, -estimated_pos.position.z, slamToFilterOffset );
-		//ROS_INFO("slam pos offsets: X: %.4f | Y: %.4f", LASER_IMU_OFFSET * sin(attitude.pitch), LASER_IMU_OFFSET * sin(attitude.roll));
     }
 
-#ifdef RVIZ_VISU
-    if ( cycleCount % 10 == 0 ){
-		points.header.frame_id = "/map";
-		points.header.stamp = timestamp;
-		points.ns = "points_and_lines";
-		points.action = visualization_msgs::Marker::ADD;
-		points.pose.orientation.w = 1.0;
-
-		points.id = 0;
-
-		points.type = visualization_msgs::Marker::POINTS;
-	
-		// POINTS markers use x and y scale for width/height respectively
-		points.scale.x = 0.015;	//Points width
-		points.scale.y = 0.015;	//Points height
-		points.color.g = 1.0f;	//Points color green
-		points.color.b = 1.0f;
-		points.color.a = 1.0;
-
-		geometry_msgs::Point p;
-		p.x = estimated_pos.position.x;
-		p.y = -estimated_pos.position.y;
-		p.z = 0.0;  
-		points.points.insert(points.points.begin(), p);                 // insert new point at first position
-        if ( points.points.size() > 1000 )                               // if more than 100 points
-            points.points.pop_back();                                   // ... delete last point
-		marker_pub.publish(points);
-	}
-#endif
-
-
-/*************************************************/
+/* publish debug information in /filter_state topic if activated */
 #ifdef FILTER_COMPARE
     state_msg.timestamp = timestamp;
     state_msg.mapOffset = mapOffset;
@@ -382,8 +334,6 @@ int main(int argc, char **argv)
     state_msg.imu_raw_y = data_raw.yacc;
     state_msg.imu_raw_z = data_raw.zacc;
     state_msg.slam_yaw = tf::getYaw(slam_orientation);
-/*	state_msg.glob_loc_x = estimated_pos.position.x;
-	state_msg.glob_loc_y = glob_pos_msg.pose.pose.position.y;*/
 
     state_msg_pub.publish(state_msg);				// send msg
 
@@ -392,9 +342,40 @@ int main(int argc, char **argv)
     state_msg.slam_flag = 0;
 #endif
 
+/* do visualization if activated */
 #ifdef RVIZ_VISU
-		filter_pose_visu.header.stamp = timestamp;
-		filter_pose_visu.header.frame_id = "map";
+/* display travelled path in rviz with markers */
+    if ( cycleCount % 10 == 0 ){
+		points.header.frame_id = "/map";
+		points.header.stamp = timestamp;
+		points.ns = "points_and_lines";
+		points.action = visualization_msgs::Marker::ADD;
+		points.pose.orientation.w = 1.0;
+
+		points.id = 0;
+
+		points.type = visualization_msgs::Marker::POINTS;
+	
+		// POINTS markers use x and y scale for width/height respectively
+		points.scale.x = 0.015;	//Points width
+		points.scale.y = 0.015;	//Points height
+		points.color.g = 1.0f;	//Points color green
+		points.color.b = 1.0f;
+		points.color.a = 1.0;
+
+		geometry_msgs::Point p;
+		p.x = estimated_pos.position.x;
+		p.y = -estimated_pos.position.y;
+		p.z = 0.0;  
+		points.points.insert(points.points.begin(), p);                 // insert new point at first position
+        if ( points.points.size() > 1000 )                               // if more than 100 points
+            points.points.pop_back();                                   // ... delete last point
+		marker_pub.publish(points);
+	}
+
+/* publish filter position output as PoseStamped for rviz */
+	filter_pose_visu.header.stamp = timestamp;
+	filter_pose_visu.header.frame_id = "map";
 	#ifdef COMPLEMENTARY
 		filter_pose_visu.pose.position.x = comp_x.getEstPos();
 		filter_pose_visu.pose.position.y = comp_y.getEstPos();
@@ -413,6 +394,7 @@ int main(int argc, char **argv)
 
     loop_rate.sleep();
   }
+/*** inf loop end ***/
 
   return 0;
 }
@@ -464,10 +446,6 @@ void pf_tfCallback(const pos_filter::tf_msg::ConstPtr& msg){
   }
 }
 
-/*void globPosCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg){
-  // read tf message
-  glob_pos_msg = *msg;
-}*/
 
 /***** converting functions *****/
 // convert 3 dim vector to stamped pose message format
@@ -499,11 +477,12 @@ void NwuToNed(short int *x, short int *y, short int *z){
 	*z = -*z;
 }
 
+// normalize angle in range of [-PI;PI[
 double normalize_angle_rad(double angle_rad){
 	if (angle_rad >= M_PI){
 		angle_rad -= 2 * M_PI;
 	}
-	if (angle_rad <= -M_PI){
+	if (angle_rad < -M_PI){
 		angle_rad += 2 * M_PI;
 	}
 	return angle_rad;
