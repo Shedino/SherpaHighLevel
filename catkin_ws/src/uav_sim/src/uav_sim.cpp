@@ -1,5 +1,6 @@
 #include "ros/ros.h"
 
+#include <tf/transform_broadcaster.h>
 #include "guidance_node_amsl/Directive.h"
 #include "guidance_node_amsl/Reference.h"
 #include "mms_msgs/MMS_status.h"
@@ -335,6 +336,15 @@ public:
 		geopose_.orientation = quaternion_;
 		pubGeopose_.publish(geopose_);
 		
+		//Publish TF for visualization
+		static tf::TransformBroadcaster br;
+		tf::Transform transform;
+		transform.setOrigin( tf::Vector3(position_ned_.x, position_ned_.y, position_ned_.alt) );
+		tf::Quaternion q;
+		q.setRPY(0, 0, 0);
+		transform.setRotation(q);
+		br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "wasp"));
+
 		pubToSystStatus_.publish(sys_status_);
 		if (globPosInt_.relative_alt <= 3000 && globPosInt_.relative_alt >= 0)
 			sonar_.distance = globPosInt_.relative_alt;
