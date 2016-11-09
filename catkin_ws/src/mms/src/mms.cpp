@@ -14,25 +14,25 @@
 #include <reference/LeashingStatus.h>// input
 #include <qos_sensors_autopilot/Qos_sensors.h>// input
 
+
 // STATES DEFINITION -> CREATE A DEDICATED LIBRARY = TODO
-//TODO make this static const int
-#define ON_GROUND_NO_HOME 10
-#define SETTING_HOME 20
-#define ON_GROUND_DISARMED 30
-#define ARMING 40
-#define DISARMING 45
-#define ON_GROUND_ARMED 50
-#define PERFORMING_TAKEOFF 70
-#define HAND_TAKEOFF_WAITING 71
-#define HAND_TAKEOFF_WAITING_FIRST 711  //FirstsSub state machine state for hand deployment
-#define HAND_TAKEOFF_WAITING_SECOND 712 //FirstsSub state machine state for hand deployment
-#define IN_FLIGHT 80
-#define GRID 90
-#define PERFORMING_GO_TO 100
-#define PERFORMING_LANDING 120
-#define LEASHING 140
-#define PAUSED 150
-#define MANUAL_FLIGHT 1000
+//#define ON_GROUND_NO_HOME 10
+//#define SETTING_HOME 20
+//#define ON_GROUND_DISARMED 30
+//#define ARMING 40
+//#define DISARMING 45
+//#define ON_GROUND_ARMED 50
+//#define PERFORMING_TAKEOFF 70
+//#define HAND_TAKEOFF_WAITING 71
+//#define HAND_TAKEOFF_WAITING_FIRST 711  //FirstsSub state machine state for hand deployment
+//#define HAND_TAKEOFF_WAITING_SECOND 712 //FirstsSub state machine state for hand deployment
+//#define IN_FLIGHT 80
+//#define GRID 90
+//#define PERFORMING_GO_TO 100
+//#define PERFORMING_LANDING 120
+//#define LEASHING 140
+//#define PAUSED 150
+//#define MANUAL_FLIGHT 1000
 
 #define FRAME_BARO 6
 #define FRAME_SONAR 11
@@ -84,7 +84,7 @@ public:
 		outputArm_.new_arm_disarm = false;
 
 		//Initializing outputMmsStatus_
-		outputMmsStatus_.mms_state = ON_GROUND_NO_HOME;
+		outputMmsStatus_.mms_state = mms_msgs::MMS_status::ON_GROUND_NO_HOME;
 		outputMmsStatus_.target_ref_frame = FRAME_BARO;
 		
 		//Initializing states
@@ -106,8 +106,8 @@ public:
 		CONTINUE = false;
 
 		//Init something
-		currentState = ON_GROUND_NO_HOME;
-		previousState = ON_GROUND_NO_HOME;
+		currentState = mms_msgs::MMS_status::ON_GROUND_NO_HOME;
+		previousState = mms_msgs::MMS_status::ON_GROUND_NO_HOME;
 		target_frame = FRAME_BARO;
 		rate = 10;
 		uint16_t counter_ = 0;
@@ -115,7 +115,7 @@ public:
 		seq_number = 0;
 		Dh_TO = 0;
 		takeoff_type = 0;
-		hand_deployment_state = HAND_TAKEOFF_WAITING_FIRST;
+		hand_deployment_state = mms_msgs::MMS_status::HAND_TAKEOFF_WAITING_FIRST;
 	}
 
 	void readDistanceMessage(const reference::Distance::ConstPtr& msg){
@@ -419,7 +419,7 @@ public:
 
 		{
 
-			case ON_GROUND_NO_HOME:
+			case mms_msgs::MMS_status::ON_GROUND_NO_HOME:
 				outputMmsStatus_.mms_state = currentState;
 				outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
 				pubToMmsStatus_.publish(outputMmsStatus_);
@@ -435,7 +435,7 @@ public:
 					// pubToArm_.publish(outputArm_); // TODO automatic disarming
 					ROS_INFO("MMS->APM: DISARMING");
 
-					currentState = ON_GROUND_NO_HOME;
+					currentState = mms_msgs::MMS_status::ON_GROUND_NO_HOME;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -450,7 +450,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 					set_events_false();
-					currentState = SETTING_HOME;
+					currentState = mms_msgs::MMS_status::SETTING_HOME;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = FRAME_BARO;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -484,7 +484,7 @@ public:
 				}
 				break;
 
-			case SETTING_HOME:
+			case mms_msgs::MMS_status::SETTING_HOME:
 
 				outputAckMission_.mission_item_reached = true;
 				outputAckMission_.seq = seq_number;
@@ -492,14 +492,14 @@ public:
 				pubToAckMission_.publish(outputAckMission_);
 				ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
 
-				currentState = ON_GROUND_DISARMED;
+				currentState = mms_msgs::MMS_status::ON_GROUND_DISARMED;
 				outputMmsStatus_.mms_state = currentState;
 				outputMmsStatus_.target_ref_frame = FRAME_BARO;
 				pubToMmsStatus_.publish(outputMmsStatus_);
 				ROS_INFO("MMS->REF: CURRENT_STATE = ON_GROUND_DISARMED");
 				break;
 
-			case ON_GROUND_DISARMED:
+			case mms_msgs::MMS_status::ON_GROUND_DISARMED:
 				
 				if (TAKEOFF)
 				{
@@ -517,14 +517,14 @@ public:
 								ROS_INFO("MMS->AUTOPILOT: ARMING");
 
 								counter_ = 0;     //start timing to re-arm
-								currentState = ARMING;
+								currentState = mms_msgs::MMS_status::ARMING;
 								outputMmsStatus_.mms_state = currentState;
 								outputMmsStatus_.target_ref_frame = FRAME_BARO;
 								pubToMmsStatus_.publish(outputMmsStatus_);
 								ROS_INFO("MMS->REF: CURRENT_STATE = ARMING");
 								break;
 							case HAND_TAKEOFF:
-								currentState = HAND_TAKEOFF_WAITING;
+								currentState = mms_msgs::MMS_status::HAND_TAKEOFF_WAITING;
 								outputMmsStatus_.mms_state = currentState;
 								outputMmsStatus_.target_ref_frame = FRAME_BARO;
 								pubToMmsStatus_.publish(outputMmsStatus_);
@@ -542,7 +542,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = SETTING_HOME;
+					currentState = mms_msgs::MMS_status::SETTING_HOME;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = FRAME_BARO;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -572,7 +572,7 @@ public:
 				}
 				break;
 
-			case ARMING:
+			case mms_msgs::MMS_status::ARMING:
 
 				if (LAND)
 				{
@@ -590,7 +590,7 @@ public:
 					// pubToArm_.publish(outputArm_); // TODO automatic disarming
 					ROS_INFO("MMS->APM: DISARMING");
 
-					currentState = DISARMING;
+					currentState = mms_msgs::MMS_status::DISARMING;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -604,7 +604,7 @@ public:
 					set_events_false();
 					TAKEOFF = true; // to complete automatic TO
 
-					currentState = ON_GROUND_ARMED;
+					currentState = mms_msgs::MMS_status::ON_GROUND_ARMED;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = FRAME_BARO;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -613,7 +613,7 @@ public:
 				}
 				if (counter_>=50)    //5 seconds
 				{
-					currentState = ON_GROUND_DISARMED;
+					currentState = mms_msgs::MMS_status::ON_GROUND_DISARMED;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = FRAME_BARO;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -642,7 +642,7 @@ public:
 				}
 				break;
 
-			case DISARMING:  // TODO automatic disarming
+			case mms_msgs::MMS_status::DISARMING:  // TODO automatic disarming
 
 				if (ARMED == false)
 				{
@@ -655,7 +655,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
 
-					currentState = ON_GROUND_DISARMED;
+					currentState = mms_msgs::MMS_status::ON_GROUND_DISARMED;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -664,7 +664,7 @@ public:
 				}
 				if (counter_>=50)    //5 seconds
 				{
-					currentState = ON_GROUND_ARMED;
+					currentState = mms_msgs::MMS_status::ON_GROUND_ARMED;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -702,7 +702,7 @@ public:
 				}
 				break;
 
-			case ON_GROUND_ARMED:
+			case mms_msgs::MMS_status::ON_GROUND_ARMED:
 
 				if (LAND) // TODO automatic disarming
 				{
@@ -720,7 +720,7 @@ public:
 					// pubToArm_.publish(outputArm_); // TODO automatic disarming
 					ROS_INFO("MMS->APM: DISARMING");
 
-					currentState = DISARMING;
+					currentState = mms_msgs::MMS_status::DISARMING;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = FRAME_BARO;//inputCmd_.frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -739,7 +739,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = PERFORMING_TAKEOFF;// ON_GROUND_READY_TO_TAKEOFF; // with this modification the state that needs the MISSION_START is excluded
+					currentState = mms_msgs::MMS_status::PERFORMING_TAKEOFF;// ON_GROUND_READY_TO_TAKEOFF; // with this modification the state that needs the MISSION_START is excluded
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = FRAME_BARO;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -768,11 +768,11 @@ public:
 				}
 				break;
 
-			case HAND_TAKEOFF_WAITING:
+			case mms_msgs::MMS_status::HAND_TAKEOFF_WAITING:
 				if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
 					set_events_false();
 					previousState = currentState;   //save last state in previousState
-					currentState = MANUAL_FLIGHT;
+					currentState = mms_msgs::MMS_status::MANUAL_FLIGHT;
 					outputMmsStatus_.mms_state = currentState;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
@@ -790,7 +790,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = PERFORMING_LANDING;//READY_TO_LAND;
+					currentState = mms_msgs::MMS_status::PERFORMING_LANDING;//READY_TO_LAND;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -817,19 +817,19 @@ public:
 				}
 
 				switch (hand_deployment_state){
-					case HAND_TAKEOFF_WAITING_FIRST:
+					case mms_msgs::MMS_status::HAND_TAKEOFF_WAITING_FIRST:
 						//Checking if rotated more than 60 degrees on roll or pitch
 						if ((Attitude_.roll < -PI/3) || (Attitude_.roll > PI/3) || (Attitude_.pitch < -PI/3) || (Attitude_.pitch > PI/3)){
 							ROS_INFO("MMS: HAND DEPLOYMENT: tilted to activate takeoff");
-							hand_deployment_state = HAND_TAKEOFF_WAITING_SECOND;
+							hand_deployment_state = mms_msgs::MMS_status::HAND_TAKEOFF_WAITING_SECOND;
 						}
 						break;
 
-					case HAND_TAKEOFF_WAITING_SECOND:
+					case mms_msgs::MMS_status::HAND_TAKEOFF_WAITING_SECOND:
 						//Checking if flat
 						if ((Attitude_.roll < PI/8) && (Attitude_.roll > -PI/8) && (Attitude_.pitch < PI/8) && (Attitude_.pitch > -PI/8)){
 							ROS_INFO("MMS: HAND DEPLOYMENT: back to flat...activating TAKEOFF!");
-							hand_deployment_state = HAND_TAKEOFF_WAITING_FIRST;
+							hand_deployment_state = mms_msgs::MMS_status::HAND_TAKEOFF_WAITING_FIRST;
 
 							outputArm_.arm_disarm = true;
 							outputArm_.new_arm_disarm = true;
@@ -837,7 +837,7 @@ public:
 							ROS_INFO("MMS->APM: ARMING");
 
 							counter_ = 0;     //start timing to rearm
-							currentState = ARMING;
+							currentState = mms_msgs::MMS_status::ARMING;
 							outputMmsStatus_.mms_state = currentState;
 							outputMmsStatus_.target_ref_frame = FRAME_BARO;
 							pubToMmsStatus_.publish(outputMmsStatus_);
@@ -848,11 +848,11 @@ public:
 				break;
 
 
-			case PERFORMING_TAKEOFF:
+			case mms_msgs::MMS_status::PERFORMING_TAKEOFF:
 				if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
 					set_events_false();
 					previousState = currentState;   //save last state in previousState
-					currentState = MANUAL_FLIGHT;
+					currentState = mms_msgs::MMS_status::MANUAL_FLIGHT;
 					outputMmsStatus_.mms_state = currentState;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
@@ -870,7 +870,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = PERFORMING_LANDING;//READY_TO_LAND;
+					currentState = mms_msgs::MMS_status::PERFORMING_LANDING;//READY_TO_LAND;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -894,7 +894,7 @@ public:
 						pubToAckMission_.publish(outputAckMission_);
 						ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
 
-						currentState = IN_FLIGHT;
+						currentState = mms_msgs::MMS_status::IN_FLIGHT;
 						outputMmsStatus_.mms_state = currentState;
 						outputMmsStatus_.target_ref_frame = target_frame;
 						pubToMmsStatus_.publish(outputMmsStatus_);
@@ -927,12 +927,12 @@ public:
 
 				break;
 
-			case IN_FLIGHT:
+			case mms_msgs::MMS_status::IN_FLIGHT:
 
 				if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
 					set_events_false();
 					previousState = currentState;   //save last state in previousState
-					currentState = MANUAL_FLIGHT;
+					currentState = mms_msgs::MMS_status::MANUAL_FLIGHT;
 					outputMmsStatus_.mms_state = currentState;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
@@ -950,7 +950,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = PERFORMING_LANDING;// READY_TO_LAND; // with this modification the state that needs the MISSION_START is excluded
+					currentState = mms_msgs::MMS_status::PERFORMING_LANDING;// READY_TO_LAND; // with this modification the state that needs the MISSION_START is excluded
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -968,7 +968,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = PERFORMING_GO_TO; // READY_TO_GO; // with this modification the state that needs the MISSION_START is excluded
+					currentState = mms_msgs::MMS_status::PERFORMING_GO_TO; // READY_TO_GO; // with this modification the state that needs the MISSION_START is excluded
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -986,7 +986,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = GRID; //
+					currentState = mms_msgs::MMS_status::GRID; //
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1013,7 +1013,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED (LEASHING)");
 					
-					currentState = LEASHING;
+					currentState = mms_msgs::MMS_status::LEASHING;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1028,7 +1028,7 @@ public:
 					outputAckMission_.mav_mission_accepted = true;
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-					currentState = PAUSED;
+					currentState = mms_msgs::MMS_status::PAUSED;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1037,12 +1037,12 @@ public:
 				break;
 			
 
-			case GRID:
+			case mms_msgs::MMS_status::GRID:
 				
 				if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
 					set_events_false();
 					previousState = currentState;   //save last state in previousState
-					currentState = MANUAL_FLIGHT;
+					currentState = mms_msgs::MMS_status::MANUAL_FLIGHT;
 					outputMmsStatus_.mms_state = currentState;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
@@ -1065,7 +1065,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = PERFORMING_LANDING; // READY_TO_LAND;
+					currentState = mms_msgs::MMS_status::PERFORMING_LANDING; // READY_TO_LAND;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1088,7 +1088,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = PERFORMING_GO_TO;//READY_TO_GO;
+					currentState = mms_msgs::MMS_status::PERFORMING_GO_TO;//READY_TO_GO;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1111,7 +1111,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED (LEASHING)");
 
-					currentState = LEASHING;
+					currentState = mms_msgs::MMS_status::LEASHING;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1120,7 +1120,7 @@ public:
 				}
 				if (GRID_ENDED){
 					set_events_false();
-					currentState = IN_FLIGHT;
+					currentState = mms_msgs::MMS_status::IN_FLIGHT;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1149,7 +1149,7 @@ public:
 					outputAckMission_.mav_mission_accepted = true;
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-					currentState = PAUSED;
+					currentState = mms_msgs::MMS_status::PAUSED;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1161,12 +1161,12 @@ public:
 				}
 				break;
 
-			case PERFORMING_GO_TO:
+			case mms_msgs::MMS_status::PERFORMING_GO_TO:
 
 				if (SAFETY_ON){                    //PUT THIS FOR ROLLING BACK FROM MANUAL_FLIGHT
 					set_events_false();
 					previousState = currentState;   //save last state in previousState
-					currentState = MANUAL_FLIGHT;
+					currentState = mms_msgs::MMS_status::MANUAL_FLIGHT;
 					outputMmsStatus_.mms_state = currentState;
 					pubToMmsStatus_.publish(outputMmsStatus_);
 					ROS_INFO("MMS->REF: CURRENT_STATE = MANUAL_FLIGHT");
@@ -1184,7 +1184,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = PERFORMING_LANDING; // READY_TO_LAND;
+					currentState = mms_msgs::MMS_status::PERFORMING_LANDING; // READY_TO_LAND;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1202,7 +1202,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = PERFORMING_GO_TO;//READY_TO_GO;
+					currentState = mms_msgs::MMS_status::PERFORMING_GO_TO;//READY_TO_GO;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1226,7 +1226,7 @@ public:
 						pubToAckMission_.publish(outputAckMission_);
 						ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED");
 
-						currentState = IN_FLIGHT;
+						currentState = mms_msgs::MMS_status::IN_FLIGHT;
 						outputMmsStatus_.mms_state = currentState;
 						outputMmsStatus_.target_ref_frame = target_frame;
 						pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1253,7 +1253,7 @@ public:
 					outputAckMission_.mav_mission_accepted = true;
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-					currentState = PAUSED;
+					currentState = mms_msgs::MMS_status::PAUSED;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1261,7 +1261,7 @@ public:
 				}
 				break;
 
-			case PERFORMING_LANDING:
+			case mms_msgs::MMS_status::PERFORMING_LANDING:
 
 				set_events_false();  // TODO automatic disarming (eliminate)
 
@@ -1289,7 +1289,7 @@ public:
 				}
 
 				if (DISARMED){
-					currentState = ON_GROUND_DISARMED;
+					currentState = mms_msgs::MMS_status::ON_GROUND_DISARMED;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = FRAME_BARO;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1298,7 +1298,7 @@ public:
 
 				break;
 				
-			case MANUAL_FLIGHT:
+			case mms_msgs::MMS_status::MANUAL_FLIGHT:
 
 				if (SAFETY_OFF)
 				{
@@ -1311,7 +1311,7 @@ public:
 				}
 				break;
 				
-			case PAUSED:
+			case mms_msgs::MMS_status::PAUSED:
 				if (CONTINUE){
 					set_events_false();
 					currentState = previousState;   //rolling back to last state
@@ -1338,7 +1338,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = PERFORMING_LANDING;// READY_TO_LAND; // with this modification the state that needs the MISSION_START is excluded
+					currentState = mms_msgs::MMS_status::PERFORMING_LANDING;// READY_TO_LAND; // with this modification the state that needs the MISSION_START is excluded
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1372,7 +1372,7 @@ public:
 				}
 				break;
 			
-			case LEASHING:
+			case mms_msgs::MMS_status::LEASHING:
 				if (LAND){
 					set_events_false();
 					LAND = true;
@@ -1389,7 +1389,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
 
-					currentState = PERFORMING_LANDING;
+					currentState = mms_msgs::MMS_status::PERFORMING_LANDING;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1405,7 +1405,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ITEM_REACHED (LEASHING)");
 					
-					currentState = IN_FLIGHT;
+					currentState = mms_msgs::MMS_status::IN_FLIGHT;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1419,7 +1419,7 @@ public:
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ITEM_FAILED (LEASHING)");
 
-					currentState = IN_FLIGHT;
+					currentState = mms_msgs::MMS_status::IN_FLIGHT;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1433,7 +1433,7 @@ public:
 					outputAckMission_.mav_mission_accepted = true;
 					pubToAckMission_.publish(outputAckMission_);
 					ROS_INFO("MMS->GCS: MISSION_ACCEPTED");
-					currentState = PAUSED;
+					currentState = mms_msgs::MMS_status::PAUSED;
 					outputMmsStatus_.mms_state = currentState;
 					outputMmsStatus_.target_ref_frame = target_frame;
 					pubToMmsStatus_.publish(outputMmsStatus_);
@@ -1543,8 +1543,10 @@ bool CONTINUE;
 // bool new_arm_disarm = false; // true = armed, false = none
 
 // STATE INITIALIZATION
-int currentState;
-int previousState;      //used when rolling back to previous state from MANUAL_FLIGHT
+//int currentState;	//OLD
+uint16_t currentState;
+uint16_t previousState;	//used when rolling back to previous state from MANUAL_FLIGHT
+//int previousState;
 // int lastARMState = ON_GROUND_DISARMED;
 int target_frame;
 

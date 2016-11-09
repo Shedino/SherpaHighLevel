@@ -21,11 +21,12 @@
 
 
 //TODO add check with terrain altitude
-//TODO add watchdog and LP filter to leashing commands
+//TODO add watchdog to leashing commands
 
 double eps_WP = 2000.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here MAKE PARAMETER SERVER
 double eps_alt = 1500.0; // distance to the target altitude in millimeters
 double eps_YAW = 10.0; // distance to the target YAW position in deg
+double alpha_leashing_target = 0.5; //LP filter parameter for leashing target position. the higher, the lower bandwitdh
 
 double PI = 3.1416; // pi
 
@@ -102,8 +103,8 @@ public:
 		inputMmsStatus_.target_ref_frame = 6;
 		
 		// STATE INITIALIZATION
-		currentState = ON_GROUND_NO_HOME;
-		oldState = 0;//ON_GROUND_NO_HOME;
+		currentState = mms_msgs::MMS_status::ON_GROUND_NO_HOME;
+		oldState = mms_msgs::MMS_status::ON_GROUND_NO_HOME;
 		// int lastARMState = ON_GROUND_DISARMED;
 		target_frame = 6;
 		actual_frame = 6;
@@ -192,6 +193,8 @@ public:
 		leashing_command_.yawpoint.latitude = 0;
 		leashing_command_.yawpoint.longitude = 0;
 		leashing_command_.yawpoint.altitude = 0;
+
+		received_first_target = false;	//TODO when to reset to false?
 
 		//VELOCITY COMMAND
 		direct_velocity_command.vx = 0;
@@ -397,18 +400,26 @@ public:
 	
 	void readLeashingTarget(const geographic_msgs::GeoPose::ConstPtr& msg)
 	{
+		//WITH LP filter
 		leashing_target_ = *msg;
 		double temp_x, temp_y;
 		get_pos_NED_from_WGS84 (&temp_x, &temp_y, leashing_target_.position.latitude, leashing_target_.position.longitude, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
-		leashing_target_ned_.x = temp_x;
-		leashing_target_ned_.y = temp_y;
-		leashing_target_ned_.z = leashing_target_.position.altitude;
+		if (received_first_target){
+			leashing_target_ned_.x = leashing_target_ned_.x * alpha_leashing_target + temp_x * (1-alpha_leashing_target);
+			leashing_target_ned_.y = leashing_target_ned_.y * alpha_leashing_target + temp_y * (1-alpha_leashing_target);
+			leashing_target_ned_.z = leashing_target_ned_.z * alpha_leashing_target + leashing_target_.position.altitude * (1-alpha_leashing_target);
+		} else {
+			received_first_target = true;
+			leashing_target_ned_.x = temp_x;
+			leashing_target_ned_.y = temp_y;
+			leashing_target_ned_.z = leashing_target_.position.altitude;
+		}
 		//ROS_INFO("REF: Received leashing target");
 	}
 	
 	void readLeashingCommand(const reference::LeashingCommand::ConstPtr& msg)
 	{
-		if (currentState == LEASHING) {
+		if (currentState == mms_msgs::MMS_status::LEASHING) {
 			leashing_command_ = *msg;
 			
 			if (leashing_command_.horizontal_control_mode != 0) leashing_status_.horizontal_control_mode = leashing_command_.horizontal_control_mode;
@@ -429,7 +440,7 @@ public:
 	}*/
 
 	void readDirectVelocityCommand(const geometry_msgs::Twist::ConstPtr& msg){
-		if(currentState == PAUSED){
+		if(currentState == mms_msgs::MMS_status::PAUSED){
 			counter_missed_direct_velocity_command = 0;		//reset the counter
 			received_direct_velocity_command.vx = msg->linear.x;
 			received_direct_velocity_command.vy = msg->linear.y;
@@ -570,7 +581,7 @@ public:
 				if (inputCmd_.param1 == 1){
 					leashing_status_.failure = 0;
 					//initial offset
-					//we should have already the target, but better add sanity check
+					received_first_target = false;
 					double temp_reference_x, temp_reference_y;
 					get_pos_NED_from_WGS84 (&temp_reference_x, &temp_reference_y, outputRef_.Latitude/10000000.0f, outputRef_.Longitude/10000000.0f, Home_.lat/10000000.0f, Home_.lon/10000000.0f);
 					double temp_target_x, temp_target_y;
@@ -595,19 +606,13 @@ public:
 					}
 					ROS_INFO("REF: LEASHING: Initial Distances: %f - %f - %f - %f", leashing_offset_ned_.x_offset, leashing_offset_ned_.y_offset, leashing_offset_ned_.rho_offset, leashing_offset_ned_.psi_offset);
 					yaw_leashing = outputRef_.Yawangle;    //take actual yaw
-					
-					/*leashing_offset_ned_.x_offset = 0;
-					leashing_offset_ned_.y_offset = 0;
-					leashing_offset_ned_.z_offset = 2;
-					leashing_offset_ned_.rho_offset = 0;
-					leashing_offset_ned_.psi_offset = 0;*/
 				}
 			}break;
 		}
 	}
 
 	void Reference_Handle(){
-		if (currentState == PAUSED){		//handle
+		if (currentState == mms_msgs::MMS_status::PAUSED){		//handle
 			counter_missed_direct_velocity_command++;
 			if (counter_missed_direct_velocity_command > 5){	//put at zero commands if lost too many commands messages
 				received_direct_velocity_command.vx = 0;
@@ -649,7 +654,7 @@ public:
 		set_increments_zero();  //reset increments
 
 		switch(currentState){
-			case ON_GROUND_NO_HOME:
+			case mms_msgs::MMS_status::ON_GROUND_NO_HOME:
 				if (new_state){
 					ROS_INFO("REF: ON_GROUND_NO_HOME");
 					new_state = false;
@@ -657,7 +662,7 @@ public:
 				}
 				break;
 
-			case SETTING_HOME:
+			case mms_msgs::MMS_status::SETTING_HOME:
 				if (new_state == true)
 				{
 					new_state = false;
@@ -673,7 +678,7 @@ public:
 				}
 				break;
 
-			case ON_GROUND_DISARMED:
+			case mms_msgs::MMS_status::ON_GROUND_DISARMED:
 				if (new_state){
 					ROS_INFO("REF: ON_GROUND_NO_HOME");
 					new_state = false;
@@ -683,21 +688,21 @@ public:
 				}
 				break;
 
-			case ARMING:
+			case mms_msgs::MMS_status::ARMING:
 				if (new_state == true){
 					ROS_INFO("REF: ARMING");
 					new_state = false;
 				}
 				break;
 
-			case DISARMING:
+			case mms_msgs::MMS_status::DISARMING:
 				if (new_state == true){
 					ROS_INFO("REF: DISARMING");
 					new_state = false;
 				}
 				break;
 
-			case ON_GROUND_ARMED:
+			case mms_msgs::MMS_status::ON_GROUND_ARMED:
 				if (new_state == true){
 					ROS_INFO("REF: ON_GROUND_ARMED");
 					new_state = false;
@@ -705,7 +710,7 @@ public:
 				break;
 			
 
-			case PERFORMING_TAKEOFF:
+			case mms_msgs::MMS_status::PERFORMING_TAKEOFF:
 				if (new_state == true){
 					ROS_INFO("REF: PERFORMING_TAKEOFF");
 					new_state = false;
@@ -718,7 +723,7 @@ public:
 				outputDist_.command = 22; // TAKEOFF
 				break;
 
-			case IN_FLIGHT:
+			case mms_msgs::MMS_status::IN_FLIGHT:
 				if (new_state == true){
 					ROS_INFO("REF: IN_FLIGHT");
 					new_state = false;
@@ -731,7 +736,7 @@ public:
 				}
 				break;
 
-			case GRID:
+			case mms_msgs::MMS_status::GRID:
 				if (new_state == true)
 				{
 					ROS_INFO("REF: GRID");
@@ -846,7 +851,7 @@ public:
 				}
 			break;
 
-			case PERFORMING_GO_TO:
+			case mms_msgs::MMS_status::PERFORMING_GO_TO:
 				if (new_state == true){
 					ROS_INFO("REF: PERFORMING_GO_TO");
 					new_state = false;
@@ -859,7 +864,7 @@ public:
 				outputDist_.command = 16; // WAYPOINT
 			break;
 
-			case LEASHING:
+			case mms_msgs::MMS_status::LEASHING:
 				if (new_state == true){
 					ROS_INFO("REF: LEASHING");
 					new_state = false;
@@ -1002,7 +1007,7 @@ public:
 				}
 				break;
 			
-			case PERFORMING_LANDING:
+			case mms_msgs::MMS_status::PERFORMING_LANDING:
 				if (new_state == true){
 						ROS_INFO("REF: PERFORMING_LANDING");
 						new_state = false;
@@ -1013,7 +1018,7 @@ public:
 				outputDist_.command = 21; // LAND
 				break;
 			
-			case MANUAL_FLIGHT:
+			case mms_msgs::MMS_status::MANUAL_FLIGHT:
 				if (new_state == true)
 					{
 						ROS_INFO("REF: MANUAL_FLIGHT");
@@ -1021,7 +1026,7 @@ public:
 					}
 				break;
 			
-			case PAUSED:
+			case mms_msgs::MMS_status::PAUSED:
 				if (new_state == true)
 					{
 						ROS_INFO("REF: PAUSED");
@@ -1131,7 +1136,7 @@ protected:
 	static const int MAX_INIT_DISTANCE_Z_LEASHING = 10;
 
 	// STATES DEFINITION
-	static const int ON_GROUND_NO_HOME = 10;         //TODO make a .h to include in both reference and mms
+	/*static const int ON_GROUND_NO_HOME = 10;
 	static const int SETTING_HOME = 20;
 	static const int ON_GROUND_DISARMED = 30;
 	static const int ARMING = 40;
@@ -1147,7 +1152,8 @@ protected:
 	static const int PERFORMING_LANDING = 120;
 	static const int LEASHING = 140;
 	static const int PAUSED = 150;
-	static const int MANUAL_FLIGHT = 1000;
+	static const int MANUAL_FLIGHT = 1000;*/
+
 
 	static const int  MAX_VERTEX_GRID = 25;
 
@@ -1194,6 +1200,7 @@ protected:
 	leashing_target_ned leashing_target_ned_;
 	leashing_offset_ned leashing_offset_ned_;
 	double yaw_leashing;
+	bool received_first_target;
 
 	//VELOCITY CONTROL
 	speed_ned direct_velocity_command;		//velocity commands (x,y,z,yaw) for direct velocity control	//TODO fill them from topic

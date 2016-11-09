@@ -23,7 +23,7 @@
 
 
 // STATES DEFINITION
-#define ON_GROUND_NO_HOME 10
+/*#define ON_GROUND_NO_HOME 10
 #define SETTING_HOME 20
 #define ON_GROUND_DISARMED 30
 #define ARMING 40
@@ -36,7 +36,7 @@
 #define PERFORMING_LANDING 120
 #define LEASHING 140
 #define PAUSED 150
-#define MANUAL_FLIGHT 1000
+#define MANUAL_FLIGHT 1000*/
 
 double PI = 3.1416; // pi
 
@@ -152,8 +152,8 @@ public:
 
 	void readState(const mms_msgs::MMS_status::ConstPtr& msg)
 	{
-		inputMmsStatus_.mms_state=msg->mms_state;
-		inputMmsStatus_.target_ref_frame=msg->target_ref_frame;
+		inputMmsStatus_ = *msg;
+		currentState = msg->mms_state;
 	}
 
 
@@ -194,35 +194,35 @@ public:
 			counter_print = 0;
 		}*/
 
-		switch(inputMmsStatus_.mms_state)
+		switch(currentState)
 		{
-			case ON_GROUND_NO_HOME:
+			case mms_msgs::MMS_status::ON_GROUND_NO_HOME:
 				safety_.safety = false;                              //HARDCODED INITIALIAZED
 				sys_status_.armed = false;             //armed
 				sys_status_.voltage_battery = 15000;  //15 V
 				sys_status_.valid_ref_frame = 11;     //baro
 				break;
 
-			case SETTING_HOME:
+			case mms_msgs::MMS_status::SETTING_HOME:
 				break;
 
-			case ON_GROUND_DISARMED:
+			case mms_msgs::MMS_status::ON_GROUND_DISARMED:
 				break;
 
-			case ARMING:
+			case mms_msgs::MMS_status::ARMING:
 				sys_status_.armed = true;             //armed
 				pubToSystStatus_.publish(sys_status_);
 				break;
 
-			case DISARMING:
+			case mms_msgs::MMS_status::DISARMING:
 				sys_status_.armed = false;             //armed
 				pubToSystStatus_.publish(sys_status_);
 				break;
 
-			case ON_GROUND_ARMED:
+			case mms_msgs::MMS_status::ON_GROUND_ARMED:
 				break;
 
-			case PERFORMING_TAKEOFF:
+			case mms_msgs::MMS_status::PERFORMING_TAKEOFF:
 				if (counter_print >= 30){
 					counter_print = 0;
 					ROS_INFO("SIM: PERFORMING TAKEOFF");
@@ -235,14 +235,14 @@ public:
 				position_ned_.yaw += directive_.yawRate / 10;
 				break;
 
-			case IN_FLIGHT:
+			case mms_msgs::MMS_status::IN_FLIGHT:
 				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
 				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
 				position_ned_.alt += -directive_.vzBody / 10;
 				position_ned_.yaw += directive_.yawRate / 10;
 				break;
 
-			case PERFORMING_GO_TO:
+			case mms_msgs::MMS_status::PERFORMING_GO_TO:
 				if (counter_print >= 30){
 					counter_print = 0;
 					ROS_INFO("SIM: PERFORMING GO TO");
@@ -254,7 +254,7 @@ public:
 				position_ned_.yaw += directive_.yawRate / 10;
 				break;
 
-			case GRID:
+			case mms_msgs::MMS_status::GRID:
 				if (counter_print >= 30){
 					counter_print = 0;
 					ROS_INFO("SIM: PERFORMING GRID");
@@ -266,7 +266,7 @@ public:
 				position_ned_.yaw += directive_.yawRate / 10;
 				break;
 
-			case PERFORMING_LANDING:
+			case mms_msgs::MMS_status::PERFORMING_LANDING:
 				if (counter_print >= 30){
 					counter_print = 0;
 					ROS_INFO("SIM: PERFORMING LANDING");
@@ -278,10 +278,10 @@ public:
 				position_ned_.yaw += directive_.yawRate / 10;
 				break;
 			
-			case MANUAL_FLIGHT:
+			case mms_msgs::MMS_status::MANUAL_FLIGHT:
 				break;
 
-			case LEASHING:
+			case mms_msgs::MMS_status::LEASHING:
 				if (counter_print >= 30){
 					counter_print = 0;
 					ROS_INFO("SIM: PERFORMING LEASHING");
@@ -292,7 +292,7 @@ public:
 				position_ned_.yaw += directive_.yawRate / 10;
 				break;
 				
-			case PAUSED:
+			case mms_msgs::MMS_status::PAUSED:
 				if (counter_print >= 30){
 					counter_print = 0;
 					ROS_INFO("SIM: PERFORMING PAUSED");
@@ -440,6 +440,8 @@ mavros::Sonar sonar_;
 mms_msgs::Sys_status sys_status_;
 qos_sensors_autopilot::Qos_sensors qos_sens_;
 geometry_msgs::Pose ned_pose;
+
+uint16_t currentState;
 
 geographic_msgs::GeoPose geopose_;
 geographic_msgs::GeoPoint geopoint_;
