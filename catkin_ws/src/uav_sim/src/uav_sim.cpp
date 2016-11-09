@@ -12,6 +12,7 @@
 #include "geographic_msgs/GeoPose.h"
 #include "geographic_msgs/GeoPoint.h"
 #include "geometry_msgs/Quaternion.h"
+#include "geometry_msgs/Point.h"
 #include "qos_sensors_autopilot/Qos_sensors.h"
 #include <wgs84_ned_lib/wgs84_ned_lib.h> 
 #include <tf/transform_datatypes.h>
@@ -66,6 +67,7 @@ public:
 		pubToSonar_ = n_.advertise<mavros::Sonar>("sonar",10);
 		pubGeopose_ = n_.advertise<geographic_msgs::GeoPose>("geopose",10);
 		pubQosSensors_ = n_.advertise<qos_sensors_autopilot::Qos_sensors>("qos_sensors",2);
+		pubNedPose_ = n_.advertise<geometry_msgs::Pose>("ned_pose",2);
 	
 		// Services
 		client_query = n_.serviceClient<swm_interface::Query>("query_swm");
@@ -339,18 +341,30 @@ public:
 		//Publish TF for visualization
 		static tf::TransformBroadcaster br;
 		tf::Transform transform;
-		transform.setOrigin( tf::Vector3(position_ned_.x, position_ned_.y, position_ned_.alt) );
+		transform.setOrigin(tf::Vector3(position_ned_.x, position_ned_.y, position_ned_.alt));
 		tf::Quaternion q;
 		q.setRPY(0, 0, 0);
 		transform.setRotation(q);
 		br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "wasp"));
 
+		//Publish Pose
+		geometry_msgs::Point p;
+		p.x = position_ned_.x; p.y = position_ned_.y; p.z = position_ned_.alt;
+		ned_pose.position = p;
+		ned_pose.orientation = quaternion_;
+		pubNedPose_.publish(ned_pose);
+
+		//Publish State
 		pubToSystStatus_.publish(sys_status_);
+
+		//Publish Sonar
 		if (globPosInt_.relative_alt <= 3000 && globPosInt_.relative_alt >= 0)
 			sonar_.distance = globPosInt_.relative_alt;
 		else
 			sonar_.distance = 0;
 		pubToSonar_.publish(sonar_);
+
+		//Publish QoS sensors
 		pubQosSensors_.publish(qos_sens_);
 }
 
@@ -411,6 +425,7 @@ ros::Publisher pubToGlobPosInt_;
 ros::Publisher pubToSonar_;
 ros::Publisher pubGeopose_;
 ros::Publisher pubQosSensors_;
+ros::Publisher pubNedPose_;
 
 ros::ServiceClient client_query;
 swm_interface::Query srv_query;
@@ -424,6 +439,7 @@ mavros::Safety safety_;
 mavros::Sonar sonar_;
 mms_msgs::Sys_status sys_status_;
 qos_sensors_autopilot::Qos_sensors qos_sens_;
+geometry_msgs::Pose ned_pose;
 
 geographic_msgs::GeoPose geopose_;
 geographic_msgs::GeoPoint geopoint_;
