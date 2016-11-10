@@ -3,6 +3,8 @@
 #include <cmath>
 #include "ros/ros.h"
 
+//TODO be able to get counter-clockwise points
+
 void intersection_line_segment(const float s1[2], const float s2[2], float m,
   float q, int *is_intersecting, float intersection_point[2])
 {																				//TESTED: WORKS

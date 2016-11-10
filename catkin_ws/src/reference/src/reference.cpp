@@ -22,6 +22,10 @@
 
 //TODO add check with terrain altitude
 //TODO add watchdog to leashing commands
+#define GRID_EXEC_INIT 0
+#define GRID_WAIT_YAW 1
+#define GRID_WAIT_WP 2
+
 
 double eps_WP = 2000.0; // distance to the target WAYPOINT position in millimeters      //TODO not hardcoded and it is in both mms and here MAKE PARAMETER SERVER
 double eps_alt = 1500.0; // distance to the target altitude in millimeters
@@ -142,8 +146,10 @@ public:
 		received_grid_cmd = false;
 		waiting_for_vertex_grid = false;
 		repeat_flag = false;
+		orient_yaw = false;
 		executing_grid = false;
 		vertex_grid_n = 0;
+		grid_execution_sm_state = 0;
 		received_vertexes_grid = 0;
 		speed_grid = 0;
 		height_grid = 0;
@@ -428,16 +434,6 @@ public:
 			leashing_status_.yawpoint = leashing_command_.yawpoint;
 		}
 	}
-	
-	/*void readDirectVelocityCommand(const reference::DirectVelocityCommand::ConstPtr& msg){
-		if(currentState == PAUSED){
-			counter_missed_direct_velocity_command = 0;		//reset the counter
-			received_direct_velocity_command.vx = msg->north_velocity_command;
-			received_direct_velocity_command.vy = msg->east_velocity_command;
-			received_direct_velocity_command.vz = msg->down_velocity_command;
-			received_direct_velocity_command.vyaw = msg->yaw_velocity_command;
-		}
-	}*/
 
 	void readDirectVelocityCommand(const geometry_msgs::Twist::ConstPtr& msg){
 		if(currentState == mms_msgs::MMS_status::PAUSED){
@@ -448,10 +444,6 @@ public:
 			received_direct_velocity_command.vyaw = msg->angular.z;
 		}
 	}
-
-	/*void readLeashingStatus(const reference::LeashingStatus::ConstPtr& msg){
-		if (currentState == LEASHING) leashing_status_ = *msg;
-	}*/
 
 	void readCmdMessage(const mms_msgs::Cmd::ConstPtr& msg)
 	{
@@ -505,19 +497,15 @@ public:
 			{
 				received_grid_cmd = true;
 				waiting_for_vertex_grid = true;
+				grid_execution_sm_state = 0;
 				speed_grid = inputCmd_.param1;
 				d_grid = inputCmd_.param2;
 				height_grid = inputCmd_.param3;
 				vertex_grid_n = inputCmd_.param4;
+				orient_yaw = inputCmd_.param5;
 				repeat_flag = inputCmd_.param7 == 1 ? true : false;
 				outputDist_.seq = inputCmd_.seq;
 				//Sanity check made in mms
-				/*if (height_grid < 0.5 || d_grid < 0.5 || d_grid > 30 || vertex_grid_n < 3 || vertex_grid_n > 20 || speed_grid <= 0 || speed_grid > 4){
-					//grid params failure
-					grid_ack_.grid_completed = false;
-					grid_ack_.completion_type = 2;      //failure in parameters input
-					pubGridAck_.publish(grid_ack_);
-				}*/
 			}break;
 			case 161:    //GRID_VERTEX
 			{
@@ -789,6 +777,80 @@ public:
 					}
 				}
 				if (executing_grid){   //grid calculated-->executing WP
+
+					/*// ---------- STATE MACHINE
+					switch (grid_execution_sm_state){
+						case GRID_EXEC_INIT:
+							if (orient_yaw){
+								if (grid_forward_wp){
+									target_wp_ned.yaw = atan2(WP[WP_completed_grid+1][1]-WP[WP_completed_grid][1],WP[WP_completed_grid+1][0]-WP[WP_completed_grid][0]);
+								} else {
+									target_wp_ned.yaw = atan2(WP[WP_completed_grid-1][1]-WP[WP_completed_grid][1],WP[WP_completed_grid-1][0]-WP[WP_completed_grid][0]);
+								}
+								grid_execution_sm_state = GRID_WAIT_YAW;
+							} else {
+								target_wp_ned.x = WP[WP_completed_grid][0];	//this is needed to calculate increments
+								target_wp_ned.y = WP[WP_completed_grid][1];
+								target_wp_ned.alt = height_grid;  //meters
+								grid_execution_sm_state = GRID_WAIT_WP;
+							}
+							break;
+
+						case GRID_WAIT_YAW:
+							if (outputDist_.error_ang < eps_YAW){
+								//Yaw reached --> send next WP
+								target_wp_ned.x = WP[WP_completed_grid][0];	//this is needed to calculate increments
+								target_wp_ned.y = WP[WP_completed_grid][1];
+								target_wp_ned.alt = height_grid;  //meters
+								ROS_INFO("REF->GRID: Sent a WP: %f - %f", WP[WP_completed_grid][0], WP[WP_completed_grid][1]);
+								grid_execution_sm_state = GRID_WAIT_WP;
+								break;
+							}
+							break;
+
+						case GRID_WAIT_WP:
+							if (outputDist_.error_pos < eps_WP && outputDist_.error_ang < eps_YAW && outputDist_.error_alt < eps_alt){
+								//WP reached  --> send next WP or check finish conditions
+								if (grid_forward_wp) WP_completed_grid++;
+								else WP_completed_grid--;
+								if ((WP_completed_grid==N_WP && grid_forward_wp) || (WP_completed_grid<0 && !grid_forward_wp)){
+									//GRID finished
+									if (!repeat_flag){
+										//GRID execution ended. Return EVENT to MMS
+										ROS_INFO("REF->GRID: GRID COMPLETED!");
+										grid_ack_.grid_completed = true;
+										grid_ack_.completion_type = 1;      //success
+										pubGridAck_.publish(grid_ack_);
+										WP_completed_grid = 0;
+										executing_grid = false;
+									} else {	//REPEAT GRID
+										if (grid_forward_wp){
+											WP_completed_grid = N_WP-1;   //reset to last WP to start over in reverse
+											grid_forward_wp = false;
+											ROS_INFO("REF->GRID: Restarting GRID reverse because repeat_flag");
+										} else{
+											WP_completed_grid = 0;   //reset to first WP to start over
+											grid_forward_wp = true;
+											ROS_INFO("REF->GRID: Restarting GRID forward because repeat_flag");
+										}
+										grid_execution_sm_state = GRID_EXEC_INIT;
+									}
+								} else {
+									ROS_INFO("REF->GRID: Sent a WP: %f - %f", WP[WP_completed_grid][0], WP[WP_completed_grid][1]);
+									target_wp_ned.x = WP[WP_completed_grid][0];	//to calculate increments
+									target_wp_ned.y = WP[WP_completed_grid][1];
+									target_wp_ned.alt = height_grid;  //meters
+								}
+							}
+							break;
+					}
+					calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
+					if (target_frame == 11 && actual_frame == 6){  //target in sonar but quad is too high
+						position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
+						reference_speed.vz = 0.8;
+					}
+					*///STATE MACHINE END
+
 					if (WP_completed_grid<N_WP && WP_completed_grid>=0 && !waiting_for_WP_execution_grid){ //not finished all WP and reached last WP sent-->send new WP
 						waiting_for_WP_execution_grid = true;
 						target_wp_ned.x = WP[WP_completed_grid][0];	//this is needed to calculate increments
@@ -840,6 +902,8 @@ public:
 							ROS_INFO("REF->GRID: Restarting GRID forward because repeat_flag");
 						}
 					}
+
+
 				} else if (!success_grid){
 					//FAIL
 					ROS_INFO("REF->GRID: GRID Alg failed");
@@ -1019,30 +1083,28 @@ public:
 				break;
 			
 			case mms_msgs::MMS_status::MANUAL_FLIGHT:
-				if (new_state == true)
-					{
-						ROS_INFO("REF: MANUAL_FLIGHT");
-						new_state = false;
-					}
+				if (new_state == true){
+					ROS_INFO("REF: MANUAL_FLIGHT");
+					new_state = false;
+				}
 				break;
 			
 			case mms_msgs::MMS_status::PAUSED:
-				if (new_state == true)
-					{
-						ROS_INFO("REF: PAUSED");
-						new_state = false;
-					}
-					//TODO finish manual velocity control here
-					//TODO create the direct_velocity_command from a received topic
-					position_increments.dx = direct_velocity_command.vx /rate;
-					reference_speed.vx = direct_velocity_command.vx;
-					position_increments.dy = direct_velocity_command.vy /rate;
-					reference_speed.vy = direct_velocity_command.vy;
-					position_increments.dalt = -direct_velocity_command.vz /rate;
-					reference_speed.vz = direct_velocity_command.vz;
-					position_increments.dyaw = direct_velocity_command.vyaw /rate;
-					reference_speed.vyaw = direct_velocity_command.vyaw;
-					break;
+				if (new_state == true){
+					ROS_INFO("REF: PAUSED");
+					new_state = false;
+				}
+				//TODO finish manual velocity control here
+				//TODO create the direct_velocity_command from a received topic
+				position_increments.dx = direct_velocity_command.vx /rate;
+				reference_speed.vx = direct_velocity_command.vx;
+				position_increments.dy = direct_velocity_command.vy /rate;
+				reference_speed.vy = direct_velocity_command.vy;
+				position_increments.dalt = -direct_velocity_command.vz /rate;
+				reference_speed.vz = direct_velocity_command.vz;
+				position_increments.dyaw = direct_velocity_command.vyaw /rate;
+				reference_speed.vyaw = direct_velocity_command.vyaw;
+				break;
 		}
 		//-----switch end-->calculate new targets ned-----
 		target_ned.x += position_increments.dx;        //TODO make a unique class with dx,dy,alt_baro,alt_sonar,dyaw...too wasted memory and code this way
@@ -1181,6 +1243,7 @@ protected:
 	bool received_grid_cmd;
 	bool waiting_for_vertex_grid;
 	bool repeat_flag;
+	bool orient_yaw;
 	int vertex_grid_n;
 	int received_vertexes_grid;
 	float speed_grid;
@@ -1195,6 +1258,7 @@ protected:
 	bool executing_grid;
 	bool grid_forward_wp;   //true if executing forward the list, false otherwise. For patrolling
 	mms_msgs::Grid_ack grid_ack_;
+	int grid_execution_sm_state;
 
 	//LEASHING RELATED
 	leashing_target_ned leashing_target_ned_;

@@ -14,26 +14,6 @@
 #include <reference/LeashingStatus.h>// input
 #include <qos_sensors_autopilot/Qos_sensors.h>// input
 
-
-// STATES DEFINITION -> CREATE A DEDICATED LIBRARY = TODO
-//#define ON_GROUND_NO_HOME 10
-//#define SETTING_HOME 20
-//#define ON_GROUND_DISARMED 30
-//#define ARMING 40
-//#define DISARMING 45
-//#define ON_GROUND_ARMED 50
-//#define PERFORMING_TAKEOFF 70
-//#define HAND_TAKEOFF_WAITING 71
-//#define HAND_TAKEOFF_WAITING_FIRST 711  //FirstsSub state machine state for hand deployment
-//#define HAND_TAKEOFF_WAITING_SECOND 712 //FirstsSub state machine state for hand deployment
-//#define IN_FLIGHT 80
-//#define GRID 90
-//#define PERFORMING_GO_TO 100
-//#define PERFORMING_LANDING 120
-//#define LEASHING 140
-//#define PAUSED 150
-//#define MANUAL_FLIGHT 1000
-
 #define FRAME_BARO 6
 #define FRAME_SONAR 11
 
@@ -1527,20 +1507,6 @@ bool LEASHING_END;
 bool LEASHING_FAILURE;
 bool PAUSE;
 bool CONTINUE;
-// static bool CONDITION_YAW = false;
-
-// INPUTS APM -> MMS
-// bool MAV_RESULT  = false;
-// bool New_MAV_RESULT= false;
-
-
-// OUTPUTS MMS -> GCS
-// bool MISSION_ITEM_REACHED = false;
-// bool MAV_MISSION_ACCEPTED = false;
-
-// OUTPUTS MMS -> APM
-// bool arm_disarm = false; // true = arm, false = disarm
-// bool new_arm_disarm = false; // true = armed, false = none
 
 // STATE INITIALIZATION
 //int currentState;	//OLD
@@ -1551,9 +1517,6 @@ uint16_t previousState;	//used when rolling back to previous state from MANUAL_F
 int target_frame;
 
 int rate;
-
-//std::vector<double> param_;
-//double debugParam;
 
 private:
 
