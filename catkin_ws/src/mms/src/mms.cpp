@@ -6,11 +6,11 @@
 #include "mms_msgs/Ack_arm.h" // input
 #include "mms_msgs/Sys_status.h"// input
 #include "mms_msgs/Grid_ack.h"  //input
-#include <mavros/Sonar.h> // input
-#include "mavros/Attitude.h"
+#include <mavros_msgs/Sonar.h> // input
+#include "mavros_msgs/Attitude.h"
 #include "mms_msgs/MMS_status.h"// output
 #include <reference/Distance.h>// input
-#include <mavros/Safety.h>// input
+#include <mavros_msgs/Safety.h>// input
 #include <reference/LeashingStatus.h>// input
 #include <qos_sensors_autopilot/Qos_sensors.h>// input
 
@@ -106,7 +106,7 @@ public:
 		inputDist_.seq=msg->seq;
 	}
 	
-	void readSafetyMessage(const mavros::Safety::ConstPtr& msg){
+	void readSafetyMessage(const mavros_msgs::Safety::ConstPtr& msg){
 		Safety_.safety = msg->safety;
 		if (Safety_.safety && !SAFETY_ON){
 			SAFETY_ON = true;
@@ -144,7 +144,7 @@ public:
 		else GRID_ENDED = false;
 	}
 
-	void readSonarMessage(const mavros::Sonar::ConstPtr& msg){
+	void readSonarMessage(const mavros_msgs::Sonar::ConstPtr& msg){
 		// ROS_INFO("POSMIXER: SONAR_RECEIVED");
 		inputSonar_.distance = msg -> distance;
 	}
@@ -157,7 +157,7 @@ public:
 		Qos_sensors_ = *msg;
 	}
 
-	void readAttitudeMessage(const mavros::Attitude::ConstPtr& msg){
+	void readAttitudeMessage(const mavros_msgs::Attitude::ConstPtr& msg){
 		Attitude_ = *msg;
 	}
 
@@ -1459,13 +1459,13 @@ ros::Publisher pubGridAck_;
 mms_msgs::Grid_ack Grid_ack_;
 
 ros::Subscriber subSafety_;
-mavros::Safety Safety_;
+mavros_msgs::Safety Safety_;
 
 ros::Subscriber subFromSysStatus_;
 mms_msgs::Sys_status inputSysStatus_;
 
 ros::Subscriber subFromSonar_;
-mavros::Sonar inputSonar_;
+mavros_msgs::Sonar inputSonar_;
 
 ros::Subscriber subLeashingStatus_;
 
@@ -1473,7 +1473,7 @@ ros::Subscriber subQos_sensors_;
 qos_sensors_autopilot::Qos_sensors Qos_sensors_;
 
 ros::Subscriber subAttitude_;
-mavros::Attitude Attitude_;
+mavros_msgs::Attitude Attitude_;
 
 ros::Subscriber subFromDistance_;
 reference::Distance inputDist_;

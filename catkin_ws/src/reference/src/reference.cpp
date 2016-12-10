@@ -1,12 +1,12 @@
 #include "ros/ros.h"
 
-#include "mavros/Global_position_int.h"
+#include "mavros_msgs/Global_position_int.h"
 #include "guidance_node_amsl/Reference.h"
 #include "guidance_node_amsl/Position_nav.h"
 #include "mms_msgs/Cmd.h"
 #include "mms_msgs/Grid_ack.h"
 #include "mms_msgs/MMS_status.h"
-#include <mavros/Sonar.h>
+#include <mavros_msgs/Sonar.h>
 #include <frame/Ref_system.h>
 #include "reference/Distance.h"	
 #include "reference/Grid_info.h"	//GRID
@@ -87,7 +87,7 @@ public:
 		pubToReference_ = n_.advertise<guidance_node_amsl::Reference>("reference",10);
 		pubToDistance_ = n_.advertise<reference::Distance>("distance",10);
 		pubGridAck_ = n_.advertise<mms_msgs::Grid_ack>("grid_ack",10);
-		pubHome_ = n_.advertise<mavros::Global_position_int>("home",5);
+		pubHome_ = n_.advertise<mavros_msgs::Global_position_int>("home",5);
 		pubGridInfo_ = n_.advertise<reference::Grid_info>("grid_info",2);
 		pubLeashingStatus_ = n_.advertise<reference::LeashingStatus>("leashing_status",5);
 
@@ -263,7 +263,7 @@ public:
 		}
 	}
 
-	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
+	void readSonarMessage(const mavros_msgs::Sonar::ConstPtr& msg)
 	{
 		//ROS_INFO("MMS: SONAR_MSG_RECEIVED");
 		inputSonar_.distance = msg -> distance;
@@ -382,7 +382,7 @@ public:
 		target_frame = msg->target_ref_frame;
 	}
 
-	//void readPositionMessage(const mavros::Global_position_int::ConstPtr& msg)
+	//void readPositionMessage(const mavros_msgs::Global_position_int::ConstPtr& msg)
 	void readPositionMessage(const guidance_node_amsl::Position_nav::ConstPtr& msg)
 	{
 		inputPos_.Latitude = msg->Latitude;
@@ -394,7 +394,7 @@ public:
 		//new_pos = true;
 	}
 	
-	void readGlobalPosIntMessage(const mavros::Global_position_int::ConstPtr& msg)
+	void readGlobalPosIntMessage(const mavros_msgs::Global_position_int::ConstPtr& msg)
 	{
 		inputGlobPosInt_.lat = msg->lat;
 		inputGlobPosInt_.lon = msg->lon;
@@ -1173,9 +1173,9 @@ protected:
 	ros::Publisher pubLeashingStatus_;
 
 	guidance_node_amsl::Position_nav inputPos_;
-	mavros::Global_position_int inputGlobPosInt_;
+	mavros_msgs::Global_position_int inputGlobPosInt_;
 
-	mavros::Sonar inputSonar_;
+	mavros_msgs::Sonar inputSonar_;
 	mms_msgs::Cmd inputCmd_;
 	mms_msgs::MMS_status inputMmsStatus_;
 	//frame::Ref_system inputFrame_;
@@ -1189,7 +1189,7 @@ protected:
 	reference::Distance outputDist_;
 
 	guidance_node_amsl::Reference waypointRef_;
-	mavros::Global_position_int Home_;
+	mavros_msgs::Global_position_int Home_;
 
 	reference::LeashingCommand leashing_command_;   //leashing
 	reference::LeashingStatus leashing_status_;    //leashing

@@ -19,12 +19,11 @@
 #include <mavros/mavros_plugin.h>
 #include <pluginlib/class_list_macros.h>
 
-#include <mavros/WaypointList.h>
-#include <mavros/WaypointSetCurrent.h>
-#include <mavros/WaypointClear.h>
-#include <mavros/WaypointPull.h>
-#include <mavros/WaypointPush.h>
-#include <mavros/WaypointGOTO.h>
+#include <mavros_msgs/WaypointList.h>
+#include <mavros_msgs/WaypointSetCurrent.h>
+#include <mavros_msgs/WaypointClear.h>
+#include <mavros_msgs/WaypointPull.h>
+#include <mavros_msgs/WaypointPush.h>
 
 namespace mavplugin {
 class WaypointItem {
@@ -42,8 +41,8 @@ public:
 	double y_long;
 	double z_alt;
 
-	static mavros::Waypoint to_msg(WaypointItem &wp) {
-		mavros::Waypoint ret;
+	static mavros_msgs::Waypoint to_msg(WaypointItem &wp) {
+		mavros_msgs::Waypoint ret;
 
 		ret.frame = static_cast<uint8_t>(wp.frame);
 		ret.command = static_cast<uint16_t>(wp.command);
@@ -60,7 +59,7 @@ public:
 		return ret;
 	}
 
-	static WaypointItem from_msg(mavros::Waypoint &wp, uint16_t seq) {
+	static WaypointItem from_msg(mavros_msgs::Waypoint &wp, uint16_t seq) {
 		WaypointItem ret;
 
 		ret.seq = seq;
@@ -141,8 +140,8 @@ public:
 		wp_nh("~mission"),
 		uas(nullptr),
 		wp_state(WP_IDLE),
-		wp_retries(RETRIES_COUNT),
 		wp_count(0),
+		wp_retries(RETRIES_COUNT),
 		wp_cur_id(0),
 		wp_cur_active(0),
 		wp_set_active(0),
@@ -162,12 +161,11 @@ public:
 
 		wp_nh.param("pull_after_gcs", do_pull_after_gcs, false);
 
-		wp_list_pub = wp_nh.advertise<mavros::WaypointList>("waypoints", 2, true);
+		wp_list_pub = wp_nh.advertise<mavros_msgs::WaypointList>("waypoints", 2, true);
 		pull_srv = wp_nh.advertiseService("pull", &WaypointPlugin::pull_cb, this);
 		push_srv = wp_nh.advertiseService("push", &WaypointPlugin::push_cb, this);
 		clear_srv = wp_nh.advertiseService("clear", &WaypointPlugin::clear_cb, this);
 		set_cur_srv = wp_nh.advertiseService("set_current", &WaypointPlugin::set_cur_cb, this);
-		goto_srv = wp_nh.advertiseService("goto", &WaypointPlugin::goto_cb, this);
 
 		wp_timer = wp_nh.createTimer(WP_TIMEOUT_DT, &WaypointPlugin::timeout_cb, this, true);
 		wp_timer.stop();
@@ -197,7 +195,6 @@ private:
 	ros::ServiceServer push_srv;
 	ros::ServiceServer clear_srv;
 	ros::ServiceServer set_cur_srv;
-	ros::ServiceServer goto_srv;
 
 	std::vector<WaypointItem> waypoints;
 	std::vector<WaypointItem> send_waypoints;
@@ -590,22 +587,18 @@ private:
 	}
 
 	void set_current_waypoint(size_t seq) {
-		for (auto it = waypoints.begin();
-				it != waypoints.end();
-				++it)
-			it->current = (it->seq == seq) ? true : false;
+		for (auto &it : waypoints)
+			it.current = (it.seq == seq) ? true : false;
 	}
 
 	void publish_waypoints() {
-		mavros::WaypointListPtr wpl = boost::make_shared<mavros::WaypointList>();
+		auto wpl = boost::make_shared<mavros_msgs::WaypointList>();
 		unique_lock lock(mutex);
 
 		wpl->waypoints.clear();
 		wpl->waypoints.reserve(waypoints.size());
-		for (auto it = waypoints.begin();
-				it != waypoints.end();
-				++it) {
-			wpl->waypoints.push_back(WaypointItem::to_msg(*it));
+		for (auto &it : waypoints) {
+			wpl->waypoints.push_back(WaypointItem::to_msg(it));
 		}
 
 		lock.unlock();
@@ -701,8 +694,8 @@ private:
 
 	/* -*- ROS callbacks -*- */
 
-	bool pull_cb(mavros::WaypointPull::Request &req,
-			mavros::WaypointPull::Response &res) {
+	bool pull_cb(mavros_msgs::WaypointPull::Request &req,
+			mavros_msgs::WaypointPull::Response &res) {
 		unique_lock lock(mutex);
 
 		if (wp_state != WP_IDLE)
@@ -723,8 +716,8 @@ private:
 		return true;
 	}
 
-	bool push_cb(mavros::WaypointPush::Request &req,
-			mavros::WaypointPush::Response &res) {
+	bool push_cb(mavros_msgs::WaypointPush::Request &req,
+			mavros_msgs::WaypointPush::Response &res) {
 		unique_lock lock(mutex);
 
 		if (wp_state != WP_IDLE)
@@ -736,10 +729,8 @@ private:
 		send_waypoints.clear();
 		send_waypoints.reserve(req.waypoints.size());
 		uint16_t seq = 0;
-		for (auto it = req.waypoints.begin();
-				it != req.waypoints.end();
-				++it, ++seq) {
-			send_waypoints.push_back(WaypointItem::from_msg(*it, seq));
+		for (auto &it : req.waypoints) {
+			send_waypoints.push_back(WaypointItem::from_msg(it, seq++));
 		}
 
 		wp_count = send_waypoints.size();
@@ -756,8 +747,8 @@ private:
 		return true;
 	}
 
-	bool clear_cb(mavros::WaypointClear::Request &req,
-			mavros::WaypointClear::Response &res) {
+	bool clear_cb(mavros_msgs::WaypointClear::Request &req,
+			mavros_msgs::WaypointClear::Response &res) {
 		unique_lock lock(mutex);
 
 		if (wp_state != WP_IDLE)
@@ -775,8 +766,8 @@ private:
 		return true;
 	}
 
-	bool set_cur_cb(mavros::WaypointSetCurrent::Request &req,
-			mavros::WaypointSetCurrent::Response &res) {
+	bool set_cur_cb(mavros_msgs::WaypointSetCurrent::Request &req,
+			mavros_msgs::WaypointSetCurrent::Response &res) {
 		unique_lock lock(mutex);
 
 		if (wp_state != WP_IDLE)
@@ -791,39 +782,6 @@ private:
 		res.success = wait_push_all();
 
 		lock.lock();
-		go_idle();	// same as in pull_cb
-		return true;
-	}
-
-	bool goto_cb(mavros::WaypointGOTO::Request &req,
-			mavros::WaypointGOTO::Response &res) {
-		unique_lock lock(mutex);
-
-		if (wp_state != WP_IDLE)
-			return false;
-
-		if (!uas->is_ardupilotmega()) {
-			ROS_ERROR_NAMED("wp", "WP: FCU not support GOTO command");
-			return false;
-		}
-
-		wp_state = WP_TXWP;
-
-		WaypointItem wpi = WaypointItem::from_msg(req.waypoint, 0);
-		wpi.current = 2;/* APM's magic */
-
-		send_waypoints.clear();
-		send_waypoints.push_back(wpi);
-
-		wp_count = 1;
-		wp_cur_id = 0;
-		restart_timeout_timer();
-
-		lock.unlock();
-		send_waypoint(wp_cur_id);
-		res.success = wait_push_all();
-		lock.lock();
-
 		go_idle();	// same as in pull_cb
 		return true;
 	}

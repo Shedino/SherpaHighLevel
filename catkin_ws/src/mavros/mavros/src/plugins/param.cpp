@@ -20,10 +20,10 @@
 #include <pluginlib/class_list_macros.h>
 #include <boost/any.hpp>
 
-#include <mavros/ParamSet.h>
-#include <mavros/ParamGet.h>
-#include <mavros/ParamPull.h>
-#include <mavros/ParamPush.h>
+#include <mavros_msgs/ParamSet.h>
+#include <mavros_msgs/ParamGet.h>
+#include <mavros_msgs/ParamPull.h>
+#include <mavros_msgs/ParamPush.h>
 
 namespace mavplugin {
 /**
@@ -103,7 +103,7 @@ public:
 		case MAV_PARAM_TYPE_INT32:
 			return (int32_t) pmsg.param_value;
 		case MAV_PARAM_TYPE_REAL32:
-			return pmsg.param_value;
+			return (float) pmsg.param_value;
 
 		default:
 		case MAV_PARAM_TYPE_UINT64:
@@ -739,8 +739,8 @@ private:
 	 * @brief fetches all parameters from device
 	 * @service ~param/pull
 	 */
-	bool pull_cb(mavros::ParamPull::Request &req,
-			mavros::ParamPull::Response &res) {
+	bool pull_cb(mavros_msgs::ParamPull::Request &req,
+			mavros_msgs::ParamPull::Response &res) {
 		unique_lock lock(mutex);
 
 		if ((param_state == PR_IDLE && parameters.empty())
@@ -791,8 +791,8 @@ private:
 	 * @brief push all parameter value to device
 	 * @service ~param/push
 	 */
-	bool push_cb(mavros::ParamPush::Request &req,
-			mavros::ParamPush::Response &res) {
+	bool push_cb(mavros_msgs::ParamPush::Request &req,
+			mavros_msgs::ParamPush::Response &res) {
 		XmlRpc::XmlRpcValue param_dict;
 		if (!param_nh.getParam("", param_dict))
 			return true;
@@ -838,8 +838,8 @@ private:
 	 * @brief sets parameter value
 	 * @service ~param/set
 	 */
-	bool set_cb(mavros::ParamSet::Request &req,
-			mavros::ParamSet::Response &res) {
+	bool set_cb(mavros_msgs::ParamSet::Request &req,
+			mavros_msgs::ParamSet::Response &res) {
 		unique_lock lock(mutex);
 
 		if (param_state == PR_RXLIST || param_state == PR_RXPARAM) {
@@ -852,13 +852,13 @@ private:
 			Parameter *p = &param_it->second;
 			Parameter to_send = *p;
 
-			// according to ParamSet/Get description
-			if (req.integer > 0)
-				to_send.param_value = (uint32_t) req.integer;
-			else if (req.integer < 0)
-				to_send.param_value = (int32_t) req.integer;
-			else if (req.real != 0.0)
-				to_send.param_value = (float) req.real;
+			// according to ParamValue description
+			if (req.value.integer > 0)
+				to_send.param_value = (uint32_t) req.value.integer;
+			else if (req.value.integer < 0)
+				to_send.param_value = (int32_t) req.value.integer;
+			else if (req.value.real != 0.0)
+				to_send.param_value = (float) req.value.real;
 			else
 				to_send.param_value = (uint32_t) 0;
 
@@ -866,8 +866,8 @@ private:
 			res.success = send_param_set_and_wait(to_send);
 			lock.lock();
 
-			res.integer = Parameter::to_integer(p->param_value);
-			res.real = Parameter::to_real(p->param_value);
+			res.value.integer = Parameter::to_integer(p->param_value);
+			res.value.real = Parameter::to_real(p->param_value);
 
 			auto pv = Parameter::to_xmlrpc_value(p->param_value);
 			lock.unlock();
@@ -886,8 +886,8 @@ private:
 	 * @brief get parameter
 	 * @service ~param/get
 	 */
-	bool get_cb(mavros::ParamGet::Request &req,
-			mavros::ParamGet::Response &res) {
+	bool get_cb(mavros_msgs::ParamGet::Request &req,
+			mavros_msgs::ParamGet::Response &res) {
 		lock_guard lock(mutex);
 
 		auto param_it = parameters.find(req.param_id);
@@ -895,8 +895,8 @@ private:
 			Parameter *p = &param_it->second;
 
 			res.success = true;
-			res.integer = Parameter::to_integer(p->param_value);
-			res.real = Parameter::to_real(p->param_value);
+			res.value.integer = Parameter::to_integer(p->param_value);
+			res.value.real = Parameter::to_real(p->param_value);
 		}
 		else {
 			ROS_ERROR_STREAM_NAMED("param", "PR: Unknown parameter to get: " << req.param_id);

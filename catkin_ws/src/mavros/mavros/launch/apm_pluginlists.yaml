@@ -2,7 +2,6 @@ plugin_blacklist:
 # common
 - actuator_control
 - ftp
-- local_position
 - safety_area
 - setpoint_attitude
 # extras
@@ -10,7 +9,9 @@ plugin_blacklist:
 - 'mocap_*'
 - px4flow
 - 'vision_*'
-- visualization
+- distance_sensor
+- vibration
+- altitude
 
 plugin_whitelist: []
 #- 'sys_*'

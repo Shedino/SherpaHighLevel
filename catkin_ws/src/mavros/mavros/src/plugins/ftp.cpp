@@ -21,18 +21,18 @@
 #include <pluginlib/class_list_macros.h>
 
 #include <std_srvs/Empty.h>
-#include <mavros/FileEntry.h>
-#include <mavros/FileList.h>
-#include <mavros/FileOpen.h>
-#include <mavros/FileClose.h>
-#include <mavros/FileRead.h>
-#include <mavros/FileWrite.h>
-#include <mavros/FileRemove.h>
-#include <mavros/FileMakeDir.h>
-#include <mavros/FileRemoveDir.h>
-#include <mavros/FileTruncate.h>
-#include <mavros/FileRename.h>
-#include <mavros/FileChecksum.h>
+#include <mavros_msgs/FileEntry.h>
+#include <mavros_msgs/FileList.h>
+#include <mavros_msgs/FileOpen.h>
+#include <mavros_msgs/FileClose.h>
+#include <mavros_msgs/FileRead.h>
+#include <mavros_msgs/FileWrite.h>
+#include <mavros_msgs/FileRemove.h>
+#include <mavros_msgs/FileMakeDir.h>
+#include <mavros_msgs/FileRemoveDir.h>
+#include <mavros_msgs/FileTruncate.h>
+#include <mavros_msgs/FileRename.h>
+#include <mavros_msgs/FileChecksum.h>
 
 // enable debugging messages
 //#define FTP_LL_DEBUG
@@ -75,6 +75,7 @@ public:
 		kCmdTruncateFile,	///< Truncate file at <path> to <offset> length
 		kCmdRename,		///< Rename <path1> to <path2>
 		kCmdCalcFileCRC32,	///< Calculate CRC32 for file at <path>
+		kCmdBurstReadFile,	///< Burst download session file
 
 		kRspAck = 128,		///< Ack response
 		kRspNak			///< Nak response
@@ -89,7 +90,9 @@ public:
 		kErrInvalidSession,		///< Session is not currently open
 		kErrNoSessionsAvailable,	///< All available Sessions in use
 		kErrEOF,			///< Offset past end of file for List and Read commands
-		kErrUnknownCommand		///< Unknown command opcode
+		kErrUnknownCommand,		///< Unknown command opcode
+		kErrFailFileExists,		///< File exists already
+		kErrFailFileProtected		///< File is write protected
 	};
 
 	static const char	DIRENT_FILE = 'F';
@@ -276,7 +279,7 @@ private:
 	// FTP:List
 	uint32_t list_offset;
 	std::string list_path;
-	std::vector<mavros::FileEntry> list_entries;
+	std::vector<mavros_msgs::FileEntry> list_entries;
 
 	// FTP:Open / FTP:Close
 	std::string open_path;
@@ -564,7 +567,7 @@ private:
 
 	void send_reset() {
 		ROS_DEBUG_NAMED("ftp", "FTP:m: kCmdResetSessions");
-		if (session_file_map.size() > 0) {
+		if (!session_file_map.empty()) {
 			ROS_WARN_NAMED("ftp", "FTP: Reset closes %zu sessons",
 					session_file_map.size());
 			session_file_map.clear();
@@ -576,7 +579,7 @@ private:
 	}
 
 	/// Send any command with string payload (usually file/dir path)
-	inline void send_any_path_command(FTPRequest::Opcode op, const std::string debug_msg, std::string &path, uint32_t offset) {
+	inline void send_any_path_command(FTPRequest::Opcode op, const std::string &debug_msg, std::string &path, uint32_t offset) {
 		ROS_DEBUG_STREAM_NAMED("ftp", "FTP:m: " << debug_msg << path << " off: " << offset);
 		FTPRequest req(op);
 		req.header()->offset = offset;
@@ -667,12 +670,12 @@ private:
 	/* -*- helpers -*- */
 
 	void add_dirent(const char *ptr, size_t slen) {
-		mavros::FileEntry ent;
+		mavros_msgs::FileEntry ent;
 		ent.size = 0;
 
 		if (ptr[0] == FTPRequest::DIRENT_DIR) {
 			ent.name.assign(ptr + 1, slen - 1);
-			ent.type = mavros::FileEntry::TYPE_DIRECTORY;
+			ent.type = mavros_msgs::FileEntry::TYPE_DIRECTORY;
 
 			ROS_DEBUG_STREAM_NAMED("ftp", "FTP:List Dir: " << ent.name);
 		}
@@ -682,7 +685,7 @@ private:
 
 			auto sep_it = std::find(name_size.begin(), name_size.end(), '\t');
 			ent.name.assign(name_size.begin(), sep_it);
-			ent.type = mavros::FileEntry::TYPE_FILE;
+			ent.type = mavros_msgs::FileEntry::TYPE_FILE;
 
 			if (sep_it != name_size.end()) {
 				name_size.erase(name_size.begin(), sep_it + 1);
@@ -715,11 +718,11 @@ private:
 		open_size = 0;
 		op_state = OP_OPEN;
 
-		if (mode == mavros::FileOpenRequest::MODE_READ)
+		if (mode == mavros_msgs::FileOpenRequest::MODE_READ)
 			send_open_ro_command();
-		else if (mode == mavros::FileOpenRequest::MODE_WRITE)
+		else if (mode == mavros_msgs::FileOpenRequest::MODE_WRITE)
 			send_open_wo_command();
-		else if (mode == mavros::FileOpenRequest::MODE_CREATE)
+		else if (mode == mavros_msgs::FileOpenRequest::MODE_CREATE)
 			send_create_command();
 		else {
 			ROS_ERROR_NAMED("ftp", "FTP: Unsupported open mode: %d", mode);
@@ -864,8 +867,8 @@ private:
 		return false;				\
 	}
 
-	bool list_cb(mavros::FileList::Request &req,
-			mavros::FileList::Response &res) {
+	bool list_cb(mavros_msgs::FileList::Request &req,
+			mavros_msgs::FileList::Response &res) {
 		SERVICE_IDLE_CHECK();
 
 		list_directory(req.dir_path);
@@ -879,8 +882,8 @@ private:
 		return true;
 	}
 
-	bool open_cb(mavros::FileOpen::Request &req,
-			mavros::FileOpen::Response &res) {
+	bool open_cb(mavros_msgs::FileOpen::Request &req,
+			mavros_msgs::FileOpen::Response &res) {
 		SERVICE_IDLE_CHECK();
 
 		// only one session per file
@@ -901,8 +904,8 @@ private:
 		return true;
 	}
 
-	bool close_cb(mavros::FileClose::Request &req,
-			mavros::FileClose::Response &res) {
+	bool close_cb(mavros_msgs::FileClose::Request &req,
+			mavros_msgs::FileClose::Response &res) {
 		SERVICE_IDLE_CHECK();
 
 		res.success = close_file(req.file_path);
@@ -914,8 +917,8 @@ private:
 		return true;
 	}
 
-	bool read_cb(mavros::FileRead::Request &req,
-			mavros::FileRead::Response &res) {
+	bool read_cb(mavros_msgs::FileRead::Request &req,
+			mavros_msgs::FileRead::Response &res) {
 		SERVICE_IDLE_CHECK();
 
 		res.success = read_file(req.file_path, req.offset, req.size);
@@ -930,8 +933,8 @@ private:
 		return true;
 	}
 
-	bool write_cb(mavros::FileWrite::Request &req,
-			mavros::FileWrite::Response &res) {
+	bool write_cb(mavros_msgs::FileWrite::Request &req,
+			mavros_msgs::FileWrite::Response &res) {
 		SERVICE_IDLE_CHECK();
 
 		const size_t data_size = req.data.size();
@@ -945,8 +948,8 @@ private:
 		return true;
 	}
 
-	bool remove_cb(mavros::FileRemove::Request &req,
-			mavros::FileRemove::Response &res) {
+	bool remove_cb(mavros_msgs::FileRemove::Request &req,
+			mavros_msgs::FileRemove::Response &res) {
 		SERVICE_IDLE_CHECK();
 
 		remove_file(req.file_path);
@@ -956,8 +959,8 @@ private:
 		return true;
 	}
 
-	bool rename_cb(mavros::FileRename::Request &req,
-			mavros::FileRename::Response &res) {
+	bool rename_cb(mavros_msgs::FileRename::Request &req,
+			mavros_msgs::FileRename::Response &res) {
 		SERVICE_IDLE_CHECK();
 
 		res.success = rename_(req.old_path, req.new_path);
@@ -970,8 +973,8 @@ private:
 	}
 
 
-	bool truncate_cb(mavros::FileTruncate::Request &req,
-			mavros::FileTruncate::Response &res) {
+	bool truncate_cb(mavros_msgs::FileTruncate::Request &req,
+			mavros_msgs::FileTruncate::Response &res) {
 		SERVICE_IDLE_CHECK();
 
 		// Note: emulated truncate() can take a while
@@ -982,8 +985,8 @@ private:
 		return true;
 	}
 
-	bool mkdir_cb(mavros::FileMakeDir::Request &req,
-			mavros::FileMakeDir::Response &res) {
+	bool mkdir_cb(mavros_msgs::FileMakeDir::Request &req,
+			mavros_msgs::FileMakeDir::Response &res) {
 		SERVICE_IDLE_CHECK();
 
 		create_directory(req.dir_path);
@@ -993,8 +996,8 @@ private:
 		return true;
 	}
 
-	bool rmdir_cb(mavros::FileRemoveDir::Request &req,
-			mavros::FileRemoveDir::Response &res) {
+	bool rmdir_cb(mavros_msgs::FileRemoveDir::Request &req,
+			mavros_msgs::FileRemoveDir::Response &res) {
 		SERVICE_IDLE_CHECK();
 
 		remove_directory(req.dir_path);
@@ -1004,8 +1007,8 @@ private:
 		return true;
 	}
 
-	bool checksum_cb(mavros::FileChecksum::Request &req,
-			mavros::FileChecksum::Response &res) {
+	bool checksum_cb(mavros_msgs::FileChecksum::Request &req,
+			mavros_msgs::FileChecksum::Response &res) {
 		SERVICE_IDLE_CHECK();
 
 		checksum_crc32_file(req.file_path);

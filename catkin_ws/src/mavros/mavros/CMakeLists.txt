@@ -7,22 +7,33 @@ project(mavros)
 find_package(catkin REQUIRED COMPONENTS
   diagnostic_msgs
   diagnostic_updater
-  message_generation
-  message_runtime
   pluginlib
   roscpp
+  geometry_msgs
   sensor_msgs
+  nav_msgs
   std_msgs
   std_srvs
-  tf
+  tf2_ros
   angles
   libmavconn
   rosconsole_bridge
+  eigen_conversions
+  mavros_msgs
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 find_package(Boost REQUIRED COMPONENTS system)
+
+find_package(Eigen3)
+if(NOT EIGEN3_FOUND)
+  # Fallback to cmake_modules
+  find_package(cmake_modules REQUIRED)
+  find_package(Eigen REQUIRED)
+  set(EIGEN3_INCLUDE_DIRS ${EIGEN_INCLUDE_DIRS})
+  set(EIGEN3_LIBRARIES ${EIGEN_LIBRARIES})
+endif()
 
 include(EnableCXX11)
 include(MavrosMavlink)
@@ -31,100 +42,6 @@ include(MavrosMavlink)
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
 catkin_python_setup()
-
-################################################
-## Declare ROS messages, services and actions ##
-################################################
-
-## To declare and build messages, services or actions from within this
-## package, follow these steps:
-## * Let MSG_DEP_SET be the set of packages whose message types you use in
-##   your messages/services/actions (e.g. std_msgs, actionlib_msgs, ...).
-## * In the file package.xml:
-##   * add a build_depend and a run_depend tag for each package in MSG_DEP_SET
-##   * If MSG_DEP_SET isn't empty the following dependencies might have been
-##     pulled in transitively but can be declared for certainty nonetheless:
-##     * add a build_depend tag for "message_generation"
-##     * add a run_depend tag for "message_runtime"
-## * In this file (CMakeLists.txt):
-##   * add "message_generation" and every package in MSG_DEP_SET to
-##     find_package(catkin REQUIRED COMPONENTS ...)
-##   * add "message_runtime" and every package in MSG_DEP_SET to
-##     catkin_package(CATKIN_DEPENDS ...)
-##   * uncomment the add_*_files sections below as needed
-##     and list every .msg/.srv/.action file to be processed
-##   * uncomment the generate_messages entry below
-##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
-
-## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  Mavlink.msg
-  Waypoint.msg
-  WaypointList.msg
-  BatteryStatus.msg
-  State.msg
-  RCIn.msg
-  RCOut.msg
-  RadioStatus.msg
-  OverrideRCIn.msg
-  VFR_HUD.msg
-  FileEntry.msg
-  ActuatorControl.msg
-  Sonar.msg
-  Attitude.msg
-  Global_position_int.msg
-  Safety.msg
-  ArtvaRead.msg
-  Raw_imu.msg
-)
-
-## Generate services in the 'srv' folder
-add_service_files(
-  FILES
-  ParamSet.srv
-  ParamGet.srv
-  ParamPull.srv
-  ParamPush.srv
-  WaypointSetCurrent.srv
-  WaypointClear.srv
-  WaypointPull.srv
-  WaypointPush.srv
-  WaypointGOTO.srv
-  CommandLong.srv
-  CommandInt.srv
-  CommandBool.srv
-  CommandHome.srv
-  CommandTOL.srv
-  StreamRate.srv
-  SetMode.srv
-  FileOpen.srv
-  FileClose.srv
-  FileRead.srv
-  FileWrite.srv
-  FileList.srv
-  FileRemove.srv
-  FileMakeDir.srv
-  FileRemoveDir.srv
-  FileTruncate.srv
-  FileRename.srv
-  FileChecksum.srv
-)
-
-## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
-
-## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  diagnostic_msgs
-  sensor_msgs
-  std_msgs
-)
 
 
 ###################################
@@ -139,46 +56,44 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES mavros
-  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs std_msgs tf geometry_msgs libmavconn
-  DEPENDS Boost mavlink
+  CATKIN_DEPENDS diagnostic_msgs diagnostic_updater pluginlib roscpp sensor_msgs nav_msgs std_msgs tf2_ros geometry_msgs libmavconn message_runtime eigen_conversions mavros_msgs
+  DEPENDS Boost Eigen
 )
 
 ###########
 ## Build ##
 ###########
 
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-# include_directories(include)
-# TODO: Check names of system library include directories (boost)
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${mavlink_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
 )
 
-
 add_library(mavros
-  src/lib/uas.cpp
+  src/lib/uas_data.cpp
+  src/lib/uas_stringify.cpp
+  src/lib/uas_timesync.cpp
+  src/lib/uas_sensor_orientation.cpp
+  src/lib/uas_frame_conversions.cpp
+  src/lib/uas_quaternion_utils.cpp
   src/lib/mavros.cpp
   src/lib/mavlink_diag.cpp
   src/lib/rosconsole_bridge.cpp
-)
-add_dependencies(mavros
-  mavros_generate_messages_cpp
 )
 target_link_libraries(mavros
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
 )
+add_dependencies(mavros mavros_msgs_generate_messages_cpp)
 
 add_library(mavros_plugins
   src/plugins/dummy.cpp
   src/plugins/sys_status.cpp
   src/plugins/sys_time.cpp
   src/plugins/imu_pub.cpp
-  src/plugins/gps.cpp
   src/plugins/param.cpp
   src/plugins/waypoint.cpp
   src/plugins/rc_io.cpp
@@ -191,16 +106,13 @@ add_library(mavros_plugins
   src/plugins/setpoint_velocity.cpp
   src/plugins/setpoint_accel.cpp
   src/plugins/setpoint_attitude.cpp
+  src/plugins/setpoint_raw.cpp
   src/plugins/vfr_hud.cpp
   src/plugins/ftp.cpp
   src/plugins/actuator_control.cpp
-  #added by zano 04_28_2015
-  src/plugins/unibo_controller.cpp
-  #added by mic 05_11_2015
-  #src/plugins/unibo_ref_set_global_int.cpp
-  src/plugins/unibo_GCS.cpp
-  #added by zano 04_28_2015
-  src/plugins/unibo_controller_amsl.cpp
+  src/plugins/manual_control.cpp
+  src/plugins/altitude.cpp
+  src/plugins/hil_controls.cpp
 )
 add_dependencies(mavros_plugins
   mavros
@@ -227,19 +139,11 @@ target_link_libraries(mavros_node
 add_executable(gcs_bridge
   src/gcs_bridge.cpp
 )
-add_dependencies(gcs_bridge
-  mavros_generate_messages_cpp
-)
 target_link_libraries(gcs_bridge
+  mavros
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
 )
-
-
-add_executable(test_ARTVA src/test_ARTVA.cpp)
-target_link_libraries(test_ARTVA ${catkin_LIBRARIES})
-add_dependencies(test_ARTVA mavros_generate_messages_cpp)
-
 
 #############
 ## Install ##
@@ -283,13 +187,20 @@ install(DIRECTORY launch/
 ## Testing ##
 #############
 
-## Add gtest based cpp test target and link libraries
-#catkin_add_gtest(mavconn-test test/test_mavconn.cpp)
-#if(TARGET mavconn-test)
-#  target_link_libraries(mavconn-test mavconn)
-#endif()
+if(CATKIN_ENABLE_TESTING)
+
+catkin_add_gtest(libmavros-frame-conversions-test test/test_frame_conversions.cpp)
+target_link_libraries(libmavros-frame-conversions-test mavros)
+
+catkin_add_gtest(libmavros-sensor-orientation-test test/test_sensor_orientation.cpp)
+target_link_libraries(libmavros-sensor-orientation-test mavros)
+
+catkin_add_gtest(libmavros-quaternion-utils-test test/test_quaternion_utils.cpp)
+target_link_libraries(libmavros-quaternion-utils-test mavros)
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+endif()
 
 # vim: ts=2 sw=2 et:

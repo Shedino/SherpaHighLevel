@@ -5,9 +5,9 @@
 #include "guidance_node_amsl/Reference.h"
 #include "mms_msgs/MMS_status.h"
 #include "guidance_node_amsl/Position_nav.h"
-#include "mavros/Global_position_int.h"
-#include "mavros/Safety.h"
-#include "mavros/Sonar.h"
+#include "mavros_msgs/Global_position_int.h"
+#include "mavros_msgs/Safety.h"
+#include "mavros_msgs/Sonar.h"
 #include "mms_msgs/Sys_status.h"
 #include "geographic_msgs/GeoPose.h"
 #include "geographic_msgs/GeoPoint.h"
@@ -61,10 +61,10 @@ public:
 		subFromPosNav_ = n_.subscribe("position_nav", 10, &UavSimNodeClass::readPosNav,this);
 		
 		// publishers
-		pubToSafety_ = n_.advertise<mavros::Safety>("safety_odroid",10);
+		pubToSafety_ = n_.advertise<mavros_msgs::Safety>("safety_odroid",10);
 		pubToSystStatus_ = n_.advertise<mms_msgs::Sys_status>("system_status",10);
-		pubToGlobPosInt_ = n_.advertise<mavros::Global_position_int>("global_position_int",10);
-		pubToSonar_ = n_.advertise<mavros::Sonar>("sonar",10);
+		pubToGlobPosInt_ = n_.advertise<mavros_msgs::Global_position_int>("global_position_int",10);
+		pubToSonar_ = n_.advertise<mavros_msgs::Sonar>("sonar",10);
 		pubGeopose_ = n_.advertise<geographic_msgs::GeoPose>("geopose",10);
 		pubQosSensors_ = n_.advertise<qos_sensors_autopilot::Qos_sensors>("qos_sensors",2);
 		pubNedPose_ = n_.advertise<geometry_msgs::Pose>("ned_pose",2);
@@ -434,9 +434,9 @@ guidance_node_amsl::Directive directive_;
 guidance_node_amsl::Position_nav inputPos_;
 guidance_node_amsl::Reference reference_;
 mms_msgs::MMS_status inputMmsStatus_;
-mavros::Global_position_int globPosInt_;
-mavros::Safety safety_;
-mavros::Sonar sonar_;
+mavros_msgs::Global_position_int globPosInt_;
+mavros_msgs::Safety safety_;
+mavros_msgs::Sonar sonar_;
 mms_msgs::Sys_status sys_status_;
 qos_sensors_autopilot::Qos_sensors qos_sens_;
 geometry_msgs::Pose ned_pose;

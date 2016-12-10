@@ -55,3 +55,11 @@ stuff "rosrun lrs_sherpa_proxy proxy __ns:=/wasp0 _long_name:=http://unibo.it/wa
 #screen 12
 #title "Proxy UNIBO-CREATE 2"
 #stuff "sleep 5; rosrun sherpa_proxy create_roszyre __ns:=/wasp0 _forward_unit_info:=1\015"
+
+#screen 13
+#title "SWM"
+#stuff "sleep 10; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp0 _forward_unit_info:=1\015"
+
+screen 14
+title "swm_ros_interface"
+stuff "roslaunch swm_ros_interface wasp.launch __ns:=/wasp0 _long_name:=http://unibo.it/wasp0\015"

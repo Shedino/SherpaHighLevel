@@ -17,6 +17,7 @@
 
 #include <mavros/mavros_plugin.h>
 #include <pluginlib/class_list_macros.h>
+#include <eigen_conversions/eigen_msg.h>
 
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/Vector3Stamped.h>
@@ -25,8 +26,8 @@ namespace mavplugin {
 /**
  * @brief Vision speed estimate plugin
  *
- * Send speed estimation from various vision estimators
- * to FCU position controller.
+ * Send velocity estimation from various vision estimators
+ * to FCU position and attitude estimators.
  *
  */
 class VisionSpeedEstimatePlugin : public MavRosPlugin {
@@ -70,25 +71,34 @@ private:
 		UAS_FCU(uas)->send_message(&msg);
 	}
 
+	/**
+	 * @todo Suggest modification on PX4 firmware to MAVLINK VISION_SPEED_ESTIMATE
+	 * msg name, which should be called instead VISION_VELOCITY_ESTIMATE
+	 */
+
 	/* -*- mid-level helpers -*- */
 
 	/**
-	 * Send vision speed estimate to FCU velocity controller
+	 * @brief Send vision speed estimate to FCU velocity controller
 	 */
-	void send_vision_speed(float vx, float vy, float vz, const ros::Time &stamp) {
-		// TODO: check conversion. Issue #49.
+	void send_vision_speed(const geometry_msgs::Vector3 &vel_enu, const ros::Time &stamp) {
+		Eigen::Vector3d vel_;
+		tf::vectorMsgToEigen(vel_enu, vel_);
+		//Transform from ENU to NED frame
+		auto vel = UAS::transform_frame_enu_ned(vel_);
+
 		vision_speed_estimate(stamp.toNSec() / 1000,
-				vy, vx, -vz);
+				vel.x(), vel.y(), vel.z());
 	}
 
 	/* -*- callbacks -*- */
 
 	void vel_twist_cb(const geometry_msgs::TwistStamped::ConstPtr &req) {
-		send_vision_speed(req->twist.linear.x, req->twist.linear.y, req->twist.linear.z, req->header.stamp);
+		send_vision_speed(req->twist.linear, req->header.stamp);
 	}
 
 	void vel_speed_cb(const geometry_msgs::Vector3Stamped::ConstPtr &req) {
-		send_vision_speed(req->vector.x, req->vector.y, req->vector.z, req->header.stamp);
+		send_vision_speed(req->vector, req->header.stamp);
 	}
 };
 };	// namespace mavplugin

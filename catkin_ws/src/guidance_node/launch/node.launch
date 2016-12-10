@@ -1,9 +1,0 @@
-<launch>
-	<!-- vim: set ft=xml noet : -->
-	<!-- base node launch file-->
-
-	<arg name="unibo_guidance_config.yaml" value="$(find guidance_node)/launch/unibo_guidance_config.yaml" />
-	<node pkg="guidance_node" type="guidance_node" name="guidance_node" output="screen">
-		<rosparam command="load" file="$(arg unibo_guidance_config.yaml)" />
-	</node>
-</launch>

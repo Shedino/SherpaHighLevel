@@ -49,18 +49,8 @@ def do_pull(args):
 
 def do_show(args):
     str_bool = lambda x: 'Yes' if x else 'No'
-
-    def str_frame(f):
-        if M.FRAMES.has_key(f):
-            return M.FRAMES[f] + ' ({})'.format(f)
-        else:
-            return 'UNK ({})'.format(f)
-
-    def str_command(c):
-        if M.NAV_CMDS.has_key(c):
-            return M.NAV_CMDS[c] + ' ({})'.format(c)
-        else:
-            return 'UNK ({})'.format(c)
+    str_frame = lambda f: M.FRAMES.get(f, 'UNK') + ' ({})'.format(f)
+    str_command = lambda c: M.NAV_CMDS.get(c, 'UNK') + ' ({})'.format(c)
 
     done_evt = threading.Event()
     def _show_table(topic):
@@ -180,32 +170,6 @@ def do_set_current(args):
         print_if(args.verbose, "Set current done.")
 
 
-def do_goto(args):
-    rospy.init_node("mavwp", anonymous=True)
-
-    wp = M.Waypoint(
-        frame = args.frame,
-        command = args.command,
-        param1 = args.param1,
-        param2 = args.param2,
-        param3 = args.param3,
-        param4 = args.param4,
-        x_lat = args.x_lat,
-        y_long = args.y_long,
-        z_alt = args.z_alt
-    )
-
-    try:
-        ret = M.goto(waypoint=wp)
-    except rospy.ServiceException as ex:
-        fault(ex)
-
-    if not ret.success:
-        fault("Request failed. Check mavros logs")
-
-    print_if(args.verbose, "Goto done.")
-
-
 def main():
     parser = argparse.ArgumentParser(description="Commad line tool for manipulating mission on MAVLink device.")
     parser.add_argument('-n', '--mavros-ns', help="ROS node namespace", default="/mavros")
@@ -237,23 +201,10 @@ def main():
     setcur_args.add_argument('seq', type=int, help="waypoint seq id")
     setcur_args.set_defaults(func=do_set_current)
 
-    goto_args = subarg.add_parser('goto', help="send goto waypoint (APM only)")
-    goto_args.add_argument('frame', type=int, help="frame code")
-    goto_args.add_argument('command', type=int, help="command code")
-    goto_args.add_argument('param1', type=float, help="param1")
-    goto_args.add_argument('param2', type=float, help="param2")
-    goto_args.add_argument('param3', type=float, help="param3")
-    goto_args.add_argument('param4', type=float, help="param4")
-    goto_args.add_argument('x_lat', type=float, help="X latitude")
-    goto_args.add_argument('y_long', type=float, help="Y longitude")
-    goto_args.add_argument('z_alt', type=float, help="Z altitude")
-    goto_args.set_defaults(func=do_goto)
-
     args = parser.parse_args(rospy.myargv(argv=sys.argv)[1:])
 
     rospy.init_node("mavwp", anonymous=True)
     mavros.set_namespace(args.mavros_ns)
-    M.setup_services()
 
     args.func(args)
 

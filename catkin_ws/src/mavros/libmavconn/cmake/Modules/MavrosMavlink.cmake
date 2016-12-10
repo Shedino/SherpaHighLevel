@@ -6,7 +6,6 @@ find_package(mavlink REQUIRED)
 # fallback for older mavlink package.
 if (NOT DEFINED mavlink_DIALECTS)
   list(APPEND mavlink_DIALECTS "ardupilotmega")
-  list(APPEND mavlink_DIALECTS "pixhawk")
   list(APPEND mavlink_DIALECTS "common")
 endif ()
 
@@ -32,5 +31,12 @@ endif ()
 add_definitions(
   -DMAVLINK_DIALECT=${MAVLINK_DIALECT}
 )
+
+# mavlink 2.0 capable mavgen produce little different API of mavlink 1.0
+if (mavlink2_DIALECTS)
+  add_definitions(
+    -DMAVLINK2_COMPAT
+  )
+endif()
 
 # vim: set ts=2 sw=2 et:

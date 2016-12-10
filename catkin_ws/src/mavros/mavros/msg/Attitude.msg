@@ -1,8 +1,0 @@
-# Fields as the MAVlink message ATTITUDE(#30)
-float32 roll
-float32 pitch
-float32 yaw
-float32 rollspeed
-float32 pitchspeed
-float32 yawspeed
-uint32 time_boot_ms

@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 
-#include <mavros/Sonar.h>
+#include <mavros_msgs/Sonar.h>
 #include <mms_msgs/MMS_status.h>
 #include <frame/Ref_system.h>
 
@@ -27,7 +27,7 @@ public:
 	}
 
 
-	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
+	void readSonarMessage(const mavros_msgs::Sonar::ConstPtr& msg)
 	{
 		inputSonar_.distance = msg -> distance;
 		// ROS_INFO("FRAME: SONAR DISTANCE = %d", inputSonar_.distance);
@@ -134,7 +134,7 @@ protected:
 	ros::Subscriber subFromMMSStatus_;
 
 	mms_msgs::MMS_status inputMMSStatus_;
-	mavros::Sonar inputSonar_;
+	mavros_msgs::Sonar inputSonar_;
 
 	// publisher
 	ros::Publisher pubToRefSystem_;

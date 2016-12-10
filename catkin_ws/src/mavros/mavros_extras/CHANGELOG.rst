@@ -2,6 +2,186 @@
 Changelog for package mavros_extras
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.17.4 (2016-06-23)
+-------------------
+
+0.17.3 (2016-05-20)
+-------------------
+
+0.17.2 (2016-04-29)
+-------------------
+
+0.17.1 (2016-03-28)
+-------------------
+* ran uncrustify
+* fixed typos
+* use CUBE_LIST for faster rendering
+* limit track size
+* use local variable
+* fixed indentation
+* added rc modes
+* moved rc to rc_override_control()
+* replaced tabulations with spaces (4)
+* introducing RC modes
+* fixed
+* quality added
+* added visualization for local setpoints
+* Contributors: Joey Gong, francois
+
+0.17.0 (2016-02-09)
+-------------------
+* rebased with master
+* ran uncrustify
+* removed duplicate include
+* use MarkerArray for vehicle model
+* Updated frame transformations and added odom publisher to local position plugin
+* Contributors: Eddy, francois
+
+0.16.6 (2016-02-04)
+-------------------
+* extras: uncrustify
+* added tf
+* comments
+* configurable vehicle model
+* Contributors: Vladimir Ermakov, francois
+
+0.16.5 (2016-01-11)
+-------------------
+
+0.16.4 (2015-12-14)
+-------------------
+
+0.16.3 (2015-11-19)
+-------------------
+
+0.16.2 (2015-11-17)
+-------------------
+
+0.16.1 (2015-11-13)
+-------------------
+
+0.16.0 (2015-11-09)
+-------------------
+* gcs_bridge `#394 <https://github.com/mavlink/mavros/issues/394>`_: enable both UDPROS and TCPROS transports
+* extras fix `#392 <https://github.com/mavlink/mavros/issues/392>`_: add additional subscription for PoseWithCovarianceStamped
+* Contributors: Vladimir Ermakov
+
+0.15.0 (2015-09-17)
+-------------------
+* extras `#387 <https://github.com/mavlink/mavros/issues/387>`_: fix header stamp in joint_states
+* extras fix `#387 <https://github.com/mavlink/mavros/issues/387>`_: SSP node done.
+* extras `#387 <https://github.com/mavlink/mavros/issues/387>`_: subscriber works, node almost done
+* extras `#387 <https://github.com/mavlink/mavros/issues/387>`_: load URDF
+* extras `#387 <https://github.com/mavlink/mavros/issues/387>`_: initial import of servo_status_publisher
+* Contributors: Vladimir Ermakov
+
+0.14.2 (2015-08-20)
+-------------------
+* extras: fix catkin lint warnings
+* Contributors: Vladimir Ermakov
+
+0.14.1 (2015-08-19)
+-------------------
+
+0.14.0 (2015-08-17)
+-------------------
+* extras: gcs node: replace deprecated copy function
+* extras: scripts: use API from mavros module
+* package: remove not exist dependency
+* extras: vibration: Fix message include
+* extras: px4flow: Fix message include
+* extras: cam_imu_sync: Fix message include
+* extras: update package description
+* msgs: deprecate mavros::Mavlink and copy utils.
+* msgs `#354 <https://github.com/mavlink/mavros/issues/354>`_: move all messages to mavros_msgs package.
+* opencv 3.0/2.4 header compatibility
+* fix orientation empty error
+* Contributors: Vladimir Ermakov, andre-nguyen, v01d
+
+0.13.1 (2015-08-05)
+-------------------
+
+0.13.0 (2015-08-01)
+-------------------
+* extras: mocap fix `#352 <https://github.com/mavlink/mavros/issues/352>`_: use new helper for quaternion.
+* Merge pull request `#312 <https://github.com/mavlink/mavros/issues/312>`_ from mhkabir/cam_imu_sync
+  Camera IMU synchronisation support added
+* distance_sensor `#342 <https://github.com/mavlink/mavros/issues/342>`_: correct orientation parameter handling.
+* distance_sensor: restructure orientation matching and verification
+* lib `#319 <https://github.com/mavlink/mavros/issues/319>`_: Return quaternion from UAS::sensor_matching()
+* launch fix `#340 <https://github.com/mavlink/mavros/issues/340>`_: update default component id of PX4.
+* extras: distance_sensor `#71 <https://github.com/mavlink/mavros/issues/71>`_: Purt to TF2.
+* plugin: Use UAS::syncronized_header() for reduce LOC.
+* extras: vision_pose `#71 <https://github.com/mavlink/mavros/issues/71>`_: Use TF2 listener.
+  Also `#319 <https://github.com/mavlink/mavros/issues/319>`_.
+* launch: Update configs.
+* extras: viz `#336 <https://github.com/mavlink/mavros/issues/336>`_: convert plugin to node.
+* extras: vision_speed `#319 <https://github.com/mavlink/mavros/issues/319>`_: use eigen based transform
+* extras: vibration: Use UAS::synchronized_header()
+* extras: px4flow `#319 <https://github.com/mavlink/mavros/issues/319>`_: change transform_frame()
+* extras: mocap `#319 <https://github.com/mavlink/mavros/issues/319>`_: use eigen based transform
+* Camera IMU synchronisation support added
+* Contributors: Mohammed Kabir, TSC21, Vladimir Ermakov
+
+0.12.0 (2015-07-01)
+-------------------
+* coverity: make them happy
+* frame_conversions: use inline functions to identify direction of conversion
+* changed frame conversion func name; add 3x3 cov matrix frame conversion; general doxygen comment cleanup
+* frame_conversions: added frame_conversion specific lib file; applied correct frame conversion between ENU<->NED
+* vibration_plugin: changed vibration to Vector3
+* vibration_plugin: msg reformulation
+* vibration_plugin: first commit
+* Changes some frames from world to body conversion for NED to ENU.
+* mavros `#302 <https://github.com/vooon/mavros/issues/302>`_: fix style
+* mavros fix `#301 <https://github.com/vooon/mavros/issues/301>`_: move sensor orientation util to UAS
+* distance_sensor: typo; style fixe
+* sensor_orientation: corrected rotation set sequence
+* sensor_orientation: updated orientation enum; updated data type
+* sensor_orientation: removed unecessary sum on setting rotation
+* sensor_orientation: added sensor orientation matching helper func
+* distance_sensor: minor correction
+* distance_sensor: sensor position cond changed
+* distance_sensor: tweak param check; cond routines
+* distance_sensor: removed unnecessary comment line
+* distance_sensor: ctor list update
+* distance_sensor: define sensor position through param config
+* distance_sensor: minor comment identation correction
+* distance_sensor: tf::Transform creation optional
+* distance_sensor: add tf_broadcaster between 'fcu' and the distance sensor
+* distance_sensor: remove commented code
+* distance_sensor: removed dbg msg
+* distance_sensor: cov condition defined
+* distance_sensor: covariance condition changed
+* distance_sensor: conditional state change
+* distance_sensor: covariance condition set - correction
+* distance_sensor: covariance condition set
+* distance_sensor: ctor list update (corrected)
+* distance_sensor: ctor list update
+* distance_sensor: ctor list update
+* distance_sensor: small correction
+* distance_sensor: uncrustify
+* distance_sensor: array limiting; cast correction; other minor correc
+* distance_sensor: travis build correction
+* distance_sensor: uncrustify distance_sensor.cpp
+* distance_sensor: small corrections on variable definitions, method calls
+* distance_sensor: small enhancements
+* distance_sensor `#292 <https://github.com/vooon/mavros/issues/292>`_: uncrustify
+* distance_sensor `#292 <https://github.com/vooon/mavros/issues/292>`_: fix travis build.
+* distance_sensor `#292 <https://github.com/vooon/mavros/issues/292>`_: implement message handling
+* distance_sensor `#292 <https://github.com/vooon/mavros/issues/292>`_: parse mapping configuration.
+* distance_sensor: remove DistanceSensor.msg from CMakeList
+* distance_sensor: removed DistanceSensor.msg
+* distance_sensor:
+  -> use std Range.msg
+  -> published frame_id in topics are dinamic - depend on type and id of the sensor
+* distance_sensor: comment correction
+* distance_sensor: minor correction
+* distance_sensor: minor fixes that include use Range.msg to Laser data
+* distance_sensor: add plugin file
+* distance_sensor plugin: first commit!
+* Contributors: TSC21, Tony Baltovski, Vladimir Ermakov
+
 0.11.2 (2015-04-26)
 -------------------
 * gcs bridge fix `#277 <https://github.com/vooon/mavros/issues/277>`_: add link diagnostics

@@ -17,7 +17,7 @@
 #include <mavros/mavros_plugin.h>
 #include <pluginlib/class_list_macros.h>
 
-#include <mavros/ActuatorControl.h>
+#include <mavros_msgs/ActuatorControl.h>
 
 namespace mavplugin {
 /**
@@ -50,7 +50,7 @@ private:
 
 	/* -*- low-level send -*- */
 
-	//! message definiton here: @p https://pixhawk.ethz.ch/mavlink/#SET_ACTUATOR_CONTROL_TARGET
+	//! message definiton here: @p http://mavlink.org/messages/common#SET_ACTUATOR_CONTROL_TARGET
 	void set_actuator_control_target(const uint64_t time_usec,
 			const uint8_t group_mix,
 			const float controls[8])
@@ -67,7 +67,7 @@ private:
 
 	/* -*- callbacks -*- */
 
-	void actuator_control_cb(const mavros::ActuatorControl::ConstPtr &req) {
+	void actuator_control_cb(const mavros_msgs::ActuatorControl::ConstPtr &req) {
 		//! about groups, mixing and channels: @p https://pixhawk.org/dev/mixing
 		set_actuator_control_target(ros::Time::now().toNSec() / 1000,
 				req->group_mix,

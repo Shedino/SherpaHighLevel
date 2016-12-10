@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   mms_msgs
   wgs84_ned_lib
   swm_interface
+  tf
 )
 
 ## System dependencies are found with CMake's conventions

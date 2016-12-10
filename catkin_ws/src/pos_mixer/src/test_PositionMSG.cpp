@@ -1,6 +1,6 @@
 #include "ros/ros.h"
 
-#include <mavros/Global_position_int.h>
+#include <mavros_msgs/Global_position_int.h>
 
 class test_PositionMSGClass{
   public:
@@ -8,7 +8,7 @@ class test_PositionMSGClass{
 
 	ROS_INFO("[test_PositionMSG:] node started!");
 
-	pubToPosition_=node.advertise<mavros::Global_position_int>("/global_position_int",10);
+	pubToPosition_=node.advertise<mavros_msgs::Global_position_int>("/global_position_int",10);
 
         outputPosition_.lat=445075000;
         outputPosition_.lon=113514000;
@@ -28,7 +28,7 @@ class test_PositionMSGClass{
 
   protected:
     ros::Publisher pubToPosition_;
-    mavros::Global_position_int outputPosition_;
+    mavros_msgs::Global_position_int outputPosition_;
 };
 
 int main(int argc,char **argv){

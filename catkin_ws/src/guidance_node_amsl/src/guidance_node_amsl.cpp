@@ -5,8 +5,8 @@
 #include "guidance_node_amsl/Position_nav.h"
 #include "guidance_node_amsl/Reference.h"
 
-#include <mavros/Safety.h>
-#include <mavros/Attitude.h>
+#include <mavros_msgs/Safety.h>
+#include <mavros_msgs/Attitude.h>
 
 #include <mms_msgs/MMS_status.h>
 
@@ -96,7 +96,7 @@ public:
 		position_nav_.Timestamp = msg->Timestamp;
 	}
 
-	void handle_safety(const mavros::Safety::ConstPtr& msg)
+	void handle_safety(const mavros_msgs::Safety::ConstPtr& msg)
 	{
 		safety_ = msg->safety;
 	}
@@ -107,7 +107,7 @@ public:
 		else if (msg->mms_state == 30) trigger_ = false;		//disable integral on ON_GROUND_DISARMED state --> this happens after LAND
 	}
 
-	void handle_attitude(const mavros::Attitude::ConstPtr& msg)
+	void handle_attitude(const mavros_msgs::Attitude::ConstPtr& msg)
 	{
 		yaw_ = msg->yaw;          //need only yaw for navigation
 	}

@@ -17,11 +17,12 @@
 #include <mavros/mavros_plugin.h>
 #include <pluginlib/class_list_macros.h>
 
-#include <mavros/State.h>
-#include <mavros/BatteryStatus.h>
-#include <mavros/StreamRate.h>
-#include <mavros/SetMode.h>
-#include <mavros/CommandLong.h>
+#include <mavros_msgs/State.h>
+#include <mavros_msgs/ExtendedState.h>
+#include <mavros_msgs/BatteryStatus.h>
+#include <mavros_msgs/StreamRate.h>
+#include <mavros_msgs/SetMode.h>
+#include <mavros_msgs/CommandLong.h>
 
 namespace mavplugin {
 /**
@@ -32,14 +33,14 @@ namespace mavplugin {
 class HeartbeatStatus : public diagnostic_updater::DiagnosticTask
 {
 public:
-	HeartbeatStatus(const std::string name, size_t win_size) :
+	HeartbeatStatus(const std::string &name, size_t win_size) :
 		diagnostic_updater::DiagnosticTask(name),
+		times_(win_size),
+		seq_nums_(win_size),
 		window_size_(win_size),
 		min_freq_(0.2),
 		max_freq_(100),
 		tolerance_(0.1),
-		times_(win_size),
-		seq_nums_(win_size),
 		autopilot(MAV_AUTOPILOT_GENERIC),
 		type(MAV_TYPE_GENERIC),
 		system_status(MAV_STATE_UNINIT)
@@ -52,8 +53,7 @@ public:
 		ros::Time curtime = ros::Time::now();
 		count_ = 0;
 
-		for (int i = 0; i < window_size_; i++)
-		{
+		for (size_t i = 0; i < window_size_; i++) {
 			times_[i] = curtime;
 			seq_nums_[i] = count_;
 		}
@@ -128,7 +128,7 @@ private:
 class SystemStatusDiag : public diagnostic_updater::DiagnosticTask
 {
 public:
-	SystemStatusDiag(const std::string name) :
+	SystemStatusDiag(const std::string &name) :
 		diagnostic_updater::DiagnosticTask(name),
 		last_st {}
 	{ };
@@ -203,7 +203,7 @@ private:
 class BatteryStatusDiag : public diagnostic_updater::DiagnosticTask
 {
 public:
-	BatteryStatusDiag(const std::string name) :
+	BatteryStatusDiag(const std::string &name) :
 		diagnostic_updater::DiagnosticTask(name),
 		voltage(-1.0),
 		current(0.0),
@@ -253,7 +253,7 @@ private:
 class MemInfo : public diagnostic_updater::DiagnosticTask
 {
 public:
-	MemInfo(const std::string name) :
+	MemInfo(const std::string &name) :
 		diagnostic_updater::DiagnosticTask(name),
 		freemem(-1),
 		brkval(0)
@@ -291,7 +291,7 @@ private:
 class HwStatus : public diagnostic_updater::DiagnosticTask
 {
 public:
-	HwStatus(const std::string name) :
+	HwStatus(const std::string &name) :
 		diagnostic_updater::DiagnosticTask(name),
 		vcc(-1.0),
 		i2cerr(0),
@@ -354,14 +354,26 @@ public:
 	{
 		uas = &uas_;
 
+		ros::Duration conn_heartbeat;
+
 		double conn_timeout_d;
 		double conn_heartbeat_d;
 		double min_voltage;
 
 		nh.param("conn/timeout", conn_timeout_d, 30.0);
-		nh.param("conn/heartbeat", conn_heartbeat_d, 0.0);
 		nh.param("sys/min_voltage", min_voltage, 6.0);
 		nh.param("sys/disable_diag", disable_diag, false);
+
+		// rate parameter
+		if (nh.getParam("conn/heartbeat_rate", conn_heartbeat_d) && conn_heartbeat_d != 0.0) {
+			conn_heartbeat = ros::Duration(ros::Rate(conn_heartbeat_d));
+		}
+		else if (nh.getParam("conn/heartbeat", conn_heartbeat_d)) {
+			// XXX deprecated parameter
+			ROS_WARN_NAMED("sys", "SYS: parameter `~conn/heartbeat` deprecated, "
+					"please use `~conn/heartbeat_rate` instead!");
+			conn_heartbeat = ros::Duration(conn_heartbeat_d);
+		}
 
 		// heartbeat diag always enabled
 		UAS_DIAG(uas).add(hb_diag);
@@ -378,8 +390,8 @@ public:
 				&SystemStatusPlugin::timeout_cb, this, true);
 		timeout_timer.start();
 
-		if (conn_heartbeat_d > 0.0) {
-			heartbeat_timer = nh.createTimer(ros::Duration(conn_heartbeat_d),
+		if (!conn_heartbeat.isZero()) {
+			heartbeat_timer = nh.createTimer(conn_heartbeat,
 					&SystemStatusPlugin::heartbeat_cb, this);
 			heartbeat_timer.start();
 		}
@@ -392,10 +404,14 @@ public:
 		// subscribe to connection event
 		uas->sig_connection_changed.connect(boost::bind(&SystemStatusPlugin::connection_cb, this, _1));
 
-		state_pub = nh.advertise<mavros::State>("state", 10);
-		batt_pub = nh.advertise<mavros::BatteryStatus>("battery", 10);
+		state_pub = nh.advertise<mavros_msgs::State>("state", 10, true);
+		extended_state_pub = nh.advertise<mavros_msgs::ExtendedState>("extended_state", 10);
+		batt_pub = nh.advertise<mavros_msgs::BatteryStatus>("battery", 10);
 		rate_srv = nh.advertiseService("set_stream_rate", &SystemStatusPlugin::set_rate_cb, this);
 		mode_srv = nh.advertiseService("set_mode", &SystemStatusPlugin::set_mode_cb, this);
+
+		// init state topic
+		publish_disconnection();
 	}
 
 	const message_map get_rx_handlers() {
@@ -410,6 +426,7 @@ public:
 			       MESSAGE_HANDLER(MAVLINK_MSG_ID_HWSTATUS, &SystemStatusPlugin::handle_hwstatus),
 #endif
 			       MESSAGE_HANDLER(MAVLINK_MSG_ID_AUTOPILOT_VERSION, &SystemStatusPlugin::handle_autopilot_version),
+			       MESSAGE_HANDLER(MAVLINK_MSG_ID_EXTENDED_SYS_STATE, &SystemStatusPlugin::handle_extended_sys_state),
 		};
 	}
 
@@ -427,11 +444,12 @@ private:
 	ros::Timer autopilot_version_timer;
 
 	ros::Publisher state_pub;
+	ros::Publisher extended_state_pub;
 	ros::Publisher batt_pub;
 	ros::ServiceServer rate_srv;
 	ros::ServiceServer mode_srv;
 
-	static constexpr int RETRIES_COUNT = 3;
+	static constexpr int RETRIES_COUNT = 6;
 	int version_retries;
 	bool disable_diag;
 
@@ -471,32 +489,76 @@ private:
 		};
 	}
 
-	/**
-	 * Send STATUSTEXT messate to rosout with APM severity levels
-	 *
-	 * @param[in] severity  APM levels.
-	 */
-	void process_statustext_apm_quirk(uint8_t severity, std::string &text) {
-		switch (severity) {
-		case 1:	// SEVERITY_LOW
-			ROS_INFO_STREAM_NAMED("fcu", "FCU: " << text);
-			break;
+	static inline std::string custom_version_to_hex_string(uint8_t array[8])
+	{
+		// inefficient, but who care for one time call function?
 
-		case 2:	// SEVERITY_MEDIUM
-			ROS_WARN_STREAM_NAMED("fcu", "FCU: " << text);
-			break;
+		std::ostringstream ss;
+		ss << std::setfill('0');
 
-		case 3:	// SEVERITY_HIGH
-		case 4:	// SEVERITY_CRITICAL
-		case 5:	// SEVERITY_USER_RESPONSE
-			ROS_ERROR_STREAM_NAMED("fcu", "FCU: " << text);
-			break;
+		for (ssize_t i = 7; i >= 0; i--)
+			ss << std::hex << std::setw(2) << int(array[i]);
 
-		default:
-			ROS_WARN_STREAM_NAMED("fcu", "FCU: UNK(" <<
-					int(severity) << "): " << text);
-			break;
-		};
+		return ss.str();
+	}
+
+	void process_autopilot_version_normal(mavlink_autopilot_version_t &apv, uint8_t sysid, uint8_t compid)
+	{
+		char prefix[16];
+		::snprintf(prefix, sizeof(prefix) - 1, "VER: %d.%d", sysid, compid);
+
+		ROS_INFO_NAMED("sys", "%s: Capabilities 0x%016llx", prefix, (long long int)apv.capabilities);
+		ROS_INFO_NAMED("sys", "%s: Flight software:     %08x (%s)",
+				prefix,
+				apv.flight_sw_version,
+				custom_version_to_hex_string(apv.flight_custom_version).c_str());
+		ROS_INFO_NAMED("sys", "%s: Middleware software: %08x (%s)",
+				prefix,
+				apv.middleware_sw_version,
+				custom_version_to_hex_string(apv.middleware_custom_version).c_str());
+		ROS_INFO_NAMED("sys", "%s: OS software:         %08x (%s)",
+				prefix,
+				apv.os_sw_version,
+				custom_version_to_hex_string(apv.os_custom_version).c_str());
+		ROS_INFO_NAMED("sys", "%s: Board hardware:      %08x", prefix, apv.board_version);
+		ROS_INFO_NAMED("sys", "%s: VID/PID: %04x:%04x", prefix, apv.vendor_id, apv.product_id);
+		ROS_INFO_NAMED("sys", "%s: UID: %016llx", prefix, (long long int)apv.uid);
+	}
+
+	void process_autopilot_version_apm_quirk(mavlink_autopilot_version_t &apv, uint8_t sysid, uint8_t compid)
+	{
+		char prefix[16];
+		::snprintf(prefix, sizeof(prefix) - 1, "VER: %d.%d", sysid, compid);
+
+		// Note based on current APM's impl.
+		// APM uses custom version array[8] as a string
+		ROS_INFO_NAMED("sys", "%s: Capabilities 0x%016llx", prefix, (long long int)apv.capabilities);
+		ROS_INFO_NAMED("sys", "%s: Flight software:     %08x (%*s)",
+				prefix,
+				apv.flight_sw_version,
+				8, apv.flight_custom_version);
+		ROS_INFO_NAMED("sys", "%s: Middleware software: %08x (%*s)",
+				prefix,
+				apv.middleware_sw_version,
+				8, apv.middleware_custom_version);
+		ROS_INFO_NAMED("sys", "%s: OS software:         %08x (%*s)",
+				prefix,
+				apv.os_sw_version,
+				8, apv.os_custom_version);
+		ROS_INFO_NAMED("sys", "%s: Board hardware:      %08x", prefix, apv.board_version);
+		ROS_INFO_NAMED("sys", "%s: VID/PID: %04x:%04x", prefix, apv.vendor_id, apv.product_id);
+		ROS_INFO_NAMED("sys", "%s: UID: %016llx", prefix, (long long int)apv.uid);
+	}
+
+	void publish_disconnection() {
+		auto state_msg = boost::make_shared<mavros_msgs::State>();
+		state_msg->header.stamp = ros::Time::now();
+		state_msg->connected = false;
+		state_msg->armed = false;
+		state_msg->guided = false;
+		state_msg->mode = "";
+
+		state_pub.publish(state_msg);
 	}
 
 	/* -*- message handlers -*- */
@@ -511,20 +573,33 @@ private:
 		mavlink_msg_heartbeat_decode(msg, &hb);
 
 		// update context && setup connection timeout
-		uas->update_heartbeat(hb.type, hb.autopilot);
+		uas->update_heartbeat(hb.type, hb.autopilot, hb.base_mode);
 		uas->update_connection_status(true);
 		timeout_timer.stop();
 		timeout_timer.start();
 
 		// build state message after updating uas
-		auto state_msg = boost::make_shared<mavros::State>();
+		auto state_msg = boost::make_shared<mavros_msgs::State>();
 		state_msg->header.stamp = ros::Time::now();
+		state_msg->connected = true;
 		state_msg->armed = hb.base_mode & MAV_MODE_FLAG_SAFETY_ARMED;
 		state_msg->guided = hb.base_mode & MAV_MODE_FLAG_GUIDED_ENABLED;
 		state_msg->mode = uas->str_mode_v10(hb.base_mode, hb.custom_mode);
 
 		state_pub.publish(state_msg);
 		hb_diag.tick(hb.type, hb.autopilot, state_msg->mode, hb.system_status);
+	}
+
+	void handle_extended_sys_state(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
+		mavlink_extended_sys_state_t state;
+		mavlink_msg_extended_sys_state_decode(msg, &state);
+
+		auto state_msg = boost::make_shared<mavros_msgs::ExtendedState>();
+		state_msg->header.stamp = ros::Time::now();
+		state_msg->vtol_state = state.vtol_state;
+		state_msg->landed_state = state.landed_state;
+
+		extended_state_pub.publish(state_msg);
 	}
 
 	void handle_sys_status(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
@@ -535,7 +610,7 @@ private:
 		float curr = stat.current_battery / 100.0f;	// 10 mA or -1
 		float rem = stat.battery_remaining / 100.0f;	// or -1
 
-		auto batt_msg = boost::make_shared<mavros::BatteryStatus>();
+		auto batt_msg = boost::make_shared<mavros_msgs::BatteryStatus>();
 		batt_msg->header.stamp = ros::Time::now();
 		batt_msg->voltage = volt;
 		batt_msg->current = curr;
@@ -553,10 +628,7 @@ private:
 		std::string text(textm.text,
 				strnlen(textm.text, sizeof(textm.text)));
 
-		if (uas->is_ardupilotmega())
-			process_statustext_apm_quirk(textm.severity, text);
-		else
-			process_statustext_normal(textm.severity, text);
+		process_statustext_normal(textm.severity, text);
 	}
 
 #ifdef MAVLINK_MSG_ID_MEMINFO
@@ -579,24 +651,17 @@ private:
 		mavlink_autopilot_version_t apv;
 		mavlink_msg_autopilot_version_decode(msg, &apv);
 
-		autopilot_version_timer.stop();
-		uas->update_capabilities(true, apv.capabilities);
+		// we want to store only FCU caps
+		if (uas->is_my_target(sysid, compid)) {
+			autopilot_version_timer.stop();
+			uas->update_capabilities(true, apv.capabilities);
+		}
 
-		// Note based on current APM's impl.
-		// APM uses custom version array[8] as a string
-		ROS_INFO_NAMED("sys", "VER: Capabilities 0x%016llx", (long long int)apv.capabilities);
-		ROS_INFO_NAMED("sys", "VER: Flight software:     %08x (%*s)",
-				apv.flight_sw_version,
-				8, apv.flight_custom_version);
-		ROS_INFO_NAMED("sys", "VER: Middleware software: %08x (%*s)",
-				apv.middleware_sw_version,
-				8, apv.middleware_custom_version);
-		ROS_INFO_NAMED("sys", "VER: OS software:         %08x (%*s)",
-				apv.os_sw_version,
-				8, apv.os_custom_version);
-		ROS_INFO_NAMED("sys", "VER: Board hardware:      %08x", apv.board_version);
-		ROS_INFO_NAMED("sys", "VER: VID/PID: %04x:%04x", apv.vendor_id, apv.product_id);
-		ROS_INFO_NAMED("sys", "VER: UID: %016llx", (long long int)apv.uid);
+		// but print all version responses
+		if (uas->is_ardupilotmega())
+			process_autopilot_version_apm_quirk(apv, sysid, compid);
+		else
+			process_autopilot_version_normal(apv, sysid, compid);
 	}
 
 	/* -*- timer callbacks -*- */
@@ -621,15 +686,21 @@ private:
 	void autopilot_version_cb(const ros::TimerEvent &event) {
 		bool ret = false;
 
-		try {
-			auto client = nh.serviceClient<mavros::CommandLong>("cmd/command");
+		// Request from all first 3 times, then fallback to unicast
+		bool do_broadcast = version_retries > RETRIES_COUNT / 2;
 
-			mavros::CommandLong cmd{};
+		try {
+			auto client = nh.serviceClient<mavros_msgs::CommandLong>("cmd/command");
+
+			mavros_msgs::CommandLong cmd{};
+
+			cmd.request.broadcast = do_broadcast;
 			cmd.request.command = MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES;
 			cmd.request.confirmation = false;
 			cmd.request.param1 = 1.0;
 
-			ROS_DEBUG_NAMED("sys", "VER: Sending request.");
+			ROS_DEBUG_NAMED("sys", "VER: Sending %s request.",
+					(do_broadcast) ? "broadcast" : "unicast");
 			ret = client.call(cmd);
 		}
 		catch (ros::InvalidNameException &ex) {
@@ -641,7 +712,9 @@ private:
 		if (version_retries > 0) {
 			version_retries--;
 			ROS_WARN_COND_NAMED(version_retries != RETRIES_COUNT - 1, "sys",
-					"VER: request timeout, retries left %d", version_retries);
+					"VER: %s request timeout, retries left %d",
+					(do_broadcast) ? "broadcast" : "unicast",
+					version_retries);
 		}
 		else {
 			uas->update_capabilities(false);
@@ -679,12 +752,17 @@ private:
 			UAS_DIAG(uas).removeByName(hwst_diag.getName());
 			ROS_DEBUG_NAMED("sys", "SYS: APM extra diagnostics disabled.");
 		}
+
+		if (!connected) {
+			// publish connection change
+			publish_disconnection();
+		}
 	}
 
 	/* -*- ros callbacks -*- */
 
-	bool set_rate_cb(mavros::StreamRate::Request &req,
-			mavros::StreamRate::Response &res) {
+	bool set_rate_cb(mavros_msgs::StreamRate::Request &req,
+			mavros_msgs::StreamRate::Response &res) {
 		mavlink_message_t msg;
 		mavlink_msg_request_data_stream_pack_chan(UAS_PACK_CHAN(uas), &msg,
 				UAS_PACK_TGT(uas),
@@ -697,8 +775,8 @@ private:
 		return true;
 	}
 
-	bool set_mode_cb(mavros::SetMode::Request &req,
-			mavros::SetMode::Response &res) {
+	bool set_mode_cb(mavros_msgs::SetMode::Request &req,
+			mavros_msgs::SetMode::Response &res) {
 		mavlink_message_t msg;
 		uint8_t base_mode = req.base_mode;
 		uint32_t custom_mode = 0;
@@ -709,6 +787,13 @@ private:
 				return true;
 			}
 
+			/**
+			 * @note That call may trigger unexpected arming change because
+			 *       base_mode arming flag state based on previous HEARTBEAT
+			 *       message value.
+			 */
+			base_mode |= (uas->get_armed()) ? MAV_MODE_FLAG_SAFETY_ARMED : 0;
+			base_mode |= (uas->get_hil_state()) ? MAV_MODE_FLAG_HIL_ENABLED : 0;
 			base_mode |= MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
 		}
 

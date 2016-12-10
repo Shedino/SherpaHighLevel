@@ -1,8 +1,8 @@
 #include <ros/ros.h>
 
-#include <mavros/Global_position_int.h>
+#include <mavros_msgs/Global_position_int.h>
 #include <guidance_node_amsl/Position_nav.h>
-#include <mavros/Sonar.h>
+#include <mavros_msgs/Sonar.h>
 #include <frame/Ref_system.h>
 
 class PosmixerNodeClass
@@ -31,7 +31,7 @@ public:
 
 	}
 
-	void readPositionMessage(const mavros::Global_position_int::ConstPtr& msg)
+	void readPositionMessage(const mavros_msgs::Global_position_int::ConstPtr& msg)
 	{
 		// ROS_INFO("POSMIXER: POSITION_RECEIVED");
 		inputPos_.lat = msg->lat;
@@ -43,7 +43,7 @@ public:
 		//Posmixer_Handle();
 	}
 
-	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
+	void readSonarMessage(const mavros_msgs::Sonar::ConstPtr& msg)
 	{
 		// ROS_INFO("POSMIXER: SONAR_RECEIVED");
 		inputSonar_.distance = msg -> distance;
@@ -130,8 +130,8 @@ protected:
 	ros::Subscriber subFromSonar_;
 	ros::Subscriber subFromRefSystem_;
 
-	mavros::Global_position_int inputPos_;
-	mavros::Sonar inputSonar_;
+	mavros_msgs::Global_position_int inputPos_;
+	mavros_msgs::Sonar inputSonar_;
 	frame::Ref_system inputRefSystem_;
 
 	// publisher

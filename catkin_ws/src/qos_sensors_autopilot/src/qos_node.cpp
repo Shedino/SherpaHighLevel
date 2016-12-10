@@ -1,10 +1,10 @@
 #include "ros/ros.h"
 
 #include <sensor_msgs/image_encodings.h>
-#include "mavros/Sonar.h"
-#include "mavros/ArtvaRead.h"
-#include "mavros/Global_position_int.h"
-#include "mavros/Attitude.h"
+#include "mavros_msgs/Sonar.h"
+#include "mavros_msgs/ArtvaRead.h"
+#include "mavros_msgs/Global_position_int.h"
+#include "mavros_msgs/Attitude.h"
 #include "qos_sensors_autopilot/Qos_sensors.h"
 #include "qos_sensors_autopilot/Qos_autopilot.h"
 #include <image_transport/image_transport.h>
@@ -128,25 +128,25 @@ public:
 		counter_camera = 0;
 	}
 
-	void sonarCb(const mavros::Sonar::ConstPtr& msg){
+	void sonarCb(const mavros_msgs::Sonar::ConstPtr& msg){
 		if (!sonar_present) sonar_present = true;
 		qos_sens_.sonar_working = true;
 		counter_sonar = 0;
 	}
 	
-	void artvaCb(const mavros::ArtvaRead::ConstPtr& msg){
+	void artvaCb(const mavros_msgs::ArtvaRead::ConstPtr& msg){
 		if (!artva_present) artva_present = true;
 		qos_sens_.artva_working = true;
 		counter_artva = 0;
 	}
 
-	void positionCb(const mavros::Global_position_int::ConstPtr& msg){        //TODO too easy check if the autopilot is connect checking just position and attitude
+	void positionCb(const mavros_msgs::Global_position_int::ConstPtr& msg){        //TODO too easy check if the autopilot is connect checking just position and attitude
 		if (!autopilot_connected) autopilot_connected = true;
 		qos_autop_.receiving_position = true;
 		counter_position = 0;
 	}
 
-	void attitudeCb(const mavros::Attitude::ConstPtr& msg){
+	void attitudeCb(const mavros_msgs::Attitude::ConstPtr& msg){
 		if (!autopilot_connected) autopilot_connected = true;
 		qos_autop_.receiving_attitude = true;
 		counter_attitude = 0;

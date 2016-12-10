@@ -1,8 +1,10 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>mavros_extras</name>
-  <version>0.11.2</version>
-  <description>Extra nodes and plugins for mavros</description>
+  <version>0.17.4</version>
+  <description>
+    Extra nodes and plugins for <a href="http://wiki.rot.org/mavros">MAVROS</a>.
+  </description>
 
   <maintainer email="vooon341@gmail.com">Vladimir Ermakov</maintainer>
   <author email="vooon341@gmail.com">Vladimir Ermakov</author>
@@ -16,14 +18,18 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
+  <build_depend>cmake_modules</build_depend>
   <depend>image_transport</depend>
   <depend>cv_bridge</depend>
-  <depend>mavlink</depend>
   <depend>mavros</depend>
   <depend>roscpp</depend>
+  <depend>geometry_msgs</depend>
+  <depend>mavros_msgs</depend>
   <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
   <depend>visualization_msgs</depend>
-  <exec_depend>python-argparse</exec_depend>
+  <depend>urdf</depend>
+  <depend>tf</depend>
 
   <export>
     <mavros plugin="${prefix}/mavros_plugins.xml" />

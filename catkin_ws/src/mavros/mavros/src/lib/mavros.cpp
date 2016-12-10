@@ -4,7 +4,7 @@
  * @author Vladimir Ermakov <vooon341@gmail.com>
  */
 /*
- * Copyright 2013,2014,2015 Vladimir Ermakov.
+ * Copyright 2013,2014,2015,2016 Vladimir Ermakov.
  *
  * This file is part of the mavros package and subject to the license terms
  * in the top-level LICENSE file of the mavros repository.
@@ -16,13 +16,18 @@
 #include <mavros/utils.h>
 #include <fnmatch.h>
 
+#ifdef MAVLINK_VERSION
+#undef MAVLINK_VERSION
+#endif
+#include <mavlink/config.h>
+
 using namespace mavros;
 using namespace mavconn;
 using namespace mavplugin;
 
 
 MavRos::MavRos() :
-	mavlink_nh("/mavlink"),		// for compatible reasons
+	mavlink_nh("mavlink"),		// allow to namespace it
 	fcu_link_diag("FCU connection"),
 	gcs_link_diag("GCS bridge"),
 	plugin_loader("mavros", "mavplugin::MavRosPlugin"),
@@ -84,11 +89,11 @@ MavRos::MavRos() :
 		ROS_INFO("GCS bridge disabled");
 
 	// ROS mavlink bridge
-	mavlink_pub = mavlink_nh.advertise<Mavlink>("from", 100);
+	mavlink_pub = mavlink_nh.advertise<mavros_msgs::Mavlink>("from", 100);
 	mavlink_sub = mavlink_nh.subscribe("to", 100, &MavRos::mavlink_sub_cb, this,
 		ros::TransportHints()
-			.unreliable()
-			.maxDatagramSize(1024));
+			.unreliable().maxDatagramSize(1024)
+			.reliable());
 
 	// setup UAS and diag
 	mav_uas.set_tgt(tgt_system_id, tgt_component_id);
@@ -124,8 +129,10 @@ MavRos::MavRos() :
 #define STR2(x)	#x
 #define STR(x)	STR2(x)
 
-	ROS_INFO("Built-in mavlink dialect: %s", STR(MAVLINK_DIALECT));
-	ROS_INFO("MAVROS started. MY ID [%d, %d], TARGET ID [%d, %d]",
+	ROS_INFO("Built-in SIMD instructions: %s", Eigen::SimdInstructionSetsInUse());
+	ROS_INFO("Built-in MAVLink package version: %s", MAVLINK_VERSION);
+	ROS_INFO("Built-in MAVLink dialect: %s", STR(MAVLINK_DIALECT));
+	ROS_INFO("MAVROS started. MY ID %d.%d, TARGET ID %d.%d",
 		system_id, component_id,
 		tgt_system_id, tgt_component_id);
 }
@@ -133,35 +140,36 @@ MavRos::MavRos() :
 void MavRos::spin() {
 	ros::AsyncSpinner spinner(4 /* threads */);
 
-	spinner.start();
+	auto diag_timer = mavlink_nh.createTimer(
+			ros::Duration(0.5),
+			[&](const ros::TimerEvent &) {
+				UAS_DIAG(&mav_uas).update();
+			});
+	diag_timer.start();
 
-	ros::Rate loop_rate(1000);
-	while (ros::ok()) {
-		UAS_DIAG(&mav_uas).update();
-		loop_rate.sleep();
-	}
+	spinner.start();
+	ros::waitForShutdown();
 
 	ROS_INFO("Stopping mavros...");
 	mav_uas.stop();
+	spinner.stop();
 }
 
 void MavRos::mavlink_pub_cb(const mavlink_message_t *mmsg, uint8_t sysid, uint8_t compid) {
-	auto rmsg = boost::make_shared<Mavlink>();
-
+	auto rmsg = boost::make_shared<mavros_msgs::Mavlink>();
 
 	if  (mavlink_pub.getNumSubscribers() == 0)
 		return;
 
 	rmsg->header.stamp = ros::Time::now();
-	mavutils::copy_mavlink_to_ros(mmsg, rmsg);
+	mavros_msgs::mavlink::convert(*mmsg, *rmsg);
 	mavlink_pub.publish(rmsg);
 }
 
-void MavRos::mavlink_sub_cb(const Mavlink::ConstPtr &rmsg) {
+void MavRos::mavlink_sub_cb(const mavros_msgs::Mavlink::ConstPtr &rmsg) {
 	mavlink_message_t mmsg;
-	
 
-	if (mavutils::copy_ros_to_mavlink(rmsg, mmsg))
+	if (mavros_msgs::mavlink::convert(*rmsg, mmsg))
 		UAS_FCU(&mav_uas)->send_message(&mmsg, rmsg->sysid, rmsg->compid);
 	else
 		ROS_ERROR("Drop mavlink packet: illegal payload64 size");
@@ -254,9 +262,11 @@ void MavRos::startup_px4_usb_quirk(void) {
 }
 
 void MavRos::log_connect_change(bool connected) {
+	auto ap = mav_uas.str_autopilot(mav_uas.get_autopilot());
+
 	/* note: sys_status plugin required */
 	if (connected)
-		ROS_INFO("CON: Got HEARTBEAT, connected.");
+		ROS_INFO("CON: Got HEARTBEAT, connected. FCU: %s", ap.c_str());
 	else
 		ROS_WARN("CON: Lost connection, HEARTBEAT timed out.");
 }
