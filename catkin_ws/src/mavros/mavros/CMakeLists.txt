@@ -7,6 +7,8 @@ project(mavros)
 find_package(catkin REQUIRED COMPONENTS
   diagnostic_msgs
   diagnostic_updater
+  message_generation
+  message_runtime
   pluginlib
   roscpp
   geometry_msgs
@@ -17,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   angles
   libmavconn
+
   rosconsole_bridge
   eigen_conversions
   mavros_msgs
@@ -43,6 +46,100 @@ include(MavrosMavlink)
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
 catkin_python_setup()
 
+################################################
+## Declare ROS messages, services and actions ##
+################################################
+
+## To declare and build messages, services or actions from within this
+## package, follow these steps:
+## * Let MSG_DEP_SET be the set of packages whose message types you use in
+##   your messages/services/actions (e.g. std_msgs, actionlib_msgs, ...).
+## * In the file package.xml:
+##   * add a build_depend and a run_depend tag for each package in MSG_DEP_SET
+##   * If MSG_DEP_SET isn't empty the following dependencies might have been
+##     pulled in transitively but can be declared for certainty nonetheless:
+##     * add a build_depend tag for "message_generation"
+##     * add a run_depend tag for "message_runtime"
+## * In this file (CMakeLists.txt):
+##   * add "message_generation" and every package in MSG_DEP_SET to
+##     find_package(catkin REQUIRED COMPONENTS ...)
+##   * add "message_runtime" and every package in MSG_DEP_SET to
+##     catkin_package(CATKIN_DEPENDS ...)
+##   * uncomment the add_*_files sections below as needed
+##     and list every .msg/.srv/.action file to be processed
+##   * uncomment the generate_messages entry below
+##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
+
+## Generate messages in the 'msg' folder
+add_message_files(
+  FILES
+  Mavlink.msg
+  Waypoint.msg
+  WaypointList.msg
+  BatteryStatus.msg
+  State.msg
+  RCIn.msg
+  RCOut.msg
+  RadioStatus.msg
+  OverrideRCIn.msg
+  VFR_HUD.msg
+  FileEntry.msg
+  ActuatorControl.msg
+  Sonar.msg
+  Attitude.msg
+  Global_position_int.msg
+  Safety.msg
+  ArtvaRead.msg
+  Raw_imu.msg
+)
+
+## Generate services in the 'srv' folder
+add_service_files(
+  FILES
+  ParamSet.srv
+  ParamGet.srv
+  ParamPull.srv
+  ParamPush.srv
+  WaypointSetCurrent.srv
+  WaypointClear.srv
+  WaypointPull.srv
+  WaypointPush.srv
+  WaypointGOTO.srv
+  CommandLong.srv
+  CommandInt.srv
+  CommandBool.srv
+  CommandHome.srv
+  CommandTOL.srv
+  StreamRate.srv
+  SetMode.srv
+  FileOpen.srv
+  FileClose.srv
+  FileRead.srv
+  FileWrite.srv
+  FileList.srv
+  FileRemove.srv
+  FileMakeDir.srv
+  FileRemoveDir.srv
+  FileTruncate.srv
+  FileRename.srv
+  FileChecksum.srv
+)
+
+## Generate actions in the 'action' folder
+# add_action_files(
+#   FILES
+#   Action1.action
+#   Action2.action
+# )
+
+## Generate added messages and services with any dependencies listed here
+generate_messages(
+  DEPENDENCIES
+  diagnostic_msgs
+  sensor_msgs
+  std_msgs
+)
+
 
 ###################################
 ## catkin specific configuration ##
@@ -64,6 +161,10 @@ catkin_package(
 ## Build ##
 ###########
 
+## Specify additional locations of header files
+## Your package locations should be listed before other locations
+# include_directories(include)
+# TODO: Check names of system library include directories (boost)
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
@@ -71,6 +172,7 @@ include_directories(
   ${mavlink_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
+
 
 add_library(mavros
   src/lib/uas_data.cpp
@@ -82,6 +184,9 @@ add_library(mavros
   src/lib/mavros.cpp
   src/lib/mavlink_diag.cpp
   src/lib/rosconsole_bridge.cpp
+)
+add_dependencies(mavros
+  mavros_generate_messages_cpp
 )
 target_link_libraries(mavros
   ${catkin_LIBRARIES}
@@ -113,6 +218,15 @@ add_library(mavros_plugins
   src/plugins/manual_control.cpp
   src/plugins/altitude.cpp
   src/plugins/hil_controls.cpp
+
+  #added by zano 04_28_2015
+  #src/plugins/unibo_controller.cpp
+  #added by mic 05_11_2015
+  #src/plugins/unibo_ref_set_global_int.cpp
+  src/plugins/unibo_GCS.cpp
+  #added by zano 04_28_2015
+  src/plugins/unibo_controller_amsl.cpp
+  src/plugins/sbox.cpp
 )
 add_dependencies(mavros_plugins
   mavros
@@ -139,11 +253,20 @@ target_link_libraries(mavros_node
 add_executable(gcs_bridge
   src/gcs_bridge.cpp
 )
+add_dependencies(gcs_bridge
+  mavros_generate_messages_cpp
+)
 target_link_libraries(gcs_bridge
   mavros
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
 )
+
+##
+#add_executable(test_ARTVA src/test_ARTVA.cpp)
+#target_link_libraries(test_ARTVA ${catkin_LIBRARIES})
+#add_dependencies(test_ARTVA mavros_generate_messages_cpp)
+
 
 #############
 ## Install ##
@@ -202,5 +325,4 @@ target_link_libraries(libmavros-quaternion-utils-test mavros)
 # catkin_add_nosetests(test)
 
 endif()
-
 # vim: ts=2 sw=2 et:

@@ -32,6 +32,8 @@
   <!-- packages -->
   <build_depend>angles</build_depend>
   <build_depend>cmake_modules</build_depend>
+  <depend>message_generation</depend>
+  <depend>message_runtime</depend>
   <depend>diagnostic_updater</depend>
   <depend>eigen_conversions</depend>
   <depend>libmavconn</depend>
@@ -39,7 +41,7 @@
   <depend>rosconsole_bridge</depend>
   <depend>roscpp</depend>
   <depend>tf2_ros</depend>
-  <exec_depend>message_runtime</exec_depend>
+
   <exec_depend>rospy</exec_depend>
 
   <!-- message packages -->
@@ -51,8 +53,13 @@
   <depend>std_msgs</depend>
   <depend>std_srvs</depend>
 
-  <test_depend>gtest</test_depend>
 
+  <depend>camera_handler_SHERPA</depend>
+  <depend>mms_msgs</depend>
+  <depend>sbox_msgs</depend>
+  <exec_depend>python-argparse</exec_depend>
+  <test_depend>gtest</test_depend>
+  
   <export>
     <mavros plugin="${prefix}/mavros_plugins.xml" />
     <rosdoc config="rosdoc.yaml" />

@@ -68,5 +68,19 @@
         <class name="hil_controls" type="mavplugin::HilControlsPlugin" base_class_type="mavplugin::MavRosPlugin">
 		<description>Publish HIL controls values</description>
 	</class>
+
+	<class name="unibo_controller" type="mavplugin::UniboControllerPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Publish to "/position" data from attitude and global position messages, and send RCOverride message to FCU</description>
+	</class>
+	<class name="unibo_controller_amsl" type="mavplugin::UniboControllerAMSLPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Publish to "/position" data from attitude and global position messages, and send RCOverride message to FCU
+				with AMSL offset</description>
+	</class>
+	<class name="unibo_GCS" type="mavplugin::UniboGCSPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>For communication with GCS with custom protocol. Writes Ack_command and receive commands from GCS</description>
+	</class>
+	<class name="sbox" type="mavplugin::SboxPlugin" base_class_type="mavplugin::MavRosPlugin">
+		<description>Publish and manage SherpaBox status.</description>
+	</class>
 </library>
 
