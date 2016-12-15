@@ -374,7 +374,7 @@ public:
 				safety_.safety = false;                              //HARDCODED INITIALIAZED
 				sys_status_.armed = false;             //armed
 				sys_status_.voltage_battery = 15000 + rand() % 1000;
-				// std::cout << "batt rand: " << static_cast <int> (rand()) /( static_cast <int> (RAND_MAX/(1000)))  << std::endl;
+				std::cout << "batt rand: " << static_cast <int> (rand()) /( static_cast <int> (RAND_MAX/(1000)))  << std::endl;
 				sys_status_.valid_ref_frame = 11;     //baro
 				break;
 
