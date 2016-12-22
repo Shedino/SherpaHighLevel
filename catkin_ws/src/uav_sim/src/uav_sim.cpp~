@@ -169,6 +169,10 @@ public:
 		//ROS_WARN("Victim attitude 3rd row: %f - %f - %f", Rt.e31, Rt.e32, Rt.e33);
 		// --------------------------
 
+		// ros::Time new_artva_time;
+		last_artva_time = ros::Time::now();
+		// last_artva_time = ros::Time::now();
+		// ros::Time new_artva_time = ros::Time::now();
 		}
 
 	// Added by NIcola 2016/12/10
@@ -374,7 +378,7 @@ public:
 				safety_.safety = false;                              //HARDCODED INITIALIAZED
 				sys_status_.armed = false;             //armed
 				sys_status_.voltage_battery = 15000 + rand() % 1000;
-				std::cout << "batt rand: " << static_cast <int> (rand()) /( static_cast <int> (RAND_MAX/(1000)))  << std::endl;
+				// std::cout << "batt rand: " << static_cast <int> (rand()) /( static_cast <int> (RAND_MAX/(1000)))  << std::endl;
 				sys_status_.valid_ref_frame = 11;     //baro
 				break;
 
@@ -570,7 +574,14 @@ public:
 		ARTVAread_msg.rec4_distance = -1;
 		ARTVAread_msg.rec4_direction = 0;		
 		//Publish ARTVA
-		artva_pub.publish(ARTVAread_msg);
+		ros::Time new_artva_time = ros::Time::now();
+		// ROS_INFO("arva_time: %i", new_artva_time.sec);
+		if (new_artva_time.sec-last_artva_time.sec >= 1)
+		{
+			last_artva_time = new_artva_time;
+			if (qos_sens_.artva_present == true and qos_sens_.artva_working == true)
+					artva_pub.publish(ARTVAread_msg);
+		}
 		// --------------------------
 
 }
@@ -666,6 +677,7 @@ double temp_alt;
 
 position_ned position_ned_;
 
+ros::Time last_artva_time;
 uint16_t counter_print;
 
 // Added by NIcola 2016/12/10
