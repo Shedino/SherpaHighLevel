@@ -4,9 +4,9 @@
 	<node pkg="uav_sim" type="uav_sim" name="uav_sim" output="screen">
 		<rosparam command="load" file="$(arg uav_sim_artva.yaml)" />
 	</node>
-	<include file="$(find mms)/launch/mms.launch">
-	</include>
 	<include file="$(find guidance_node_amsl)/launch/node.launch">
+	</include>
+	<include file="$(find mavros)/launch/unibo_GCS.launch">
 	</include>
 	
 </launch>
