@@ -1,0 +1,60 @@
+deflogin on
+autodetach on
+
+escape ^oo
+
+caption always
+
+screen 0
+title "ROS Core"
+stuff "roscore -p $PORT\015"
+
+screen 1
+title "mms"
+stuff "sleep 5; roslaunch mms mms.launch __ns:=/wasp107\015"
+
+screen 2
+title "Mavros"
+stuff "sleep 10; roslaunch mavros uniboAMSLUSB.launch __ns:=/wasp107\015"
+
+screen 3
+title "Mavros rate"
+stuff "sleep 20; rosservice call /wasp107/mavros/set_stream_rate 0 12 true\015"
+
+screen 4
+title "Wasp Camera Usb"
+stuff "sleep 5; roslaunch usb_cam camera_node.launch __ns:=/wasp107\015"
+
+screen 5
+title "Wasp Camera Handler"
+stuff "sleep 10; rosrun camera_handler_sherpa camera_handler_sherpa __ns:=/wasp107\015"
+
+screen 6
+title "Comm. Mediator"
+stuff "sleep 10; cd DCM/sherpa-com-mediator/; ./bin/sherpa_comm_mediator examples/configs/wasp107.json\015"
+
+screen 7
+title "SWM"
+stuff "sleep 10; cd DCM/ubx_robotscenegraph/; ./swm_launch.sh --no-ros\015"
+
+screen 8
+title "swm_ros_interface"
+stuff "sleep 10; roslaunch swm_ros_interface wasp.launch __ns:=/wasp107\015"
+
+screen 9
+title "tst107"
+stuff "sleep 10; roslaunch lrs_sherpa tstwasp0.launch --screen\015"
+
+screen 10
+title "Delegation"
+stuff "sleep 10; roslaunch lrs_sherpa delegation.launch __ns:=/wasp107 --screen\015"
+
+screen 13
+title "bag"
+stuff "sleep 5; rosbag record /wasp107/artva_read /wasp107/sonar /wasp107/geopose /wasp107/grid_ack /wasp107/grid_info /wasp107/leashing_status /wasp107/leashing_command /wasp107/mms_status /wasp107/reference /wasp107/sent_command /wasp107/camera_published /wasp107/directive /wasp107/arm /wasp107/ack_cmd /wasp107/ack_mission"
+
+screen 14
+title "interaction 1"
+
+screen 15
+title "interaction 2"

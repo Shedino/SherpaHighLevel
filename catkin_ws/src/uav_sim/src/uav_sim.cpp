@@ -271,15 +271,15 @@ public:
 
 		if(d3 <= 3.0f)
 		{
-			ROS_WARN("ARVA VALID SIGNAL: PINPOINTING");
-			ROS_WARN("d3: %f", d3);
+			//ROS_WARN("ARVA VALID SIGNAL: PINPOINTING");
+			//ROS_WARN("d3: %f", d3);
 			arva_msg.d = (int (d3*100+0.5f));
 			arva_msg.delta = 0;			
 		}
 		else if (d1 <= r_noise)
 		{
-			ROS_WARN("ARVA VALID SIGNAL: FLUX LINE");
-			ROS_WARN("d1, delta: %f - %f", d1, (atan(Hb.y/Hb.x)*180/PI));
+			//ROS_WARN("ARVA VALID SIGNAL: FLUX LINE");
+			//ROS_WARN("d1, delta: %f - %f", d1, (atan(Hb.y/Hb.x)*180/PI));
 			arva_msg.d = (int (d1*100+0.5f));
 			if (Hb.y/Hb.x >= 0.0f)
 			{
@@ -292,7 +292,7 @@ public:
 		}
 		else
 		{
-			ROS_WARN("NO ARVA VALID SIGNAL");
+			//ROS_WARN("NO ARVA VALID SIGNAL");
 			arva_msg.d = -1;
 			arva_msg.delta = 0;
 		}	

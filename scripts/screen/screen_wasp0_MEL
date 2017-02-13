@@ -36,21 +36,21 @@ stuff "sleep 10; rosrun camera_handler_sherpa camera_handler_sherpa __ns:=/wasp0
 #title "SWM interface"
 #stuff "sleep 25; rosrun swm_interface connect.py\015"
 
-screen 8
-title "tst0"
-stuff "sleep 10; roslaunch lrs_sherpa tstwasp0.launch --screen\015"
+#screen 8
+#title "tst0"
+#stuff "sleep 10; roslaunch lrs_sherpa tstwasp0.launch --screen\015"
 
-screen 9
-title "Delegation"
-stuff "sleep 10; roslaunch lrs_sherpa delegation.launch __ns:=/wasp0 --screen\015"
+#screen 9
+#title "Delegation"
+#stuff "sleep 10; roslaunch lrs_sherpa delegation.launch __ns:=/wasp0 --screen\015"
 
-screen 10
-title "roszyre"
-stuff "sleep 10; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp0 _forward_unit_info:=1\015"
+#screen 10
+#title "roszyre"
+#stuff "sleep 10; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp0 _forward_unit_info:=1\015"
 
-screen 11
-title "proxy"
-stuff "rosrun lrs_sherpa_proxy proxy __ns:=/wasp0 _long_name:=http://unibo.it/wasp0\015"
+#screen 11
+#title "proxy"
+#stuff "rosrun lrs_sherpa_proxy proxy __ns:=/wasp0 _long_name:=http://unibo.it/wasp0\015"
 
 #screen 12
 #title "SWM"
@@ -69,5 +69,9 @@ title "interaction2"
 
 screen 17
 title "bag"
-stuff "sleep 5; rosbag record /wasp1/geopose /wasp1/grid_ack /wasp1/grid_info /wasp1/leashing_status /wasp1/leashing_command /wasp1/mms_status /wasp1/reference /wasp1/sent_command /wasp1/camera_published /wasp1/directive /wasp1/arm /wasp1/ack_cmd /wasp1/ack_mission\015"
+stuff "sleep 5; rosbag record /wasp0/geopose /wasp0/artva_read /wasp0/sonar"
+#stuff "sleep 5; rosbag record /wasp1/geopose /wasp1/grid_ack /wasp1/grid_info /wasp1/leashing_status /wasp1/leashing_command /wasp1/mms_status /wasp1/reference /wasp1/sent_command /wasp1/camera_published /wasp1/directive /wasp1/arm /wasp1/ack_cmd /wasp1/ack_mission\015"
 
+screen 18
+title "bag conversion"
+stuff "sleep 5; rostopic echo -b name.bag -p /wasp0/geopose > geopose.txt; sleep 5; rostopic echo -b name.bag -p /wasp0/artva_read > artva_read.txt; sleep 5; rostopic echo -b name.bag -p /wasp0/sonar > sonar.txt"
