@@ -49,12 +49,13 @@ screen 10
 title "Delegation"
 stuff "sleep 10; roslaunch lrs_sherpa delegation.launch __ns:=/wasp105 --screen\015"
 
+screen 11
+title "roszyre"
+stuff "sleep 10; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp105\015"
+
 screen 13
 title "bag"
 stuff "sleep 5; rosbag record /wasp105/artva_read /wasp105/sonar /wasp105/geopose /wasp105/grid_ack /wasp105/grid_info /wasp105/leashing_status /wasp105/leashing_command /wasp105/mms_status /wasp105/reference /wasp105/sent_command /wasp105/camera_published /wasp105/directive /wasp105/arm /wasp105/ack_cmd /wasp105/ack_mission"
 
 screen 14
 title "interaction 1"
-
-screen 15
-title "interaction 2"
