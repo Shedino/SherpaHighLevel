@@ -2,7 +2,7 @@
     "short-name": "wasp108",
     "long-name": "cacacazzi",
     "local-network": "local",
-    "remote-network": "remote",
+    "remote-network": "sherpa-remote",
     "type": "wasp",
     "capabilities": ["fly-to", "take-off", "land","take-pictures","scan-ground-single","yaw","leashing","operator-control","in-air-goal","in-air-test"],
     "local_endpoint": "ipc:///tmp/wasp108-local",

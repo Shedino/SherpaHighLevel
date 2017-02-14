@@ -11,7 +11,7 @@ stuff "roscore -p $PORT\015"
 
 screen 1
 title "location"
-stuff "sleep 5; roslaunch uav_sim location_pordoi.launch\015"
+stuff "sleep 1; roslaunch uav_sim location_davos.launch\015"
 
 screen 2
 title "interaction"
@@ -34,7 +34,7 @@ stuff "sleep 5; roslaunch mms mms.launch __ns:=/wasp105\015"
 
 screen 7
 title "tst0"
-stuff "sleep 10; roslaunch lrs_sherpa tstwasp0.launch --screen\015"
+stuff "sleep 10; roslaunch launch_node tstwasp105.launch --screen\015"
 
 screen 8
 title "Delegation"

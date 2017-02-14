@@ -2,11 +2,10 @@
     "short-name": "wasp107",
     "long-name": "cacacazzi",
     "local-network": "local",
-    "remote-network": "remote",
+    "remote-network": "sherpa-remote",
     "type": "wasp",
     "capabilities": ["fly-to", "take-off", "land","take-pictures","scan-ground-single","yaw","leashing","operator-control","in-air-goal","in-air-test"],
-    "local_endpoint": "ipc:///tmp/wasp107-local",
+    "local_endpoint": "ipc:///tmp/wasp107-cm",
     "gossip_endpoint": "ipc:///tmp/wasp107-hub",
-    "msg_filter_length": 5000,
-    "resend_interval": 500
+    "resend_interval": 1000
 }

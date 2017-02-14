@@ -43,7 +43,7 @@ stuff "sleep 17; roslaunch swm_ros_interface wasp105.launch __ns:=/wasp105\015"
 
 screen 9
 title "tst105"
-stuff "sleep 10; roslaunch lrs_sherpa tstwasp0.launch --screen\015"
+stuff "sleep 10; roslaunch launch_node tstwasp105.launch --screen\015"
 
 screen 10
 title "Delegation"
@@ -52,6 +52,10 @@ stuff "sleep 10; roslaunch lrs_sherpa delegation.launch __ns:=/wasp105 --screen\
 screen 11
 title "roszyre"
 stuff "sleep 15; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp105\015"
+
+screen 12
+title "location"
+stuff "sleep 1; roslaunch uav_sim location_davos.launch\015"
 
 screen 13
 title "bag"
