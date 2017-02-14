@@ -904,7 +904,7 @@ public:
 					}
 
 
-				} else if (!success_grid){
+				} else if (!success_grid && !waiting_for_vertex_grid){
 					//FAIL
 					ROS_INFO("REF->GRID: GRID Alg failed");
 					grid_ack_.grid_completed = true;

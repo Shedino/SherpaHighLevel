@@ -250,9 +250,9 @@ public:
 
 			case 161:  // GRID VERTEX
 			{
-				if (GRID_EVENT){
+				//if (GRID_EVENT){
 					pubCmd_.publish(inputCmd_);  //cmd passed to reference if in GRID state
-				}
+				//}
 			} break;
 
 			case 21:  // MAV_CMD_NAV_LAND

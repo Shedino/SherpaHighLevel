@@ -31,7 +31,7 @@ stuff "sleep 10; rosrun camera_handler_sherpa camera_handler_sherpa __ns:=/wasp1
 
 screen 6
 title "Comm. Mediator"
-stuff "sleep 10; cd DCM/sherpa-com-mediator/; ./bin/sherpa_comm_mediator ${SCRIPTS}/mediator/wasp108.json\015"
+stuff "sleep 5; cd DCM/sherpa-com-mediator/; ./bin/sherpa_comm_mediator ${SCRIPTS}/mediator/wasp108.json\015"
 
 screen 7
 title "SWM"
@@ -39,7 +39,7 @@ stuff "sleep 10; cd DCM/ubx_robotscenegraph/; ./swm_launch.sh --no-ros\015"
 
 screen 8
 title "swm_ros_interface"
-stuff "sleep 10; roslaunch swm_ros_interface wasp108.launch __ns:=/wasp108\015"
+stuff "sleep 17; roslaunch swm_ros_interface wasp108.launch __ns:=/wasp108\015"
 
 screen 9
 title "tst108"
@@ -51,7 +51,7 @@ stuff "sleep 10; roslaunch lrs_sherpa delegation.launch __ns:=/wasp108 --screen\
 
 screen 11
 title "roszyre"
-stuff "sleep 10; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp108\015"
+stuff "sleep 15; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp108\015"
 
 screen 13
 title "bag"

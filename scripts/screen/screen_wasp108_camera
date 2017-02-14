@@ -50,8 +50,8 @@ stuff "sleep 10; cd ${SWMWS}/ubx_robotscenegraph/; ./swm_launch.sh --no-ros\015"
 
 screen 11
 title "swm_ros_interface"
-stuff "sleep 10; roslaunch swm_ros_interface wasp108.launch __ns:=/wasp108\015"
+stuff "sleep 17; roslaunch swm_ros_interface wasp108.launch __ns:=/wasp108\015"
 
 screen 12
 title "roszyre"
-stuff "sleep 10; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp108\015"
+stuff "sleep 15; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp108\015"
