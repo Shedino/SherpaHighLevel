@@ -1,0 +1,18 @@
+<launch>
+  <param name="image_description/filename" value="$(find lrs_sherpa)/data/orthos/swissimage2.5m_Ortho.tif" />
+  <rosparam>
+    location: "davos"
+    home_lat: 46.81552
+    home_lon: 9.8503
+    home_alt: 1608
+    world_origin_lat: 46.81552
+    world_origin_lon: 9.8503
+    world_origin_elevation: 1608
+    image_description/dx: 1140
+    image_description/dy: 930
+    default_geoid_height_egm96: 48.9
+    use_utm: true
+    use_sherpa_world_model: true
+    use_sherpa_com_mediator: true
+  </rosparam>
+</launch>
