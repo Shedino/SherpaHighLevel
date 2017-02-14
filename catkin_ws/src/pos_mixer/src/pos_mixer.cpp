@@ -28,6 +28,14 @@ public:
 		old_frame = 0;
 		rate = 10;
 		use_global_altitude = false; //true-->use global altitude from GPS, relative from baro otherwise
+		
+		if (n_.getParam("/home_alt", temp_alt)){ // ADDED BY NICOLA ON 14/02/2017
+			home_alt = temp_alt*1000;
+			ROS_INFO("POS_MIXER: Set home alt");
+		} else {
+			home_alt = 41000; //CESENA LAB
+			ROS_ERROR("POS_MIXER: Set CESENA LAB home alt");
+		}
 
 	}
 
@@ -59,6 +67,9 @@ public:
 		//Posmixer_Handle();
 	}
 
+
+
+	
 	void Posmixer_Handle()
 	{
 
@@ -77,7 +88,7 @@ public:
 			outputPosNav_.Longitude = inputPos_.lon;
 			outputPosNav_.Altitude = inputPos_.alt;
 			if (use_global_altitude) outputPosNav_.Altitude = inputPos_.alt;     //use absolute alt
-			else outputPosNav_.Altitude = inputPos_.relative_alt + 2233000;  //TODO check using champoluc altitude
+			else outputPosNav_.Altitude = inputPos_.relative_alt + home_alt; 
 			outputPosNav_.Timestamp = inputPos_.time_boot_ms;
 			outputPosNav_.YawAngle = inputPos_.hdg*3.14/180/100;
 			outputPosNav_.frame = inputRefSystem_.actual_ref_frame;
@@ -142,6 +153,9 @@ protected:
 	bool new_frame;
 	int old_frame;
 	bool use_global_altitude;
+	
+	int home_alt;
+	double temp_alt;
 
 };
 

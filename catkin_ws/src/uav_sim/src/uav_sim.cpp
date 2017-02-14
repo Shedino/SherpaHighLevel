@@ -537,8 +537,8 @@ public:
 		pubToSystStatus_.publish(sys_status_);
 
 		//Publish Sonar
-		if (globPosInt_.relative_alt <= 3000 && globPosInt_.relative_alt >= 0)
-			sonar_.distance = globPosInt_.relative_alt;
+		if (globPosInt_.relative_alt <= 2700 && globPosInt_.relative_alt >= 0)
+			sonar_.distance = globPosInt_.relative_alt + 300;
 		else
 			sonar_.distance = 0;
 		pubToSonar_.publish(sonar_);

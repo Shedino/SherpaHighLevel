@@ -42,7 +42,7 @@ stuff "sleep 10; roslaunch lrs_sherpa delegation.launch __ns:=/wasp105 --screen\
 
 screen 9
 title "Comm. Mediator"
-stuff "sleep 5; cd ${SWMWS}/sherpa-com-mediator/; ./bin/sherpa_comm_mediator examples/configs/wasp105.json\015"
+stuff "sleep 5; cd ${SWMWS}/sherpa-com-mediator/; ./bin/sherpa_comm_mediator ${SCRIPTS}/mediator/wasp105.json\015"
 
 screen 10
 title "SWM"
@@ -50,7 +50,7 @@ stuff "sleep 10; cd ${SWMWS}/ubx_robotscenegraph/; ./swm_launch.sh --no-ros\015"
 
 screen 11
 title "swm_ros_interface"
-stuff "sleep 10; roslaunch swm_ros_interface wasp.launch __ns:=/wasp105\015"
+stuff "sleep 10; roslaunch swm_ros_interface wasp105.launch __ns:=/wasp105\015"
 
 screen 12
 title "roszyre"

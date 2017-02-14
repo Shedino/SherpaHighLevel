@@ -530,10 +530,10 @@ public:
 					break;
 				}
 				// Use these lines to introduce the mission_not_accepted for those commands which cannot be executed in this state
-				if (TAKEOFF){
+				/*if (TAKEOFF){
 					refuse_mission(str(TAKEOFF));
 					break;
-				}
+				}*/
 				if (WAYPOINT){
 					refuse_mission(str(WAYPOINT));
 					break;
