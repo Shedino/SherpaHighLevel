@@ -1,0 +1,14 @@
+{
+    "short-name": "swm_zyre_client",
+    "long-name": "SWM Zyre Client Modlues",
+    "type": "msg_example_comp",
+    "capabilities": ["send_msg","receive_msg"],
+    "local_endpoint": "ipc:///tmp/wasp107-local",
+    "EXAMPLE_FOR_GOSSIP: gossip_endpoint": "ipc:///tmp/wasp107-hub",
+    "EXAMPLE_FOR_UDP_BEACONING: gossip_endpoint": null,
+    "gossip_endpoint": "ipc:///tmp/wasp107-hub",
+    "timeout": 5000,
+    "no_of_updates": 5,
+	"no_of_queries": 5,
+	"no_of_fcn_block_calls": 1
+}

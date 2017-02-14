@@ -1,9 +1,0 @@
-<launch>
-  <rosparam>
-    location: "cesena"
-    world_origin_lat: 44.153417
-    world_origin_lon: 12.241787
-    world_origin_elevation: 0.0
-    default_geoid_height_egm96: 0.0
-  </rosparam>
-</launch>
