@@ -5,9 +5,9 @@ escape ^oo
 
 caption always
 
-screen 0
-title "ROS Core"
-stuff "roscore -p $PORT\015"
+#screen 0
+#title "ROS Core"
+#stuff "roscore -p $PORT\015"
 
 screen 1
 title "mms"
@@ -55,7 +55,7 @@ stuff "sleep 15; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp107\015"
 
 screen 12
 title "location"
-stuff "sleep 1; roslaunch uav_sim location_davos.launch\015"
+stuff "roslaunch uav_sim location_davos.launch -p $PORT\015"
 
 screen 13
 title "bag"
