@@ -18,6 +18,7 @@
 #include "reference/DirectVelocityCommand.h"    //Direct Velocity
 #include <wgs84_ned_lib/wgs84_ned_lib.h>
 #include "geometry_msgs/Twist.h"
+#include <mavros/ArtvaRead.h> // Added by NIcola @ final destination week
 
 
 //TODO add check with terrain altitude
@@ -33,6 +34,9 @@ double eps_YAW = 10.0; // distance to the target YAW position in deg
 double alpha_leashing_target = 0.5; //LP filter parameter for leashing target position. the higher, the lower bandwitdh
 
 double PI = 3.1416; // pi
+
+double Vmax_artva = 1.0f; // added by Nicola @ final destination week
+double K_speed_artva = 1.0f; // added by Nicola @ final destination week
 
 class leashing_target_ned{
 	public:
@@ -82,6 +86,7 @@ public:
 		subLeashingCommand_ = n_.subscribe("leashing_command", 10, &ReferenceNodeClass::readLeashingCommand,this);
 		//subDirectVelocityCommand_ = n_.subscribe("direct_velocity_command", 10, &ReferenceNodeClass::readDirectVelocityCommand,this);
 		subDirectVelocityCommand_ = n_.subscribe("/wasp/vel_ctrl/proxy", 10, &ReferenceNodeClass::readDirectVelocityCommand,this);
+		subFromArtvaRead_ = n_.subscribe("artva_read", 10, &ReferenceNodeClass::readArtvaReadMessage,this); // Added by Nicola @ Final destination week
 		
 		// publishers
 		pubToReference_ = n_.advertise<guidance_node_amsl::Reference>("reference",10);
@@ -364,6 +369,18 @@ public:
 		if (x > 0) return 1;
 		if (x < 0) return -1;
 		return 0;
+	}
+
+	void readArtvaReadMessage(const mavros::ArtvaRead::ConstPtr& msg) // Added by NIcola @ final destination week
+	{
+		inputArtvaRead_.rec1_distance=msg->rec1_distance;
+		inputArtvaRead_.rec1_direction=msg->rec1_direction;
+		inputArtvaRead_.rec2_distance=msg->rec2_distance;
+		inputArtvaRead_.rec2_direction=msg->rec2_direction;
+		inputArtvaRead_.rec3_distance=msg->rec3_distance;
+		inputArtvaRead_.rec3_direction=msg->rec3_direction;
+		inputArtvaRead_.rec4_distance=msg->rec4_distance;
+		inputArtvaRead_.rec4_direction=msg->rec4_direction;
 	}
 
 	void readMmsStatusMessage(const mms_msgs::MMS_status::ConstPtr& msg)
@@ -861,7 +878,14 @@ public:
 						//target_wp.Latitude = (int)(temp_lat*10000000.0f);  //this is needed for distence()
 						//target_wp.Longitude = (int)(temp_lon*10000000.0f);  //this is needed for distence()
 						//target_wp.AltitudeRelative = (int)(height_grid*1000.0f);
-						calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
+
+					  if (orient_yaw && inputArtvaRead_.rec1_distance > 0 && inputArtvaRead_.rec1_distance < 1000){ // added by Nicola Final destination week
+							// suppose that artva read is on channel 1 only							
+							double artva_range1 = inputArtvaRead_.rec1_distance / 100.0f;							
+							double speed_wp_artva = Vmax_artva*K_speed_artva*artva_range1/(sqrt(1+pow(K_speed_artva*artva_range1,2)));
+							calculate_increments(target_wp_ned, target_ned, speed_wp_artva, speed_wp_yaw, actual_frame);
+						}else
+						   calculate_increments(target_wp_ned, target_ned, speed_wp_linear, speed_wp_yaw, actual_frame);
 						if (target_frame == 11 && actual_frame == 6){  //target in sonar but quad is too high
 							position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
 							reference_speed.vz = 0.8;
@@ -1164,6 +1188,7 @@ protected:
 	ros::Subscriber subLeashingTargetPosition_;
 	ros::Subscriber subLeashingCommand_;
 	ros::Subscriber subDirectVelocityCommand_;
+  ros::Subscriber subFromArtvaRead_;
 
 	ros::Publisher pubToReference_;
 	ros::Publisher pubGridAck_;
@@ -1174,6 +1199,8 @@ protected:
 
 	guidance_node_amsl::Position_nav inputPos_;
 	mavros::Global_position_int inputGlobPosInt_;
+
+	mavros::ArtvaRead inputArtvaRead_; // added by Nicola @ final destination week
 
 	mavros::Sonar inputSonar_;
 	mms_msgs::Cmd inputCmd_;

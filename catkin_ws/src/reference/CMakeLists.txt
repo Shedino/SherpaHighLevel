@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   wgs84_ned_lib
   geometry_msgs
+	mavros
 )
 
 ## System dependencies are found with CMake's conventions
