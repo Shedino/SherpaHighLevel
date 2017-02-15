@@ -218,9 +218,13 @@ class CameraHandler
 			_counter_frames = 0;
 			ROS_INFO("CAMERA HANDLER: taking picture %d", photo_taken_counter+1);
 			// Save Image
-			static char dest_img[50];                        
-			sprintf(dest_img,"/home/odroid/Photo_Mission/image_%d_%.7f_%.7f.jpg",image_count,_lat,_lon);
-			ROS_ASSERT( cv::imwrite(dest_img,  cv_ptr->image));
+			static char dest_img[100];
+			//sprintf(dest_img,"/home/odroid/Photo_Mission/image_%d_%.7f_%.7f.jpg",image_count,_lat,_lon);
+			sprintf(dest_img,"/home/odroid/Photo_Mission/image_%d.jpg",image_count);
+			//bool written;
+			ROS_ASSERT(cv::imwrite(dest_img,  cv_ptr->image));
+			//written = cv::imwrite(dest_img,  cv_ptr->image);
+			ROS_INFO("CAMERA HANDLER: picture %s",dest_img);
 			photo_taken_counter++;
 
 			camera_topic.taken_photo = true;
@@ -230,6 +234,7 @@ class CameraHandler
 			camera_topic.geopose = _geopose;
 			camera_pub.publish(camera_topic);
 			image_count++;
+			ROS_INFO("CAMERA HANDLER: took picture and published topic");
 		
 			if (photo_taken_counter == _N_photo){   //in case _N_photo = 0 this will never enter so unlimited photos
 				//mission ack because photo mission is finished
