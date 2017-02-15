@@ -14,7 +14,7 @@ title "mms"
 stuff "sleep 5; roslaunch mms mms.launch __ns:=/wasp0\015"
 
 screen 2
-title "interaction"
+title "Interaction"
 
 screen 3
 title "Mavros"
@@ -25,53 +25,22 @@ title "Mavros rate"
 stuff "sleep 20; rosservice call /wasp0/mavros/set_stream_rate 0 12 true\015"
 
 screen 5
+title "Mavros GCS"
+stuff "sleep 10; roslaunch mavros unibo_GCS.launch __ns:=/wasp0\015"
+
+screen 6
 title "Wasp Camera Usb"
 stuff "sleep 5; roslaunch usb_cam camera_node.launch __ns:=/wasp0\015"
 
-screen 6
-title "Wasp Camera Handler"
+screen 7
+title "Wasp Camera Handler
 stuff "sleep 10; rosrun camera_handler_sherpa camera_handler_sherpa __ns:=/wasp0\015"
 
-#screen 7
-#title "SWM interface"
-#stuff "sleep 25; rosrun swm_interface connect.py\015"
-
-#screen 8
-#title "tst0"
-#stuff "sleep 10; roslaunch lrs_sherpa tstwasp0.launch --screen\015"
-
-#screen 9
-#title "Delegation"
-#stuff "sleep 10; roslaunch lrs_sherpa delegation.launch __ns:=/wasp0 --screen\015"
-
-#screen 10
-#title "roszyre"
-#stuff "sleep 10; rosrun lrs_sherpa_proxy roszyre __ns:=/wasp0 _forward_unit_info:=1\015"
-
-#screen 11
-#title "proxy"
-#stuff "rosrun lrs_sherpa_proxy proxy __ns:=/wasp0 _long_name:=http://unibo.it/wasp0\015"
-
-#screen 12
-#title "SWM"
-#stuff "sleep 10; cd DCM/ubx_robotscenegraph; ./swm_launch.sh\015"
-
-screen 14
-title "interaction2"
-
-#screen 15
-#title "Proxy UNIBO-CREATE 1"
-#stuff "sleep 10; rosrun sherpa_proxy create_proxy __ns:=/wasp0 _long_name:=http://unibo.it/wasp0\015"
-
-#screen 16
-#title "Proxy UNIBO-CREATE 2"
-#stuff "sleep 5; rosrun sherpa_proxy create_roszyre __ns:=/wasp0 _forward_unit_info:=1\015"
-
-screen 17
+screen 8
 title "bag"
-stuff "sleep 5; rosbag record /wasp0/geopose /wasp0/artva_read /wasp0/sonar"
-#stuff "sleep 5; rosbag record /wasp1/geopose /wasp1/grid_ack /wasp1/grid_info /wasp1/leashing_status /wasp1/leashing_command /wasp1/mms_status /wasp1/reference /wasp1/sent_command /wasp1/camera_published /wasp1/directive /wasp1/arm /wasp1/ack_cmd /wasp1/ack_mission\015"
+stuff "rosbag record /wasp0/geopose /wasp0/artva_read /wasp0/sonar"
 
-screen 18
+screen 9
 title "bag conversion"
-stuff "sleep 5; rostopic echo -b name.bag -p /wasp0/geopose > geopose.txt; sleep 5; rostopic echo -b name.bag -p /wasp0/artva_read > artva_read.txt; sleep 5; rostopic echo -b name.bag -p /wasp0/sonar > sonar.txt"
+stuff "rostopic echo -b name.bag -p /wasp0/geopose > geopose.txt; sleep 5; rostopic echo -b name.bag -p /wasp0/artva_read > artva_read.txt; sleep 5; rostopic echo -b name.bag -p /wasp0/sonar > sonar.txt"
+
