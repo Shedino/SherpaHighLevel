@@ -11,7 +11,7 @@ caption always
 
 screen 1
 title "location"
-stuff "sleep 1; roslaunch uav_sim location_davos.launch -p $PORT\015"
+stuff "roslaunch uav_sim location_davos.launch -p $PORT\015"
 
 screen 2
 title "interaction"
