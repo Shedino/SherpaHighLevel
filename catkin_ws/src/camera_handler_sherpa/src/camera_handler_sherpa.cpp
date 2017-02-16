@@ -221,10 +221,10 @@ class CameraHandler
 			static char dest_img[100];
 			//sprintf(dest_img,"/home/odroid/Photo_Mission/image_%d_%.7f_%.7f.jpg",image_count,_lat,_lon);
 			sprintf(dest_img,"/home/odroid/Photo_Mission/image_%d.jpg",image_count);
-			//bool written;
-			ROS_ASSERT(cv::imwrite(dest_img,  cv_ptr->image));
-			//written = cv::imwrite(dest_img,  cv_ptr->image);
-			ROS_INFO("CAMERA HANDLER: picture %s",dest_img);
+			bool written;
+			//ROS_ASSERT(cv::imwrite(dest_img,  cv_ptr->image));
+			written = cv::imwrite(dest_img,  cv_ptr->image);
+			ROS_INFO("CAMERA HANDLER: picture %s - Written? %s",dest_img,written ? "true" : "false");
 			photo_taken_counter++;
 
 			camera_topic.taken_photo = true;
