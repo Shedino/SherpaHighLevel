@@ -890,7 +890,7 @@ public:
 							position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
 							reference_speed.vz = 0.8;
 						}
-						ROS_INFO("REF->GRID: Sent a WP: %f - %f", WP[WP_completed_grid][0], WP[WP_completed_grid][1]);
+						ROS_INFO("REF->GRID: Sent a WP: %f - %f. %d WPs to finish.", WP[WP_completed_grid][0], WP[WP_completed_grid][1], N_WP-WP_completed_grid);
 					} else if (waiting_for_WP_execution_grid){
 						//Waiting for the execution of the WP
 						if (outputDist_.error_pos < eps_WP && outputDist_.error_ang < eps_YAW && outputDist_.error_alt < eps_alt){
