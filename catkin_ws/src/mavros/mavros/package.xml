@@ -36,7 +36,6 @@
   <depend>angles</depend>
   <depend>libmavconn</depend>
   <depend>rosconsole_bridge</depend>
-  <depend>camera_handler_SHERPA</depend>
   <depend>mms_msgs</depend>
   <exec_depend>python-argparse</exec_depend>
 
