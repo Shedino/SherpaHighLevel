@@ -25,5 +25,4 @@
 - git: {local-name: lrs_util_tfpop, uri: 'git@gitlab.ida.liu.se:sherpa/lrs_util_tfpop.git'}
 - git: {local-name: lrs_sherpa_proxy, uri: 'git@gitlab.ida.liu.se:sherpa/lrs_sherpa_proxy.git'}
 - git: {local-name: lrs_sherpa_rqt, uri: 'git@gitlab.ida.liu.se:sherpa/lrs_sherpa_rqt.git'}
-- git: {local-name: wasp_exec, uri: 'git@gitlab.ida.liu.se:lrs/wasp_exec.git'}
 - git: {local-name: lrs_util_gs, uri: 'git@gitlab.ida.liu.se:sherpa/lrs_util_gs.git'}

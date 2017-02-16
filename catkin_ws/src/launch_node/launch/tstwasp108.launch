@@ -6,7 +6,7 @@
 
     <node name="dwdb" pkg="lrs_wdb" type="dwdb">
       <rosparam>
-        capabilities: ["scan-ground-single", "fly-waypoints", "yaw", "fly-to", "wait", "take-off", "land", "take-pictures", "operator-control", "leashing", "in-air-test", "in-air-goal"]
+        capabilities: ["scan-ground-single", "fly-waypoints", "yaw", "fly-to", "wait", "take-off", "land", "take-pictures", "operator-control", "leashing", "in-air-test", "in-air-goal", "test-if", "no-op", "update-status"]
       </rosparam>
     </node>
 
