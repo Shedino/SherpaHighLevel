@@ -85,7 +85,7 @@ public:
 		subLeashingTargetPosition_ = n_.subscribe("leashing_target_position", 10, &ReferenceNodeClass::readLeashingTarget,this);
 		subLeashingCommand_ = n_.subscribe("leashing_command", 10, &ReferenceNodeClass::readLeashingCommand,this);
 		//subDirectVelocityCommand_ = n_.subscribe("direct_velocity_command", 10, &ReferenceNodeClass::readDirectVelocityCommand,this);
-		subDirectVelocityCommand_ = n_.subscribe("/wasp/vel_ctrl/proxy", 10, &ReferenceNodeClass::readDirectVelocityCommand,this);
+		subDirectVelocityCommand_ = n_.subscribe("/twist", 10, &ReferenceNodeClass::readDirectVelocityCommand,this);
 		subFromArtvaRead_ = n_.subscribe("artva_read", 10, &ReferenceNodeClass::readArtvaReadMessage,this); // Added by Nicola @ Final destination week
 		
 		// publishers
