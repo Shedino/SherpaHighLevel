@@ -408,17 +408,17 @@ public:
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
 				
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody ;
+				position_ned_.yaw += directive_.yawRate ;
 				break;
 
 			case mms_msgs::MMS_status::IN_FLIGHT:
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody ;
+				position_ned_.yaw += directive_.yawRate ;
 				break;
 
 			case mms_msgs::MMS_status::PERFORMING_GO_TO:
@@ -427,10 +427,10 @@ public:
 					ROS_INFO("SIM: PERFORMING GO TO");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody ;
+				position_ned_.yaw += directive_.yawRate ;
 				break;
 
 			case mms_msgs::MMS_status::GRID:
@@ -439,10 +439,10 @@ public:
 					ROS_INFO("SIM: PERFORMING GRID");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody ;
+				position_ned_.yaw += directive_.yawRate ;
 				break;
 
 			case mms_msgs::MMS_status::PERFORMING_LANDING:
@@ -451,10 +451,10 @@ public:
 					ROS_INFO("SIM: PERFORMING LANDING");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody ;
+				position_ned_.yaw += directive_.yawRate ;
 				break;
 			
 			case mms_msgs::MMS_status::MANUAL_FLIGHT:
@@ -465,10 +465,10 @@ public:
 					counter_print = 0;
 					ROS_INFO("SIM: PERFORMING LEASHING");
 				}
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody ;
+				position_ned_.yaw += directive_.yawRate ;
 				break;
 				
 			case mms_msgs::MMS_status::PAUSED:
@@ -476,10 +476,10 @@ public:
 					counter_print = 0;
 					ROS_INFO("SIM: PERFORMING PAUSED");
 				}
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody ;
+				position_ned_.yaw += directive_.yawRate ;
 				break;
 		}
 		
