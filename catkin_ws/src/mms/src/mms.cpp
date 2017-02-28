@@ -50,7 +50,7 @@ public:
 		// publishers
 		pubToAckMission_=n_.advertise<mms_msgs::Ack_mission>("ack_mission", 10);
 		pubToArm_=n_.advertise<mms_msgs::Arm>("arm", 10);
-		pubToMmsStatus_=n_.advertise<mms_msgs::MMS_status>("mms_status", 10);
+		pubToMmsStatus_=n_.advertise<mms_msgs::MMS_status>("mms_status", 10, true);	//latched to always get the last value when subscribing
 		pubCmd_ = n_.advertise<mms_msgs::Cmd>("cmd_from_mms", 10);
 		pubGridAck_ = n_.advertise<mms_msgs::Grid_ack>("grid_ack",10);
 
