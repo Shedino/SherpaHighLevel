@@ -1,8 +1,10 @@
 #include <ros/ros.h>
 
-#include <mavros/Sonar.h>
+// #include <mavros/Sonar.h>
 #include <mms_msgs/MMS_status.h>
 #include <frame/Ref_system.h>
+
+#include <sensor_msgs/Range.h>// input
 
 class FrameNodeClass
 {
@@ -14,7 +16,8 @@ public:
 		n_=node;
 
 		//subscribers
-		subFromSonar_ = n_.subscribe("sonar", 10, &FrameNodeClass::readSonarMessage,this);
+		// subFromSonar_ = n_.subscribe("sonar", 10, &FrameNodeClass::readSonarMessage,this);	
+		subFromAltimeter_ = n_.subscribe("altimeter", 10, &FrameNodeClass::readAltimeterMessage,this);
 		subFromMMSStatus_=n_.subscribe("mms_status", 10, &FrameNodeClass::readMMSStatusMessage,this);
 
 		// publishers
@@ -27,17 +30,24 @@ public:
 	}
 
 
-	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
+/*	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
 	{
 		inputSonar_.distance = msg -> distance;
 		// ROS_INFO("FRAME: SONAR DISTANCE = %d", inputSonar_.distance);
 		Frame_Handle();
+	}*/
+	void readAltimeterMessage(const sensor_msgs::Range::ConstPtr& msg)
+	{
+		inputAltimeter_.range = msg -> range;
+		inputAltimeter_.max_range = msg -> max_range;
+		inputAltimeter_.min_range = msg -> min_range;	
+		// ROS_INFO("FRAME: ALTIMETER DISTANCE = %f", inputAltimeter_.range);
+		Frame_Handle();
 	}
-
 	void readMMSStatusMessage(const mms_msgs::MMS_status::ConstPtr& msg)
 	{
 		inputMMSStatus_.target_ref_frame=msg->target_ref_frame;
-		// ROS_INFO("FRAME: MMS_STATE RECEIVED");
+		// ROS_INFO("FRAME: inputMMSStatus_.target_ref_frame %d",inputMMSStatus_.target_ref_frame);
 		Frame_Handle();
 	}
 
@@ -48,17 +58,25 @@ public:
 			actual_frame = 6; // -> change to barometer
 		if (inputMMSStatus_.target_ref_frame == 11 && actual_frame == 6) // if the target is sonar and the actual is barometer
 		{
-			if (inputSonar_.distance > 0) // the sonar is available
-				actual_frame = 11;  // -> change to sonar
+			// if (inputSonar_.distance > 0) // the sonar is available
+			ROS_INFO("FRAME: inputAltimeter_.range: %f",inputAltimeter_.range);
+			ROS_INFO("FRAME: inputAltimeter_.min_range: %f",inputAltimeter_.min_range);
+			ROS_INFO("FRAME: inputAltimeter_.max_range: %f",inputAltimeter_.max_range);
+			if (inputAltimeter_.range > inputAltimeter_.min_range && inputAltimeter_.range < inputAltimeter_.max_range) // the sonar is available
+			{
+				ROS_INFO("FRAME: actual_frame: %d", actual_frame);
+				actual_frame = 11;  // -> change to altimeter
+			}
 			else // and the sonar is NOT available
 				actual_frame = 6; // -> change to barometer
 		}
-		if (inputMMSStatus_.target_ref_frame == 11 && actual_frame == 11) // if the target is sonar and the actual is sonar
+		else if (inputMMSStatus_.target_ref_frame == 11 && actual_frame == 11) // if the target is sonar and the actual is sonar
 		{
-			if (inputSonar_.distance == 0 || inputSonar_.distance == -1 ) // the sonar is NOT available
+			// if (inputSonar_.distance == 0 || inputSonar_.distance == -1 ) // the sonar is NOT available
+			if (inputAltimeter_.range < inputAltimeter_.min_range && inputAltimeter_.range > inputAltimeter_.max_range) // the altimeter is NOT available
 				{
 				actual_frame = 6; // -> change to barometer
-				ROS_INFO("FRAME: WARNING! SONAR NOT AVAILABLE!");
+				ROS_INFO("FRAME: WARNING! ALTIMETER NOT AVAILABLE!");
 				}
 
 		}
@@ -81,7 +99,7 @@ public:
 			}
 			else
 			{
-				ROS_INFO("FRAME: ACTUAL SET TO SONAR");
+				ROS_INFO("FRAME: ACTUAL SET TO ALTIMETER");
 			}
 
 			if (inputMMSStatus_.target_ref_frame == 6 || inputMMSStatus_.target_ref_frame == 11)
@@ -95,7 +113,7 @@ public:
 				}
 				else
 				{
-					ROS_INFO("FRAME: TARGET SET TO SONAR");
+					ROS_INFO("FRAME: TARGET SET TO ALTIMETER");
 				}
 			}
 			else
@@ -130,12 +148,14 @@ protected:
 	ros::NodeHandle n_;
 
 	// subscriber
-	ros::Subscriber subFromSonar_;
+	// ros::Subscriber subFromSonar_;
+	ros::Subscriber subFromAltimeter_;
 	ros::Subscriber subFromMMSStatus_;
 
 	mms_msgs::MMS_status inputMMSStatus_;
-	mavros::Sonar inputSonar_;
-
+	//mavros::Sonar inputSonar_;
+	sensor_msgs::Range inputAltimeter_;
+	
 	// publisher
 	ros::Publisher pubToRefSystem_;
 

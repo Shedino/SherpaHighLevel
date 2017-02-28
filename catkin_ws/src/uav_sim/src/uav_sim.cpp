@@ -7,7 +7,8 @@
 #include "guidance_node_amsl/Position_nav.h"
 #include "mavros/Global_position_int.h"
 #include "mavros/Safety.h"
-#include "mavros/Sonar.h"
+// #include "mavros/Sonar.h"
+#include "sensor_msgs/Range.h"
 #include "mms_msgs/Sys_status.h"
 #include "geographic_msgs/GeoPose.h"
 #include "geographic_msgs/GeoPoint.h"
@@ -81,11 +82,14 @@ public:
 		pubToSafety_ = n_.advertise<mavros::Safety>("safety_odroid",10);
 		pubToSystStatus_ = n_.advertise<mms_msgs::Sys_status>("system_status",10);
 		pubToGlobPosInt_ = n_.advertise<mavros::Global_position_int>("global_position_int",10);
-		pubToSonar_ = n_.advertise<mavros::Sonar>("sonar",10);
+		// pubToSonar_ = n_.advertise<mavros::Sonar>("sonar",10);
+		pubToSonar_ = n_.advertise<sensor_msgs::Range>("sonar",10);
+		pubToLaser_ = n_.advertise<sensor_msgs::Range>("laser",10);
 		pubGeopose_ = n_.advertise<geographic_msgs::GeoPose>("geopose",10);
 		pubQosSensors_ = n_.advertise<qos_sensors_autopilot::Qos_sensors>("qos_sensors",2);
 		pubNedPose_ = n_.advertise<geometry_msgs::Pose>("ned_pose",2);
 		artva_pub = n_.advertise<mavros::ArtvaRead>("artva_read", 2); // Added by NIcola 2016/12/10
+		altimeter_pub = n_.advertise<sensor_msgs::Range>("altimeter", 10); // Added by Nicola o 2017/02/23
 		
 		// Services
 		client_query = n_.serviceClient<swm_interface::Query>("query_swm");
@@ -124,7 +128,7 @@ public:
 		home_lon = 118142200;
 		home_alt = 2200000;*/
 		
-		position_ned_.x = 0;
+    	position_ned_.x = 0;
 		position_ned_.y = 0;
 		position_ned_.alt = 0;
 		position_ned_.yaw = 0;
@@ -141,6 +145,9 @@ public:
 		qos_sens_.laser_present = false;
 		qos_sens_.laser_working = false;
 		qos_sens_.laser_failure_counter = 0;
+		qos_sens_.altimeter_present = false;
+		qos_sens_.altimeter_working = false;
+		qos_sens_.altimeter_failure_counter = 0;
 	
 		// Added by NIcola 2016/12/10
 		/* initialize random seed: */
@@ -408,17 +415,17 @@ public:
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
 				
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody;
+				position_ned_.yaw += directive_.yawRate;
 				break;
 
 			case mms_msgs::MMS_status::IN_FLIGHT:
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody;
+				position_ned_.yaw += directive_.yawRate;
 				break;
 
 			case mms_msgs::MMS_status::PERFORMING_GO_TO:
@@ -427,10 +434,10 @@ public:
 					ROS_INFO("SIM: PERFORMING GO TO");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody;
+				position_ned_.yaw += directive_.yawRate;
 				break;
 
 			case mms_msgs::MMS_status::GRID:
@@ -439,10 +446,10 @@ public:
 					ROS_INFO("SIM: PERFORMING GRID");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody;
+				position_ned_.yaw += directive_.yawRate;
 				break;
 
 			case mms_msgs::MMS_status::PERFORMING_LANDING:
@@ -451,10 +458,10 @@ public:
 					ROS_INFO("SIM: PERFORMING LANDING");
 					ROS_INFO("SIM: Alt: %d - Rel_alt: %d", globPosInt_.alt, globPosInt_.relative_alt);
 				}
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody;
+				position_ned_.yaw += directive_.yawRate;
 				break;
 			
 			case mms_msgs::MMS_status::MANUAL_FLIGHT:
@@ -465,10 +472,10 @@ public:
 					counter_print = 0;
 					ROS_INFO("SIM: PERFORMING LEASHING");
 				}
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody;
+				position_ned_.yaw += directive_.yawRate;
 				break;
 				
 			case mms_msgs::MMS_status::PAUSED:
@@ -476,10 +483,10 @@ public:
 					counter_print = 0;
 					ROS_INFO("SIM: PERFORMING PAUSED");
 				}
-				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw))/ 10;
-				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw))/ 10;
-				position_ned_.alt += -directive_.vzBody / 10;
-				position_ned_.yaw += directive_.yawRate / 10;
+				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
+				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
+				position_ned_.alt += -directive_.vzBody;
+				position_ned_.yaw += directive_.yawRate;
 				break;
 		}
 		
@@ -537,12 +544,47 @@ public:
 		pubToSystStatus_.publish(sys_status_);
 
 		//Publish Sonar
-		if (globPosInt_.relative_alt <= 2700 && globPosInt_.relative_alt >= 0)
+/*		if (globPosInt_.relative_alt <= 2700 && globPosInt_.relative_alt >= 0)
 			sonar_.distance = globPosInt_.relative_alt + 300;
 		else
-			sonar_.distance = 0;
+			sonar_.distance = 0;*/
+		if (globPosInt_.relative_alt <= 2800 && globPosInt_.relative_alt >= 0)
+		{
+			sonar_.range = (globPosInt_.relative_alt + 200)/1000.0f; // in meters
+		    sonar_.min_range = 0.20f;
+		    sonar_.max_range = 3.0f;
+			sonar_.radiation_type = 1;
+			sonar_ok = true;
+		}			
+		else
+		{
+			sonar_.range = -1;
+		    sonar_.min_range = 0.20f;
+		    sonar_.max_range = 3.00f;
+			sonar_.radiation_type = 1;
+			sonar_ok = false;
+		}	
 		pubToSonar_.publish(sonar_);
 
+		//Publish Laser
+		if (globPosInt_.relative_alt <= (40000-200) && globPosInt_.relative_alt >= 0)
+		{
+			laser_.range = (globPosInt_.relative_alt + 300)/1000.0f; // in meters
+		    laser_.min_range = 0.20f;
+		    laser_.max_range = 40.0f;
+			laser_.radiation_type = 0;
+			laser_ok = true;
+		}			
+		else
+		{
+			laser_.range = -1;
+		    laser_.min_range = 0.20f;
+		    laser_.max_range = 40.0f;
+			laser_.radiation_type = 0;
+			laser_ok = false;
+		}	
+		pubToLaser_.publish(laser_);		
+		
 		//Publish QoS sensors
 		pubQosSensors_.publish(qos_sens_);
 
@@ -584,10 +626,38 @@ public:
 		}
 		// --------------------------
 
+		if (is_laser_altimeter && laser_ok)
+		{
+			altimeter_msg.radiation_type = laser_.radiation_type;
+			altimeter_msg.max_range = laser_.max_range;
+			altimeter_msg.min_range = laser_.min_range;
+			altimeter_msg.range = laser_.range;
+			altimeter_pub.publish(altimeter_msg);
+			// ROS_INFO("ALTIMETER = LASER");			
+		}
+		else if(is_sonar_altimeter && sonar_ok)
+		{
+			altimeter_msg.radiation_type = sonar_.radiation_type;
+			altimeter_msg.max_range = sonar_.max_range;
+			altimeter_msg.min_range = sonar_.min_range;
+			altimeter_msg.range = sonar_.range;
+			altimeter_pub.publish(altimeter_msg);
+			// ROS_INFO("ALTIMETER = SONAR");
+		}
+		else
+		{
+			// ROS_INFO("ALTIMETER = NONE");
+			altimeter_msg.radiation_type = -1;
+			altimeter_msg.max_range = -1;
+			altimeter_msg.min_range = -1;
+			altimeter_msg.range = -1;
+			altimeter_pub.publish(altimeter_msg);
+		}
+		
+		
+		
+		
 }
-
-
-
 
 void run() {
 	ros::Rate loop_rate(rate);
@@ -595,8 +665,8 @@ void run() {
 	//read parameters here
 	bool camera_pres;
 	bool sonar_pres;
-	bool artva_pres;
 	bool laser_pres;
+	bool artva_pres;
 	if (n_.getParam("uav_sim/camera_present", camera_pres)){
 		qos_sens_.camera_present = camera_pres;
 		qos_sens_.camera_working = camera_pres;
@@ -616,6 +686,16 @@ void run() {
 		qos_sens_.laser_present = laser_pres;
 		qos_sens_.laser_working = laser_pres;
 		ROS_INFO("SIM: Laser present: %s", qos_sens_.laser_present ? "yeah" : "nooo");
+	}
+	if (n_.getParam("uav_sim/is_laser_altimeter", is_laser_altimeter)){
+		qos_sens_.altimeter_present = is_laser_altimeter;
+		qos_sens_.altimeter_working = is_laser_altimeter;
+		ROS_INFO("SIM: Laser Altimeter present: %s", qos_sens_.altimeter_present ? "yeah" : "nooo");
+	}
+	if (n_.getParam("uav_sim/is_sonar_altimeter", is_sonar_altimeter)){
+		qos_sens_.altimeter_present = is_sonar_altimeter;
+		qos_sens_.altimeter_working = is_sonar_altimeter;
+		ROS_INFO("SIM: Sonar Altimeter present: %s", qos_sens_.altimeter_present ? "yeah" : "nooo");
 	}
 	while (ros::ok())
 	{
@@ -641,9 +721,11 @@ ros::Publisher pubToSafety_;
 ros::Publisher pubToSystStatus_;
 ros::Publisher pubToGlobPosInt_;
 ros::Publisher pubToSonar_;
+ros::Publisher pubToLaser_;
 ros::Publisher pubGeopose_;
 ros::Publisher pubQosSensors_;
 ros::Publisher pubNedPose_;
+ros::Publisher altimeter_pub; // Added by Nicola on 2017/02/23
 
 ros::ServiceClient client_query;
 swm_interface::Query srv_query;
@@ -654,7 +736,11 @@ guidance_node_amsl::Reference reference_;
 mms_msgs::MMS_status inputMmsStatus_;
 mavros::Global_position_int globPosInt_;
 mavros::Safety safety_;
-mavros::Sonar sonar_;
+// mavros::Sonar sonar_;
+sensor_msgs::Range sonar_;
+sensor_msgs::Range laser_;
+sensor_msgs::Range altimeter_msg;
+	
 mms_msgs::Sys_status sys_status_;
 qos_sensors_autopilot::Qos_sensors qos_sens_;
 geometry_msgs::Pose ned_pose;
@@ -688,6 +774,12 @@ matrix3 Rt, R;
 geometry_msgs::Point pt, p;
 ortovox arva_msg;
 // --------------------------
+
+bool sonar_ok;
+bool laser_ok;
+bool is_laser_altimeter;
+bool is_sonar_altimeter;	
+	
 private:
 
 };

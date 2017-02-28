@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   mms_msgs
   wgs84_ned_lib
   swm_interface
+  sensor_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -106,7 +107,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES uav_sim
-CATKIN_DEPENDS roscpp std_msgs
+CATKIN_DEPENDS roscpp std_msgs sensor_msgs
 #  DEPENDS system_lib
 )
 

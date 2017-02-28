@@ -10,3 +10,6 @@ int16 artva_failure_counter
 bool laser_present
 bool laser_working
 int16 laser_failure_counter
+bool altimeter_present
+bool altimeter_working
+int16 altimeter_failure_counter
