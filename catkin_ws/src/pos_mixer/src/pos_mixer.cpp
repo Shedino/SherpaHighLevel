@@ -2,7 +2,8 @@
 
 #include <mavros/Global_position_int.h>
 #include <guidance_node_amsl/Position_nav.h>
-#include <mavros/Sonar.h>
+// #include <mavros/Sonar.h>
+#include <sensor_msgs/Range.h>
 #include <frame/Ref_system.h>
 
 class PosmixerNodeClass
@@ -16,7 +17,8 @@ public:
 
 		//subscribers
 		subFromPosition_=n_.subscribe("global_position_int", 10, &PosmixerNodeClass::readPositionMessage,this);
-		subFromSonar_ = n_.subscribe("sonar", 10, &PosmixerNodeClass::readSonarMessage,this);
+		// subFromSonar_ = n_.subscribe("sonar", 10, &PosmixerNodeClass::readSonarMessage,this);
+		subFromAltimeter_ = n_.subscribe("altimeter", 10, &PosmixerNodeClass::readAltimeterMessage,this);
 		subFromRefSystem_=n_.subscribe("ref_system", 10, &PosmixerNodeClass::readFrameMessage,this);
 
 		// publishers
@@ -51,13 +53,20 @@ public:
 		//Posmixer_Handle();
 	}
 
-	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
+	/*void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
 	{
 		// ROS_INFO("POSMIXER: SONAR_RECEIVED");
 		inputSonar_.distance = msg -> distance;
 		//Posmixer_Handle();
+	}*/
+	void readAltimeterMessage(const sensor_msgs::Range::ConstPtr& msg)
+	{
+		// ROS_INFO("POSMIXER: SONAR_RECEIVED");
+		inputAltimeter_.range = msg -> range;
+		inputAltimeter_.min_range = msg -> max_range;
+		inputAltimeter_.max_range = msg -> min_range;
+		//Posmixer_Handle();
 	}
-
 	void readFrameMessage(const frame::Ref_system::ConstPtr& msg)
 	{
 		inputRefSystem_.actual_ref_frame=msg->actual_ref_frame;
@@ -78,7 +87,9 @@ public:
 			outputPosNav_.Latitude =inputPos_.lat ;
 			outputPosNav_.Longitude =inputPos_.lon ;
 			outputPosNav_.Timestamp =inputPos_.time_boot_ms;
-			outputPosNav_.Altitude = inputSonar_.distance;
+			//outputPosNav_.Altitude = inputSonar_.distance;
+			outputPosNav_.Altitude = (int) (inputAltimeter_.range*1000.0f); // in millimeters
+			// ROS_INFO("POS_MIXER: outputPosNav_.Altitude: %d",outputPosNav_.Altitude);
 			outputPosNav_.YawAngle = inputPos_.hdg*3.14/180/100;
 			outputPosNav_.frame =inputRefSystem_.actual_ref_frame;
 		}
@@ -107,7 +118,8 @@ public:
 		{
 			new_frame = false;
 			if (inputRefSystem_.actual_ref_frame  == 11)
-				ROS_INFO("POS_MIXER: SONAR USED");
+			//	ROS_INFO("POS_MIXER: SONAR USED");
+				ROS_INFO("POS_MIXER: ALTIMETER USED");
 			if (inputRefSystem_.actual_ref_frame  == 6)
 				ROS_INFO("POS_MIXER: BARO USED");
 		}
@@ -138,11 +150,13 @@ protected:
 
 	// subscriber
 	ros::Subscriber subFromPosition_;
-	ros::Subscriber subFromSonar_;
+	// ros::Subscriber subFromSonar_;
+	ros::Subscriber subFromAltimeter_;
 	ros::Subscriber subFromRefSystem_;
 
 	mavros::Global_position_int inputPos_;
-	mavros::Sonar inputSonar_;
+	// mavros::Sonar inputSonar_;
+	sensor_msgs::Range inputAltimeter_;
 	frame::Ref_system inputRefSystem_;
 
 	// publisher

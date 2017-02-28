@@ -19,7 +19,7 @@ stuff "sleep 10; roslaunch mavros uniboAMSLUSB.launch __ns:=/wasp108\015"
 
 screen 3
 title "Mavros rate"
-stuff "sleep 20; rosservice call /wasp108/mavros/set_stream_rate 0 12 true\015"
+stuff "sleep 25; rosservice call /wasp108/mavros/set_stream_rate 0 12 true\015"
 
 screen 4
 title "Wasp Camera Usb"

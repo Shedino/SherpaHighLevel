@@ -20,7 +20,10 @@
 #include <mms_msgs/Sys_status.h>
 #include <tf/transform_datatypes.h>
 
+#include "sensor_msgs/Range.h"
+
 #define SONAR_THRESHOLD 300          //maximum centimetres of a reliable sonar reading
+#define LASER_THRESHOLD 4000          //maximum centimetres of a reliable lasert reading // Added by Nicola on 2017/02/22
 namespace mavplugin {
 /**
  * @brief Mavros plugin
@@ -56,7 +59,14 @@ public:
 		position_pub = nodeHandle.advertise<mavros::Global_position_int>("global_position_int", 10);               //TODO this should become a mavros topic and removed from amsl and splitted from attitude
 		arm_ack_pub = nodeHandle.advertise<mms_msgs::Ack_arm>("acknowledge_arming", 10);
 		sys_status_pub = nodeHandle.advertise<mms_msgs::Sys_status>("system_status", 10);
-		distance_sensor_pub = nodeHandle.advertise<mavros::Sonar>("sonar", 10);
+		distance_sensor_pub = nodeHandle.advertise<sensor_msgs::Range>("sonar", 10);
+		laser_sensor_pub = nodeHandle.advertise<sensor_msgs::Range>("laser", 10); // Added by Nicola o 2017/02/22
+		altimeter_pub = nodeHandle.advertise<sensor_msgs::Range>("altimeter", 10); // Added by Nicola o 2017/02/23
+		
+/*		distance_sensor_pub = nodeHandle.advertise<mavros::Sonar>("sonar", 10);
+		laser_sensor_pub = nodeHandle.advertise<mavros::Sonar>("laser", 10); // Added by Nicola o 2017/02/22
+		altimeter_pub = nodeHandle.advertise<mavros::Sonar>("altimeter", 10); // Added by Nicola o 2017/02/23*/
+		
 		attitude_pub = nodeHandle.advertise<mavros::Attitude>("attitude", 10);
 		artva_pub = nodeHandle.advertise<mavros::ArtvaRead>("artva_read", 10);
 		safety_pub = nodeHandle.advertise<mavros::Safety>("safety_odroid", 10);
@@ -73,14 +83,28 @@ public:
 		nodeHandle.param("mavros/unibo_controller/trim_RC3", RC3_trim_, 1000.0);
 		nodeHandle.param("mavros/unibo_controller/trim_RC4", RC4_trim_, 1000.0);*/
 
-		mavros::Sonar temp_sonar;
+		/*mavros::Sonar temp_sonar; 
 		temp_sonar.distance = -1;      //if there is no sonar, the distance is initialized to -1
-		distance_sensor_pub.publish(temp_sonar);
-
+		distance_sensor_pub.publish(temp_sonar);*/
+		
+		is_sonar_altimeter = true; // 0 = not altimeter, 1 = altimeter // Added by Nicola on 2017/02/23
+		/*mavros::Sonar temp_laser;  // Added by Nicola on 2017/02/22
+		temp_laser.distance = -1;      //if there is no laser, the distance is initialized to -1 // Added by Nicola on 2017/02/22
+		laser_sensor_pub.publish(temp_laser);// Added by Nicola on 2017/02/22 */
+		
+		is_laser_altimeter = true; // 0 = not altimeter, 1 = altimeter // Added by Nicola on 2017/02/23
+		/*mavros::Sonar temp_altimeter;  // Added by Nicola on 2017/02/23
+		temp_altimeter.distance = -1;      //if there is no altimeter, the distance is initialized to -1 // Added by Nicola on 2017/02/23
+		laser_sensor_pub.publish(temp_altimeter);// Added by Nicola on 2017/02/23	*/	
+		
 		quaternion_.x = 1;
 		quaternion_.y = 0;
 		quaternion_.z = 0;
 		quaternion_.w = 0;
+		
+		laser_ok = false;
+		sonar_ok = false;
+		// ROS_INFO("inizializzazione");
 	}
 
 	//should be logic mapping between id number and message type
@@ -123,6 +147,8 @@ private:
 	ros::Publisher artva_pub;
 	ros::Publisher imu_pub;
 	ros::Publisher pubGeopose_;
+	ros::Publisher laser_sensor_pub; // Added by Nicola on 2017/02/22
+	ros::Publisher altimeter_pub; // Added by Nicola on 2017/02/23
 
 	mms_msgs::Sys_status _system_status;
 
@@ -142,6 +168,23 @@ private:
 
 	//safety flag
 	bool safetyOn;
+	
+	bool is_sonar_altimeter;
+	bool is_laser_altimeter;
+	bool sonar_ok;
+	bool laser_ok;
+	
+	/*mavros::Sonar sonar_msg;
+	mavros::Sonar laser_msg;
+	mavros::Sonar altimeter_msg;*/
+	
+	sensor_msgs::Range sonar_msg;
+	sensor_msgs::Range laser_msg;
+	sensor_msgs::Range altimeter_msg;
+	
+	
+	//sonar_msg = boost::make_shared<mavros::Sonar>();
+	//laser_msg = boost::make_shared<mavros::Sonar>();
 
 	//saturation parameters
 	/*
@@ -352,19 +395,73 @@ private:
 	}
 
 	void handle_distance_sensor(const mavlink_message_t *msg, uint8_t sysid, uint8_t compid) {
-
+		//ROS_WARN("**************************************************************************");
 		mavlink_distance_sensor_t distance_sensor;
 		mavlink_msg_distance_sensor_decode(msg, &distance_sensor);
-
-		auto distance_msg = boost::make_shared<mavros::Sonar>();
-		if (distance_sensor.current_distance > SONAR_THRESHOLD){    //more than 300cm-->not reliable
-			distance_msg->distance = 0;         //if the distance is over threshold-->put zero
-		} else {
-			distance_msg->distance = (int)(distance_sensor.current_distance*10*cos(attitude_msg.roll)*cos(attitude_msg.pitch));   //from mavlink received in centimiters, converted in millimiters and corrected with attitude
+		// auto sonar_msg = boost::make_shared<mavros::Sonar>();
+		// auto laser_msg = boost::make_shared<mavros::Sonar>();
+		if (distance_sensor.type == 1) //SONAR
+		{
+			sonar_msg.radiation_type = distance_sensor.type;
+			sonar_msg.max_range = distance_sensor.max_distance/100.0; // Converted to meters
+			sonar_msg.min_range = distance_sensor.min_distance/100.0; // Converted to meters
+			//auto sonar_msg = boost::make_shared<mavros::Sonar>();
+			if (distance_sensor.current_distance > SONAR_THRESHOLD || distance_sensor.current_distance == -1){    //more than 300cm-->not reliable
+				sonar_ok = false;
+				sonar_msg.range = -1;         //if the distance is over threshold-->put zero
+			} else {
+				sonar_ok = true;
+				sonar_msg.range = (distance_sensor.current_distance*cos(attitude_msg.roll)*cos(attitude_msg.pitch))/100.0;   //from mavlink received in centimiters, converted to meters and corrected with attitude
+			}
+			//ROS_INFO("Sonar received. Distance: %d - Type: %d - MaxDist: %d",sonar_msg.distance, distance_sensor.type, distance_sensor.max_distance);
+			distance_sensor_pub.publish(sonar_msg);			
 		}
-		//ROS_INFO("Sonar received. Distance: %d - Type: %d - MaxDist: %d",distance_msg->distance, distance_sensor.type, distance_sensor.max_distance);
-		distance_sensor_pub.publish(distance_msg);
+		if (distance_sensor.type == 0) // LASER
+		{
+			laser_msg.radiation_type = distance_sensor.type;
+			laser_msg.max_range = distance_sensor.max_distance/100.0; // Converted to meters
+			laser_msg.min_range = distance_sensor.min_distance/100.0; // Converted to meters
+			//auto laser_msg = boost::make_shared<mavros::Sonar>();
+			if (distance_sensor.current_distance > LASER_THRESHOLD || distance_sensor.current_distance == -1)
+			{ // || distance_sensor.current_distance == -1){    //more than 4000cm-->not reliable
+				laser_ok = false;
+				laser_msg.range = -1;         //if the distance is over threshold-->put zero
+			} else {
+				laser_ok = true;
+				laser_msg.range = (distance_sensor.current_distance*cos(attitude_msg.roll)*cos(attitude_msg.pitch))/100.0;   //from mavlink received in centimiters, converted to meters and corrected with attitude
+			}
+			//ROS_INFO("Laser received. Distance: %d - Type: %d - MaxDist: %d",laser_msg.distance, distance_sensor.type, distance_sensor.max_distance);
+			laser_sensor_pub.publish(laser_msg);	
+		}
+		if (is_laser_altimeter && laser_ok)
+		{
+			altimeter_msg.radiation_type = laser_msg.radiation_type;
+			altimeter_msg.max_range = laser_msg.max_range;
+			altimeter_msg.min_range = laser_msg.min_range;
+			altimeter_msg.range = laser_msg.range;
+			altimeter_pub.publish(altimeter_msg);
+			// ROS_INFO("ALTIMETER = LASER");			
+		}
+		else if(is_sonar_altimeter && sonar_ok)
+		{
+			altimeter_msg.radiation_type = sonar_msg.radiation_type;
+			altimeter_msg.max_range = sonar_msg.max_range;
+			altimeter_msg.min_range = sonar_msg.min_range;
+			altimeter_msg.range = sonar_msg.range;
+			altimeter_pub.publish(altimeter_msg);
+			// ROS_INFO("ALTIMETER = SONAR");
+		}
+		else
+		{
+			// ROS_INFO("ALTIMETER = NONE");
+			altimeter_msg.radiation_type = -1;
+			altimeter_msg.max_range = -1;
+			altimeter_msg.min_range = -1;
+			altimeter_msg.range = -1;
+			altimeter_pub.publish(altimeter_msg);
+		}
 	}
+	
 	/*
 	 * From directive to RC
 	 */

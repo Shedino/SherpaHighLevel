@@ -48,3 +48,6 @@ screen 9
 title "bag conversion"
 stuff "rostopic echo -b name.bag -p /wasp0/geopose > geopose.txt; sleep 5; rostopic echo -b name.bag -p /wasp0/artva_read > artva_read.txt; sleep 5; rostopic echo -b name.bag -p /wasp0/sonar > sonar.txt"
 
+screen 10
+title "GCS Davos"
+stuff "sleep 10; rosrun gcs_davos gcs_davos __ns:=/wasp0\015"

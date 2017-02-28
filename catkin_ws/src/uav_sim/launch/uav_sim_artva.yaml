@@ -8,5 +8,9 @@ sonar_present: true
 sonar_working: true
 artva_present: true
 artva_working: true
-laser_present: false
-laser_working: false
+laser_present: true
+laser_working: true
+altimeter_present: true
+altimeter_working: true
+is_sonar_altimeter: true
+is_laser_altimeter: true

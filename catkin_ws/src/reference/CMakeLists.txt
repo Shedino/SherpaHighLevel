@@ -7,11 +7,12 @@ project(reference)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  sensor_msgs
   geographic_msgs
   message_generation
   wgs84_ned_lib
   geometry_msgs
-	mavros
+  mavros
 )
 
 ## System dependencies are found with CMake's conventions
@@ -75,6 +76,7 @@ find_package(catkin REQUIRED COMPONENTS
 generate_messages(
   DEPENDENCIES 
   std_msgs
+  sensor_msgs
   geographic_msgs
 )
 
@@ -90,7 +92,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES reference
- CATKIN_DEPENDS roscpp std_msgs geographic_msgs message_runtime wgs84_ned_lib
+ CATKIN_DEPENDS roscpp std_msgs geographic_msgs message_runtime wgs84_ned_lib sensor_msgs
 #  DEPENDS system_lib
 )
 
