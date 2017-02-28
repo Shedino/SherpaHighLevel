@@ -6,7 +6,8 @@
 #include "mms_msgs/Cmd.h"
 #include "mms_msgs/Grid_ack.h"
 #include "mms_msgs/MMS_status.h"
-#include <mavros/Sonar.h>
+// #include <mavros/Sonar.h>
+#include <sensor_msgs/Range.h>
 #include <frame/Ref_system.h>
 #include "reference/Distance.h"	
 #include "reference/Grid_info.h"	//GRID
@@ -79,7 +80,8 @@ public:
 		subFromPosition_ = n_.subscribe("position_nav", 10, &ReferenceNodeClass::readPositionMessage,this);
 		subFromGlobPosInt_ = n_.subscribe("global_position_int", 10, &ReferenceNodeClass::readGlobalPosIntMessage,this);
 		subFromCmd_ = n_.subscribe("cmd_from_mms", 10, &ReferenceNodeClass::readCmdMessage,this);     //filtered by mms
-        subFromSonar_ = n_.subscribe("sonar", 10, &ReferenceNodeClass::readSonarMessage,this);
+        //subFromSonar_ = n_.subscribe("sonar", 10, &ReferenceNodeClass::readSonarMessage,this);
+		subFromAltimeter_ = n_.subscribe("altimeter", 10, &ReferenceNodeClass::readAltimeterMessage,this);
 		subFromMmsStatus_ = n_.subscribe("mms_status", 10, &ReferenceNodeClass::readMmsStatusMessage,this);
 		subFromFrame_ = n_.subscribe("ref_system", 10, &ReferenceNodeClass::readFrameMessage,this);
 		subLeashingTargetPosition_ = n_.subscribe("leashing_target_position", 10, &ReferenceNodeClass::readLeashingTarget,this);
@@ -131,7 +133,8 @@ public:
 		target_ned.x = 0;
 		target_ned.y = 0;
 		target_ned.alt_baro = 0;
-		target_ned.alt_sonar = 0;
+		// target_ned.alt_sonar = 0;
+		target_ned.alt_altimeter = 0;
 		target_ned.yaw = 0;
 		position_increments.dx = 0;
 		position_increments.dy = 0;
@@ -233,7 +236,8 @@ public:
 		double x;
 		double y;
 		double alt_baro;
-		double alt_sonar;
+		// double alt_sonar;
+		double alt_altimeter; // in meters
 		double yaw;
 	};
 
@@ -268,12 +272,16 @@ public:
 		}
 	}
 
-	void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
+	/*void readSonarMessage(const mavros::Sonar::ConstPtr& msg)
 	{
 		//ROS_INFO("MMS: SONAR_MSG_RECEIVED");
 		inputSonar_.distance = msg -> distance;
+	}*/
+	void readAltimeterMessage(const sensor_msgs::Range::ConstPtr& msg)
+	{
+		//ROS_INFO("MMS: ALTIMETER_MSG_RECEIVED");
+		inputAltimeter_.range = msg -> range;
 	}
-
 	void set_current_position_as_ref()
 	{
 		double temp_x, temp_y;
@@ -284,7 +292,8 @@ public:
 		target_ned.y = temp_y;
 		target_wp_ned.alt = inputPos_.Altitude / 1000.0f;
 		target_ned.alt_baro = inputPos_.Altitude / 1000.0f;
-		target_ned.alt_sonar = inputSonar_.distance / 1000.0f;
+		// target_ned.alt_sonar = inputSonar_.distance / 1000.0f;
+		target_ned.alt_altimeter = inputAltimeter_.range; // in meters
 		target_wp_ned.yaw = inputPos_.YawAngle;
 		target_ned.yaw = inputPos_.YawAngle;
 	}
@@ -343,11 +352,14 @@ public:
 			}
 		} else if (frame == 11){
 			speed_z = 0.4;       //TODO check hardcoded
-			double distance_z = sqrt(pow(new_target.alt-old_target.alt_sonar,2));
+			// double distance_z = sqrt(pow(new_target.alt-old_target.alt_sonar,2));
+			double distance_z = sqrt(pow(new_target.alt-old_target.alt_altimeter,2));
 			if (distance_z > speed_z/rate){
-				position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_sonar);
-				reference_speed.vz = -speed_z * sign(new_target.alt-old_target.alt_sonar);
-			} else {
+				/*position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_sonar);
+				reference_speed.vz = -speed_z * sign(new_target.alt-old_target.alt_sonar);*/
+				position_increments.dalt = speed_z/rate * sign(new_target.alt-old_target.alt_altimeter);
+				reference_speed.vz = -speed_z * sign(new_target.alt-old_target.alt_altimeter);
+				} else {
 				position_increments.dalt = 0;
 				reference_speed.vz = 0;
 			}
@@ -637,10 +649,13 @@ public:
 			if (actual_frame == 11 && oldFrame_.actual_ref_frame == 6){   //switched from baro to sonar
 				//Generates the initial reference for sonar as soon as a sonar measurement is available.
 				//The increments are generated based on this initial reference.
-				target_ned.alt_sonar = inputSonar_.distance / 1000.0f;     //put as temp altitude for sonar target the actual altitude from ground
-				ROS_INFO("REF: GOT SONAR: %f", target_ned.alt_sonar);
+				/*target_ned.alt_sonar = inputSonar_.distance / 1000.0f;     //put as temp altitude for sonar target the actual altitude from ground
+				ROS_INFO("REF: GOT SONAR: %f", target_ned.alt_sonar);*/
+				target_ned.alt_altimeter = inputAltimeter_.range;     //put as temp altitude for sonar target the actual altitude from ground in meters
+				ROS_INFO("REF: GOT ALTIMETER: %f", target_ned.alt_altimeter);
 			} else {
-				target_ned.alt_sonar = 0;      //reset when we loose sonar or the frame is not sonar anymore
+				// target_ned.alt_sonar = 0;      //reset when we loose sonar or the frame is not sonar anymore
+				target_ned.alt_altimeter = 0;      //reset when we loose sonar or the frame is not sonar anymore
 			}
 			new_frame = true;
 			oldFrame_.actual_ref_frame = actual_frame;
@@ -1118,14 +1133,21 @@ public:
 					ROS_INFO("REF: PAUSED");
 					new_state = false;
 				}
-				//TODO finish manual velocity control here
-				//TODO create the direct_velocity_command from a received topic
+
 				position_increments.dx = direct_velocity_command.vx /rate;
 				reference_speed.vx = direct_velocity_command.vx;
 				position_increments.dy = direct_velocity_command.vy /rate;
 				reference_speed.vy = direct_velocity_command.vy;
-				position_increments.dalt = -direct_velocity_command.vz /rate;
-				reference_speed.vz = direct_velocity_command.vz;
+				//TODO check hardcoded "follow ground" for operator control and hardcoded altitude
+				if ((target_frame == 11 && actual_frame == 6) || target_ned.alt_altimeter > 1.5){  //target in sonar but quad is too high or we are higher than 1.5 meters we go down
+					position_increments.dalt = -0.08;		//Going down to reach sonar-detectable distance
+					reference_speed.vz = 0.8;
+				} else {
+					position_increments.dalt = 0;
+					reference_speed.vz = 0;
+				}
+				//position_increments.dalt = -direct_velocity_command.vz /rate;
+				//reference_speed.vz = direct_velocity_command.vz;
 				position_increments.dyaw = direct_velocity_command.vyaw /rate;
 				reference_speed.vyaw = direct_velocity_command.vyaw;
 				break;
@@ -1134,7 +1156,8 @@ public:
 		target_ned.x += position_increments.dx;        //TODO make a unique class with dx,dy,alt_baro,alt_sonar,dyaw...too wasted memory and code this way
 		target_ned.y += position_increments.dy;
 		target_ned.alt_baro += position_increments.dalt;
-		target_ned.alt_sonar += position_increments.dalt;
+		//target_ned.alt_sonar += position_increments.dalt;
+		target_ned.alt_altimeter += position_increments.dalt;
 		target_ned.yaw += position_increments.dyaw;
 		//ROS_INFO("REF: Increments: %f, %f, %f", position_increments.dx, position_increments.dy, position_increments.dalt);
 		//ROS_INFO("REF: Targets NED: %f, %f, %f", target_ned.x, target_ned.y, target_ned.alt_baro);
@@ -1149,7 +1172,8 @@ public:
 			outputRef_.AltitudeRelative = target_ned.alt_baro * 1000.0f;
 			outputRef_.frame = 6;
 		} else if (actual_frame == 11){   //publish sonar
-			outputRef_.AltitudeRelative = target_ned.alt_sonar * 1000.0f;
+			// outputRef_.AltitudeRelative = target_ned.alt_sonar * 1000.0f;
+			outputRef_.AltitudeRelative = target_ned.alt_altimeter * 1000.0f;
 			outputRef_.frame = 11;
 		}
 		outputRef_.vx = reference_speed.vx;
@@ -1182,13 +1206,14 @@ protected:
 	ros::Subscriber subFromPosition_;
 	ros::Subscriber subFromCmd_;
 	ros::Subscriber subFromMmsStatus_;
-	ros::Subscriber subFromSonar_;
+	//ros::Subscriber subFromSonar_;
+	ros::Subscriber subFromAltimeter_;
 	ros::Subscriber subFromFrame_;
 	ros::Subscriber subFromGlobPosInt_;
 	ros::Subscriber subLeashingTargetPosition_;
 	ros::Subscriber subLeashingCommand_;
 	ros::Subscriber subDirectVelocityCommand_;
-  ros::Subscriber subFromArtvaRead_;
+    ros::Subscriber subFromArtvaRead_;
 
 	ros::Publisher pubToReference_;
 	ros::Publisher pubGridAck_;
@@ -1202,7 +1227,8 @@ protected:
 
 	mavros::ArtvaRead inputArtvaRead_; // added by Nicola @ final destination week
 
-	mavros::Sonar inputSonar_;
+	// mavros::Sonar inputSonar_;
+	sensor_msgs::Range inputAltimeter_;
 	mms_msgs::Cmd inputCmd_;
 	mms_msgs::MMS_status inputMmsStatus_;
 	//frame::Ref_system inputFrame_;

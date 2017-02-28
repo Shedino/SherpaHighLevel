@@ -6,7 +6,7 @@
 #include "mms_msgs/Ack_arm.h" // input
 #include "mms_msgs/Sys_status.h"// input
 #include "mms_msgs/Grid_ack.h"  //input
-#include <mavros/Sonar.h> // input
+// #include <mavros/Sonar.h> // input
 #include "mavros/Attitude.h"
 #include "mms_msgs/MMS_status.h"// output
 #include <reference/Distance.h>// input
@@ -14,8 +14,11 @@
 #include <reference/LeashingStatus.h>// input
 #include <qos_sensors_autopilot/Qos_sensors.h>// input
 
+#include <sensor_msgs/Range.h>// input in meters
+
 #define FRAME_BARO 6
-#define FRAME_SONAR 11
+// #define FRAME_SONAR 11
+#define FRAME_ALTIMETER 11
 
 #define GROUND_TAKEOFF 0
 #define HAND_TAKEOFF 1
@@ -38,7 +41,8 @@ public:
 
 		//subscribers
 		subFromCmd_=n_.subscribe("sent_command", 10, &MmsNodeClass::readCmdMessage,this); //subscribe to "sent_command" to exclude the "cmd_verifier" node
-		subFromSonar_ = n_.subscribe("sonar", 10, &MmsNodeClass::readSonarMessage,this);
+		// subFromSonar_ = n_.subscribe("sonar", 10, &MmsNodeClass::readSonarMessage,this); // modified to altimeter by Nicola on 2017/02/24
+		subFromAltimeter_ = n_.subscribe("altimeter", 10, &MmsNodeClass::readAltimeterMessage,this); // modified to altimeter by Nicola on 2017/02/24
 		subFromSysStatus_=n_.subscribe("system_status", 10, &MmsNodeClass::readSysStatusMessage,this);
 		subFromDistance_=n_.subscribe("distance", 10, &MmsNodeClass::readDistanceMessage,this);
 		subFromGridAck_ = n_.subscribe("grid_ack", 10, &MmsNodeClass::readGridAckMessage,this);
@@ -144,11 +148,19 @@ public:
 		else GRID_ENDED = false;
 	}
 
-	void readSonarMessage(const mavros::Sonar::ConstPtr& msg){
-		// ROS_INFO("POSMIXER: SONAR_RECEIVED");
+/*	void readSonarMessage(const mavros::Sonar::ConstPtr& msg){  // modified to altimeter by Nicola on 2017/02/24
+		// ROS_INFO("MMS: SONAR_RECEIVED");
 		inputSonar_.distance = msg -> distance;
-	}
+	}*/
 
+	void readAltimeterMessage(const sensor_msgs::Range::ConstPtr& msg){
+		// ROS_INFO("MMS: ALTIMETER_RECEIVED");
+		inputAltimeter_.range = msg -> range;
+		inputAltimeter_.max_range = msg -> max_range;
+		inputAltimeter_.min_range = msg -> min_range;
+		inputAltimeter_.radiation_type = msg -> radiation_type;
+	}
+	
 	void readLeashingStatusMessage(const reference::LeashingStatus::ConstPtr& msg){
 		if (msg->failure > 0) LEASHING_FAILURE = true;
 	}
@@ -184,13 +196,16 @@ public:
 				ROS_INFO("MMS: CMD_WAYPOINT. Params: %f - %f - %f - %f - %f",inputCmd_.param1,inputCmd_.param5,inputCmd_.param6,inputCmd_.param7,inputCmd_.param4);
 				ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
 				ROS_INFO("MMS: CMD_ALTITUDE = %f",inputCmd_.param7);
-				ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
+				// ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
+				ROS_INFO("MMS: ALTIMETER DIST. =% f",inputAltimeter_.range);
+				ROS_INFO("MMS: inputCmd_.param7: %f", inputCmd_.param7);
 
 				double temp_max_speed;
 				n_.getParam("guidance_node_amsl/param/sat_xy", temp_max_speed);
 				temp_max_speed = sqrt(pow(temp_max_speed,2));
 				//conditions to accept waypoint: frame baro && speed (param1) less than max speed OR frame sonar and sonar working and altitude less than sonar range
-				if (((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && inputCmd_.param7 > 0.3f && inputCmd_.param7 < 3.0f && Qos_sensors_.sonar_present && Qos_sensors_.sonar_working)) && inputCmd_.param1 < temp_max_speed)
+				// if (((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && inputCmd_.param7 > 0.3f && inputCmd_.param7 < 3.0f && Qos_sensors_.sonar_present && Qos_sensors_.sonar_working)) && inputCmd_.param1 < temp_max_speed)
+				if (((inputCmd_.frame == FRAME_BARO) || (inputAltimeter_.range != -1 && inputCmd_.frame == FRAME_ALTIMETER && inputCmd_.param7 > inputAltimeter_.min_range && inputCmd_.param7 < inputAltimeter_.max_range && Qos_sensors_.altimeter_present && Qos_sensors_.altimeter_working)) && inputCmd_.param1 < temp_max_speed)
 					{
 						target_frame = inputCmd_.frame;
 						seq_number = inputCmd_.seq;
@@ -217,7 +232,8 @@ public:
 				ROS_INFO("MMS: CMD_GRID. Params: %f - %f - %f - %f",inputCmd_.param1,inputCmd_.param2,inputCmd_.param3,inputCmd_.param4);
 				ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
 
-				bool grid_correct_frame = (inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR);
+				// bool grid_correct_frame = (inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR);
+				bool grid_correct_frame = (inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_ALTIMETER);
 				bool grid_correct_parameters = (inputCmd_.param3 >= 0.5) ||
 										  (inputCmd_.param2 >= 0.5) ||
 										  (inputCmd_.param2 <= 30) ||
@@ -259,7 +275,8 @@ public:
 			{
 				ROS_INFO("MMS: CMD_LAND");
 				ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
-				if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && inputSonar_.distance != -1))
+				//if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && inputSonar_.distance != -1))
+				if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_ALTIMETER && inputAltimeter_.range != -1))
 				{
 					target_frame = inputCmd_.frame;
 					seq_number = inputCmd_.seq;
@@ -281,12 +298,14 @@ public:
 			case 22:  // MAV_CMD_NAV_TAKEOFF
 			{
 				ROS_INFO("MMS: CMD_TAKEOFF");
-				Dh_TO = (int)(inputCmd_.param7*1000.0f);
+				Dh_TO = (inputCmd_.param7); // in meters
 				ROS_INFO("MMS: CMD_FRAME = %d", inputCmd_.frame);
-				ROS_INFO("MMS: CMD_DH_TO = %d",Dh_TO);
-				ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
+				ROS_INFO("MMS: CMD_DH_TO = %f",Dh_TO);
+				// ROS_INFO("MMS: SONAR DIST. =% d",inputSonar_.distance);
+				ROS_INFO("MMS: ALTIMETER DIST. =% f",inputAltimeter_.range);
 
-				if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && Dh_TO > 300 && Dh_TO <= 3000 && inputSonar_.distance > 0))
+				// if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_SONAR && Dh_TO > 300 && Dh_TO <= 3000 && inputSonar_.distance > 0))
+				if ((inputCmd_.frame == FRAME_BARO) || (inputCmd_.frame == FRAME_ALTIMETER && Dh_TO > inputAltimeter_.min_range && Dh_TO <= inputAltimeter_.max_range && inputAltimeter_.range > inputAltimeter_.min_range))
 				{
 					target_frame = inputCmd_.frame;
 					seq_number = inputCmd_.seq;
@@ -1464,8 +1483,11 @@ mavros::Safety Safety_;
 ros::Subscriber subFromSysStatus_;
 mms_msgs::Sys_status inputSysStatus_;
 
-ros::Subscriber subFromSonar_;
-mavros::Sonar inputSonar_;
+/*ros::Subscriber subFromSonar_;
+mavros::Sonar inputSonar_;*/
+
+ros::Subscriber subFromAltimeter_;
+sensor_msgs::Range inputAltimeter_;
 
 ros::Subscriber subLeashingStatus_;
 
@@ -1523,7 +1545,7 @@ private:
 uint16_t counter_;
 uint16_t counter_print;
 uint16_t seq_number;
-int Dh_TO;
+float Dh_TO;
 int takeoff_type;  //type of take-off: 0-->ground - 1-->hand - 2-->rover?
 int hand_deployment_state;
 };

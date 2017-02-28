@@ -10,3 +10,7 @@ artva_present: false
 artva_working: false
 laser_present: false
 laser_working: false
+altimeter_present: false
+altimeter_working: false
+is_sonar_altimeter: false
+is_laser_altimeter: false

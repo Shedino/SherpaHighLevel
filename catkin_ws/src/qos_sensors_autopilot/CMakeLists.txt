@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   message_generation
+  sensor_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -68,6 +69,7 @@ add_message_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
+  sensor_msgs
 )
 
 ################################################
@@ -102,7 +104,7 @@ generate_messages(
 catkin_package(
  INCLUDE_DIRS src
 #  LIBRARIES qos_sensors_autopilot
- CATKIN_DEPENDS roscpp std_msgs message_runtime
+ CATKIN_DEPENDS roscpp std_msgs message_runtime sensor_msgs
 #  DEPENDS system_lib
 )
 

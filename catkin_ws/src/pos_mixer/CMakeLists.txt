@@ -7,6 +7,7 @@ project(pos_mixer)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  sensor_msgs
   mavros
   mms
 )
@@ -81,7 +82,7 @@ find_package(Boost REQUIRED COMPONENTS system)
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES pos_mixer
- CATKIN_DEPENDS roscpp std_msgs mms
+ CATKIN_DEPENDS roscpp std_msgs mms sensor_msgs
 #  DEPENDS system_lib
 )
 
