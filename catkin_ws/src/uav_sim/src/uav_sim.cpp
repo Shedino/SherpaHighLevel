@@ -417,25 +417,15 @@ public:
 				
 				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
 				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
-<<<<<<< HEAD
 				position_ned_.alt += -directive_.vzBody;
 				position_ned_.yaw += directive_.yawRate;
-=======
-				position_ned_.alt += -directive_.vzBody ;
-				position_ned_.yaw += directive_.yawRate ;
->>>>>>> 42839902ba3195d190b914b6eb741260897a8c62
 				break;
 
 			case mms_msgs::MMS_status::IN_FLIGHT:
 				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
 				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
-<<<<<<< HEAD
 				position_ned_.alt += -directive_.vzBody;
 				position_ned_.yaw += directive_.yawRate;
-=======
-				position_ned_.alt += -directive_.vzBody ;
-				position_ned_.yaw += directive_.yawRate ;
->>>>>>> 42839902ba3195d190b914b6eb741260897a8c62
 				break;
 
 			case mms_msgs::MMS_status::PERFORMING_GO_TO:
@@ -446,13 +436,8 @@ public:
 				}
 				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
 				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
-<<<<<<< HEAD
 				position_ned_.alt += -directive_.vzBody;
 				position_ned_.yaw += directive_.yawRate;
-=======
-				position_ned_.alt += -directive_.vzBody ;
-				position_ned_.yaw += directive_.yawRate ;
->>>>>>> 42839902ba3195d190b914b6eb741260897a8c62
 				break;
 
 			case mms_msgs::MMS_status::GRID:
@@ -463,13 +448,8 @@ public:
 				}
 				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
 				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
-<<<<<<< HEAD
 				position_ned_.alt += -directive_.vzBody;
 				position_ned_.yaw += directive_.yawRate;
-=======
-				position_ned_.alt += -directive_.vzBody ;
-				position_ned_.yaw += directive_.yawRate ;
->>>>>>> 42839902ba3195d190b914b6eb741260897a8c62
 				break;
 
 			case mms_msgs::MMS_status::PERFORMING_LANDING:
@@ -480,13 +460,8 @@ public:
 				}
 				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
 				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
-<<<<<<< HEAD
 				position_ned_.alt += -directive_.vzBody;
 				position_ned_.yaw += directive_.yawRate;
-=======
-				position_ned_.alt += -directive_.vzBody ;
-				position_ned_.yaw += directive_.yawRate ;
->>>>>>> 42839902ba3195d190b914b6eb741260897a8c62
 				break;
 			
 			case mms_msgs::MMS_status::MANUAL_FLIGHT:
@@ -499,13 +474,8 @@ public:
 				}
 				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
 				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
-<<<<<<< HEAD
 				position_ned_.alt += -directive_.vzBody;
 				position_ned_.yaw += directive_.yawRate;
-=======
-				position_ned_.alt += -directive_.vzBody ;
-				position_ned_.yaw += directive_.yawRate ;
->>>>>>> 42839902ba3195d190b914b6eb741260897a8c62
 				break;
 				
 			case mms_msgs::MMS_status::PAUSED:
@@ -515,13 +485,8 @@ public:
 				}
 				position_ned_.x += (directive_.vxBody*cos(position_ned_.yaw) - directive_.vyBody*sin(position_ned_.yaw));
 				position_ned_.y += (directive_.vxBody*sin(position_ned_.yaw) + directive_.vyBody*cos(position_ned_.yaw));
-<<<<<<< HEAD
 				position_ned_.alt += -directive_.vzBody;
 				position_ned_.yaw += directive_.yawRate;
-=======
-				position_ned_.alt += -directive_.vzBody ;
-				position_ned_.yaw += directive_.yawRate ;
->>>>>>> 42839902ba3195d190b914b6eb741260897a8c62
 				break;
 		}
 		
