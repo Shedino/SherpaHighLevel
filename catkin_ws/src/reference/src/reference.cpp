@@ -1221,8 +1221,8 @@ protected:
 	reference::LeashingCommand leashing_command_;   //leashing
 	reference::LeashingStatus leashing_status_;    //leashing
 	geographic_msgs::GeoPose leashing_target_;	 //leashing
-	static const int MAX_INIT_DISTANCE_XY_LEASHING = 25;
-	static const int MAX_INIT_DISTANCE_Z_LEASHING = 10;
+	static const int MAX_INIT_DISTANCE_XY_LEASHING = 100;
+	static const int MAX_INIT_DISTANCE_Z_LEASHING = 25;
 
 	// STATES DEFINITION
 	/*static const int ON_GROUND_NO_HOME = 10;
